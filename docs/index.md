@@ -2,7 +2,7 @@
 
 ## 1. Zweck und Ziele
 
-Das System soll für dich **vollautomatisch Hytale-Server-Instanzen** erstellen, starten, überwachen und wieder entsorgen.  
+Das System soll **vollautomatisch Hytale-Server-Instanzen** erstellen, starten, überwachen und wieder entsorgen.  
 Dafür wird die komplette Logik in drei Ebenen aufgeteilt:
 
 1. **Brain (Control Plane)**  
