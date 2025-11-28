@@ -1,0 +1,30 @@
+plugins {
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
+    id 'java'
+}
+
+dependencies {
+    implementation project(':common')
+
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    runtimeOnly 'com.mysql:mysql-connector-j:9.1.0'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+bootJar {
+    archiveBaseName = 'kodama-brain'
+}
+
+// TODO: Package anpassen, wenn dein Main anders heißt
+springBoot {
+    mainClass = 'net.spookly.kodama.brain.BrainApplication'
+}

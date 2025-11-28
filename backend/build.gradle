@@ -1,0 +1,40 @@
+plugins {
+    id 'java' apply false
+    id 'java-library' apply false
+    id 'org.springframework.boot' version '3.3.4' apply false
+    id 'io.spring.dependency-management' version '1.1.6' apply false
+    id "io.freefair.lombok" version "8.6" apply false
+    id "com.diffplug.spotless" version "6.20.0"
+}
+
+subprojects {
+    group = 'net.spookly.kodama'
+    version = project.version
+
+    apply plugin: 'java'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+    }
+
+    repositories {
+        mavenCentral()
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+    }
+}
+
+allprojects {
+    spotless {
+        java {
+            removeUnusedImports()
+            importOrder('java', 'javax', '', 'de.spookly', '')
+            indentWithSpaces(4)
+            endWithNewline()
+        }
+    }
+}

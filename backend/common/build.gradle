@@ -1,0 +1,11 @@
+plugins {
+    id 'java-library'
+    id "io.freefair.lombok" version "8.6"
+}
+
+dependencies {
+    // Gemeinsame Dinge, die alle nutzen können
+    api 'com.fasterxml.jackson.core:jackson-annotations:2.18.0'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+}

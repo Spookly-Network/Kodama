@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="GradleMigrationSettings" migrationVersion="1" />
+  <component name="GradleSettings">
+    <option name="linkedExternalProjectsSettings">
+      <GradleProjectSettings>
+        <option name="externalProjectPath" value="$PROJECT_DIR$/brain" />
+        <option name="gradleHome" value="C:/Gradle/gradle-8.12-all/gradle-8.12" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$/brain" />
+          </set>
+        </option>
+      </GradleProjectSettings>
+      <GradleProjectSettings>
+        <option name="externalProjectPath" value="$PROJECT_DIR$/build" />
+        <option name="gradleHome" value="C:/Gradle/gradle-8.12-all/gradle-8.12" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$/build" />
+          </set>
+        </option>
+      </GradleProjectSettings>
+      <GradleProjectSettings>
+        <option name="externalProjectPath" value="$PROJECT_DIR$/node" />
+        <option name="gradleHome" value="C:/Gradle/gradle-8.12-all/gradle-8.12" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$/node" />
+          </set>
+        </option>
+      </GradleProjectSettings>
+    </option>
+  </component>
+</project>

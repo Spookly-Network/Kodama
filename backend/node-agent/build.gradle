@@ -1,0 +1,20 @@
+plugins {
+    id 'application'
+}
+
+dependencies {
+    implementation project(':common')
+
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.0'
+    implementation 'org.slf4j:slf4j-simple:2.0.13'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+}
+
+application {
+    mainClass = 'net.spooklykodama.nodeagent.NodeAgentApplication'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

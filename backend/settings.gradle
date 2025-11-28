@@ -1,0 +1,11 @@
+rootProject.name = 'kodoma-backend'
+
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+    }
+}
+
+include 'brain'
+include 'node-agent'
+include 'common'
