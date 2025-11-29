@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: kodama-brain
+  datasource:
+    url: jdbc:mysql://localhost:3306/kodama
+    username: kodama
+    password: kodama
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+server:
+  port: 8080
