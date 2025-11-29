@@ -12,7 +12,7 @@ dependencies {
 }
 
 application {
-    mainClass = 'net.spooklykodama.nodeagent.NodeAgentApplication'
+    mainClass = 'net.spookly.kodama.nodeagent.NodeAgentApplication'
 }
 
 tasks.named('test') {

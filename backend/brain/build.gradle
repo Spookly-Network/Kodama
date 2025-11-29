@@ -24,7 +24,6 @@ bootJar {
     archiveBaseName = 'kodama-brain'
 }
 
-// TODO: Package anpassen, wenn dein Main anders heißt
 springBoot {
     mainClass = 'net.spookly.kodama.brain.BrainApplication'
 }
