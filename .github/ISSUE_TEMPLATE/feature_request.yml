@@ -1,0 +1,56 @@
+name: Feature / Task
+description: New functionality, improvements or development tasks
+title: "[Feature] "
+labels:
+  - feature
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: Short description of the feature or task
+      placeholder: "What needs to be added or done?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Details
+      description: Explain what this should achieve, why it’s needed, and any relevant context
+      placeholder: "What does this do? Why do we need it?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope / Requirements
+      description: Bullet points for the exact functionality or steps
+      placeholder: |
+        - Add API endpoint …
+        - Update model …
+        - Implement UI logic …
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: When is this considered done?
+      placeholder: |
+        - Works for …
+        - Returns correct data …
+        - UI reflects changes …
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes / References
+      description: Optional links, diagrams, or related issues
+      placeholder: "Anything useful?"
+    validations:
+      required: false
