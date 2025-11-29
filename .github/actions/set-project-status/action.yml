@@ -1,0 +1,94 @@
+name: "Set GitHub Project (new) Status for PR"
+description: "Sets the Status field of a PR item in a GitHub Project (new Projects experience)."
+author: "Spookly"
+inputs:
+  project-owner:
+    description: "GitHub org or user that owns the project"
+    required: true
+  project-number:
+    description: "Project number (from URL)"
+    required: true
+  status-name:
+    description: "Name of the Status option to set (e.g. 'In review')"
+    required: true
+  token:
+    description: "GitHub token with access to the project"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install jq
+      # ubuntu-latest hat kein jq garantiert preinstalled -> safe choice
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jq
+
+    - name: Authenticate gh
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        echo "$GH_TOKEN" | gh auth login --with-token
+
+    - name: Set project status for PR
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        PROJECT_OWNER: ${{ inputs.project-owner }}
+        PROJECT_NUMBER: ${{ inputs.project-number }}
+        STATUS_NAME: ${{ inputs.status-name }}
+      run: |
+        set -e
+
+        # 1) Fetch project id
+        PROJECT_JSON=$(gh project view "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --format json)
+        PROJECT_ID=$(echo "$PROJECT_JSON" | jq -r '.id')
+
+        if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "null" ]; then
+          echo "Could not resolve project id."
+          exit 1
+        fi
+
+        # 2) Fetch fields to locate Status field + option id
+        FIELDS_JSON=$(gh project field-list "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --format json)
+
+        STATUS_FIELD_ID=$(echo "$FIELDS_JSON" \
+          | jq -r '.fields[] | select(.name == "Status") | .id')
+
+        if [ -z "$STATUS_FIELD_ID" ] || [ "$STATUS_FIELD_ID" = "null" ]; then
+          echo "Could not find 'Status' field in project."
+          exit 1
+        fi
+
+        STATUS_OPTION_ID=$(echo "$FIELDS_JSON" \
+          | jq -r --arg status "$STATUS_NAME" '.fields[] | select(.name == "Status") | .options[] | select(.name == $status) | .id')
+
+        if [ -z "$STATUS_OPTION_ID" ] || [ "$STATUS_OPTION_ID" = "null" ]; then
+          echo "Could not find status option '$STATUS_NAME'."
+          exit 1
+        fi
+
+        # 3) Find project item for this PR
+        PR_URL="${{ github.event.pull_request.html_url }}"
+
+        ITEMS_JSON=$(gh project item-list "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --format json --limit 200)
+
+        ITEM_ID=$(echo "$ITEMS_JSON" \
+          | jq -r --arg url "$PR_URL" '.items[] | select(.content.url == $url) | .id')
+
+        if [ -z "$ITEM_ID" ] || [ "$ITEM_ID" = "null" ]; then
+          echo "No project item found for PR $PR_URL."
+          echo "Make sure an automation or another workflow already adds the PR to the project."
+          # kein harter Fehler, CI nicht kaputt machen:
+          exit 0
+        fi
+
+        echo "Updating Status for item $ITEM_ID to '$STATUS_NAME'"
+
+        gh project item-edit \
+          --id "$ITEM_ID" \
+          --project-id "$PROJECT_ID" \
+          --field-id "$STATUS_FIELD_ID" \
+          --single-select-option-id "$STATUS_OPTION_ID"

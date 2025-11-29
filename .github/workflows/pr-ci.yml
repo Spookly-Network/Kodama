@@ -1,0 +1,39 @@
+name: PR CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
+      - name: Build & test
+        run: ./gradlew build
+
+  set-project-status:
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' }}
+
+    steps:
+      - name: Set PR status to 'In review' in project
+        uses: ./.github/actions/set-project-status
+        with:
+          project-owner: your-org-or-user          # anpassen
+          project-number: 1                        # aus Project-URL
+          status-name: "In review"
+          token: ${{ secrets.GH_PROJECT_TOKEN }}
