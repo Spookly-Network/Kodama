@@ -1,0 +1,59 @@
+name: Architecture Task
+description: Changes affecting system structure, design, or internal patterns
+title: "[Arch] "
+labels:
+  - architecture
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: What part of the architecture is impacted?
+      placeholder: "Short description"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem exists in the current architecture?
+      placeholder: "Where is the issue or limitation?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: Describe the architectural approach or change
+      placeholder: |
+        - Suggested design
+        - Why this makes sense
+        - Alternatives considered
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact Analysis
+      description: What parts of the system will be affected?
+      placeholder: |
+        - Modules touched
+        - Services changed
+        - Migration / refactor effort
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: What must be true for this architecture task to be “done”?
+      placeholder: |
+        - Code compiles and passes tests
+        - Documentation updated
+        - No regressions
+    validations:
+      required: false

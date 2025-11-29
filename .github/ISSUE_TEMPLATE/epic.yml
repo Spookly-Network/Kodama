@@ -1,0 +1,64 @@
+name: Epic
+description: High-level feature group or multi-step initiative
+title: "[Epic] "
+labels:
+  - epic
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: Short high-level description of the epic
+      placeholder: "What is this epic about?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should this epic deliver at the end?
+      placeholder: "Clear end-result or value this epic brings"
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why is this needed? What problem does it solve?
+      placeholder: "Background, user story, problem description"
+    validations:
+      required: false
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Main areas covered by this epic
+      placeholder: |
+        - Area 1
+        - Area 2
+        - Area 3
+    validations:
+      required: false
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: Linked Tasks
+      description: Child issues that belong to this epic
+      placeholder: |
+        - [ ] #123
+        - [ ] #124
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Anything else relevant for planning
+      placeholder: "Extra info, links, diagrams"
+    validations:
+      required: false

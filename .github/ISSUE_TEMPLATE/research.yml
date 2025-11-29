@@ -1,0 +1,68 @@
+name: Research / Investigation
+description: Explore options, evaluate approaches, gather information
+title: "[Research] "
+labels:
+  - research
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: What needs to be researched?
+      placeholder: "Topic or question"
+    validations:
+      required: true
+
+  - type: textarea
+    id: questions
+    attributes:
+      label: Key Questions
+      description: What should this research answer?
+      placeholder: |
+        - How do we…?
+        - What is the best option for…?
+        - Do we need X or Y?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Relevant background or problem triggering this research
+      placeholder: "Short explanation why this research is needed"
+    validations:
+      required: false
+
+  - type: textarea
+    id: approach
+    attributes:
+      label: Research Approach
+      description: How will you gather information?
+      placeholder: |
+        - Compare libraries
+        - Evaluate performance
+        - Check documentation of…
+    validations:
+      required: false
+
+  - type: textarea
+    id: deliverables
+    attributes:
+      label: Expected Deliverables
+      description: What should the output look like?
+      placeholder: |
+        - Summary of findings
+        - Recommendation
+        - Pros/cons
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Extra info, links, references
+      placeholder: "Optional"
+    validations:
+      required: false
