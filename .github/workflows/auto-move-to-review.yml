@@ -1,0 +1,15 @@
+name: Move PRs to Review
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+
+jobs:
+  move:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: alex-page/github-project-automation-plus@v0.9.0
+        with:
+          project: "Kodama Task Board"
+          column: "Review"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
