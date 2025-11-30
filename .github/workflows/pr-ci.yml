@@ -20,12 +20,9 @@ jobs:
         
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
-
-      - name: Go to backend project
-        run: cd ./backend
         
       - name: Build & test
-        run: ls && ./gradlew build
+        run: cd ./backend && ls && ./gradlew build
 
   set-project-status:
     needs: build
