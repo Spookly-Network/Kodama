@@ -25,7 +25,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
 
       - name: Build & test
-        run: ./gradlew build
+        run: ls && ./gradlew build
 
   set-project-status:
     needs: build
