@@ -17,15 +17,15 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-          
-      - name: Go to backend project
-        run: cd ./backend
         
       - name: Make Gradle wrapper executable
-        run: chmod +x gradlew
-
-      - name: Build & test
-        run: ./gradlew build
+        run: chmod +x ./backend/gradlew
+        
+      - name: Cleanup & Build with Gradle
+        run: |
+          cd ./backend
+          ./gradlew spotlessApply
+          ./gradlew build
 
   set-project-status:
     needs: build
