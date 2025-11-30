@@ -1,5 +1,7 @@
 package net.spookly.kodama.brain.controller;
 
+import java.util.List;
+
 import jakarta.validation.Valid;
 import net.spookly.kodama.brain.dto.NodeDto;
 import net.spookly.kodama.brain.dto.NodeRegistrationRequest;
@@ -11,8 +13,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/nodes")

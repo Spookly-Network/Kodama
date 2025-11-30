@@ -2,13 +2,21 @@ spring:
   application:
     name: kodama-brain
   datasource:
-    url: jdbc:mysql://localhost:3306/kodama
-    username: kodama
-    password: kodama
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:kodama}?useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USERNAME:kodama}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:kodama}}
   jpa:
     hibernate:
       ddl-auto: validate
     show-sql: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC+2
+  flyway:
+    enabled: true
+    locations: ${SPRING_FLYWAY_LOCATIONS:classpath:db/migration}
+
 
 server:
   port: 8080
