@@ -11,8 +11,8 @@ import net.spookly.kodama.brain.domain.template.TemplateType;
 import net.spookly.kodama.brain.domain.template.TemplateVersion;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.MySQLContainer;
@@ -47,7 +47,7 @@ class TemplateRepositoryTest {
         OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC);
 
         Template template =
-                new Template("Base Hytale", "Base server template", TemplateType.MASTER, createdAt, UUID.randomUUID());
+                new Template("Base Hytale", "Base server template", TemplateType.CUSTOM, createdAt, UUID.randomUUID());
         Template savedTemplate = templateRepository.save(template);
 
         TemplateVersion version = new TemplateVersion(
@@ -58,7 +58,7 @@ class TemplateRepositoryTest {
         TemplateVersion persistedVersion = templateVersionRepository.findById(savedVersion.getId()).orElseThrow();
 
         assertThat(persistedTemplate.getName()).isEqualTo("Base Hytale");
-        assertThat(persistedTemplate.getType()).isEqualTo(TemplateType.MASTER);
+        assertThat(persistedTemplate.getType()).isEqualTo(TemplateType.CUSTOM);
         assertThat(persistedVersion.getTemplate().getId()).isEqualTo(savedTemplate.getId());
         assertThat(persistedVersion.getVersion()).isEqualTo("1.0.0");
         assertThat(persistedVersion.getChecksum()).isEqualTo("checksum123");
