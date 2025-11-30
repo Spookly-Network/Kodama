@@ -21,8 +21,11 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./backend/gradlew
         
-      - name: Build with Gradle
-        run: cd ./backend && ./gradlew build
+      - name: Cleanup & Build with Gradle
+        run: |
+          cd ./backend
+          ./gradlew spotlessApply
+          ./gradlew build
 
   set-project-status:
     needs: build
