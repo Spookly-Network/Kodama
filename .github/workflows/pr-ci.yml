@@ -22,7 +22,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
         
       - name: Build with Gradle
-        run: gradle build
+        run: gradle backend:build
 
   set-project-status:
     needs: build
