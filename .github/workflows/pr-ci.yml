@@ -33,6 +33,10 @@ jobs:
     if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' }}
 
     steps:
+    
+      - name: Checkout
+        uses: actions/checkout@v4
+        
       - name: Set PR status to 'In review' in project
         uses: ./.github/actions/set-project-status
         with:
