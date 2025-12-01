@@ -77,12 +77,10 @@ while IFS= read -r issue; do
   title=$(printf '%s' "${issue}" | jq -r '.title')
   type=$(printf '%s' "${issue}" | jq -r '.type')
   summary=$(printf '%s' "${issue}" | jq -r '(.summary // "")')
-  details=$(printf '%s' "${issue}" | jq -r '(.details // "")')
   scope=$(printf '%s' "${issue}" | jq -r '(.scope // "")')
-  acceptance=$(printf '%s' "${issue}" | jq -r '(.acceptance // "")')
   notes=$(printf '%s' "${issue}" | jq -r '(.notes // "")')
   parent=$(printf '%s' "${issue}" | jq -r '(.parent // "")')
-  blocks=$(printf '%s' "${issue}" | jq -r '(.blocks // []) | join(", ")')
+  blocks=$(printf '%s' "${issue}" | jq -r '(.blockedby // []) | join(", ")')
   labels_json=$(printf '%s' "${issue}" | jq '.labels // []')
   milestone_title=$(printf '%s' "${issue}" | jq -r '(.milestone // "")')
   milestone_number=$(get_milestone_number "${milestone_title}")
@@ -90,26 +88,50 @@ while IFS= read -r issue; do
   blocks_text=${blocks:-None}
   parent_text=${parent:-None}
 
+  if [[ "${type}" == "Feature" ]]; then
+  details=$(printf '%s' "${issue}" | jq -r '(.details // "")')
+  acceptance=$(printf '%s' "${issue}" | jq -r '(.acceptance // "")')
+
   body=$(cat <<EOF
-## Summary
+### Summary
 ${summary:-No summary provided.}
-
-## Details
+### Details
 ${details:-No details provided.}
-
-## Scope
+### Scope
 ${scope:-Not specified.}
-
-## Acceptance
+### Acceptance
 ${acceptance:-Not specified.}
-
-## Notes
+### Notes
 ${notes:-None.}
-
 **Parent:** ${parent_text}
-**Blocks:** ${blocks_text:-None}
+**Blocked by:** ${blocks_text:-None}
 EOF
-)
+  )
+  fi
+
+  if [[ "${type}" == "Epic" ]]; then
+    goal=$(printf '%s' "${issue}" | jq -r '(.goal // "")')
+    context=$(printf '%s' "${issue}" | jq -r '(.context // "")')
+    tasks=$(printf '%s' "${issue}" | jq -r '(.tasks // "")')
+
+    body=$(cat <<EOF
+### Summary
+${summary:-No summary provided.}
+### Goal
+${goal:-No details provided.}
+### Context
+${context:-Not specified.}
+### Scope
+${scope:-Not specified.}
+### Linked Tasks
+${tasks:-None.}
+### Notes
+${notes:-None.}
+**Parent:** ${parent_text}
+**Blocked by:** ${blocks_text:-None}
+EOF
+    )
+    fi
 
   payload=$(jq -n \
     --arg title "${title}" \
@@ -160,19 +182,35 @@ add_blocked_by() {
   echo "Linked #${target_number} blocked by issue_id=${blocker_issue_id}"
 }
 
+add_parent() {
+  local target_number="$1"
+  local blocker_issue_id="$2"
+
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    echo "Would mark #${target_number} as parent for issue_id=${blocker_issue_id}"
+    return
+  fi
+
+  local payload
+  payload=$(jq -n --argjson issue_id "${blocker_issue_id}" '{sub_issue_id: $issue_id}')
+
+  github -X POST "${API_ROOT}/repos/${GITHUB_REPO}/issues/${target_number}/sub_issues" -d "${payload}" >/dev/null
+  echo "Linked #${target_number} as parent for issue_id=${blocker_issue_id}"
+}
+
 while IFS= read -r issue; do
   source_id=$(printf '%s' "${issue}" | jq -r '.id')
   parent=$(printf '%s' "${issue}" | jq -r '(.parent // "")')
   blocks_list=()
   while IFS= read -r block; do
     blocks_list+=("${block}")
-  done < <(printf '%s' "${issue}" | jq -r '(.blocks // [])[]?')
+  done < <(printf '%s' "${issue}" | jq -r '(.blockedby // [])[]?')
 
   blocker_issue_id="${ISSUE_ID_MAP[$source_id]:-}"
 
   # Parent and blocks are expressed as "target is blocked by this issue".
   if [[ -n "${parent}" && -n "${ISSUE_NUMBER_MAP[$parent]:-}" && -n "${blocker_issue_id}" ]]; then
-    add_blocked_by "${ISSUE_NUMBER_MAP[$parent]}" "${blocker_issue_id}"
+    add_parent "${ISSUE_NUMBER_MAP[$parent]}" "${blocker_issue_id}"
   fi
 
   for target in "${blocks_list[@]}"; do
