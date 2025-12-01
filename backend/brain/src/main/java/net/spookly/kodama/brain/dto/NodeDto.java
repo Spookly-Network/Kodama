@@ -18,8 +18,12 @@ public class NodeDto {
     private String name;
     private String region;
     private NodeStatus status;
-    private OffsetDateTime lastSeenAt;
-    private int capacity;
+    private boolean devMode;
+    private int capacitySlots;
+    private int usedSlots;
+    private OffsetDateTime lastHeartbeatAt;
+    private String nodeVersion;
+    private String tags;
 
     public static NodeDto fromEntity(Node node) {
         return new NodeDto(
@@ -27,8 +31,12 @@ public class NodeDto {
                 node.getName(),
                 node.getRegion(),
                 node.getStatus(),
-                node.getLastSeenAt(),
-                node.getCapacity()
+                node.isDevMode(),
+                node.getCapacitySlots(),
+                node.getUsedSlots(),
+                node.getLastHeartbeatAt(),
+                node.getNodeVersion(),
+                node.getTags()
         );
     }
 }

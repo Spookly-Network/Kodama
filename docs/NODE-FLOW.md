@@ -15,9 +15,8 @@ On startup:
 ## 2. Heartbeats
 
 Node sends heartbeat:
-- devMode (true/false)
 - usedSlots
-- version
+- status
 - metrics (optional)
 - cache size (optional)
 
