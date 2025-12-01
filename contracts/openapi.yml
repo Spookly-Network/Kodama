@@ -1,0 +1,214 @@
+openapi: 3.0.3
+info:
+  title: Kodama Brain API
+  version: "0.1.0"
+  description: |
+    REST surface for managing templates and template versions.
+    All endpoints are served by the Brain service.
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/templates:
+    get:
+      tags: [Templates]
+      summary: List templates
+      description: Returns all templates.
+      responses:
+        "200":
+          description: Templates ordered by creation time.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Template"
+    post:
+      tags: [Templates]
+      summary: Create template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTemplateRequest"
+      responses:
+        "201":
+          description: Template created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Template"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/templates/{id}:
+    parameters:
+      - $ref: "#/components/parameters/TemplateId"
+    get:
+      tags: [Templates]
+      summary: Get template
+      responses:
+        "200":
+          description: Template found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Template"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/templates/{id}/versions:
+    parameters:
+      - $ref: "#/components/parameters/TemplateId"
+    get:
+      tags: [Template Versions]
+      summary: List template versions
+      description: Returns versions for the template, newest first.
+      responses:
+        "200":
+          description: Template versions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TemplateVersion"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Template Versions]
+      summary: Add template version
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTemplateVersionRequest"
+      responses:
+        "201":
+          description: Version created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemplateVersion"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+components:
+  parameters:
+    TemplateId:
+      name: id
+      in: path
+      required: true
+      description: Template identifier.
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    Template:
+      type: object
+      required: [id, name, description, type, createdAt, createdBy]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        type:
+          $ref: "#/components/schemas/TemplateType"
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+          format: uuid
+    TemplateVersion:
+      type: object
+      required: [id, templateId, version, checksum, s3Key, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        templateId:
+          type: string
+          format: uuid
+        version:
+          type: string
+        checksum:
+          type: string
+        s3Key:
+          type: string
+        metadataJson:
+          type: string
+          nullable: true
+          description: Optional metadata blob persisted with the version.
+        createdAt:
+          type: string
+          format: date-time
+    CreateTemplateRequest:
+      type: object
+      required: [name, description, type, createdBy]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        type:
+          $ref: "#/components/schemas/TemplateType"
+        createdBy:
+          type: string
+          format: uuid
+    CreateTemplateVersionRequest:
+      type: object
+      required: [version, checksum, s3Key]
+      properties:
+        version:
+          type: string
+        checksum:
+          type: string
+          description: Hash of the uploaded object (client-supplied).
+        s3Key:
+          type: string
+          description: S3 key where the template tarball is stored.
+        metadataJson:
+          type: string
+          nullable: true
+          description: Optional metadata stored with the version.
+    TemplateType:
+      type: string
+      enum: [CUSTOM]
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+        error:
+          type: string
+        message:
+          type: string
+      required: [status, error, message]
+  responses:
+    BadRequest:
+      description: Validation failed.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Resource already exists.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
