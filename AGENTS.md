@@ -38,6 +38,7 @@ When editing or creating files in this repo:
   - database errors
 - Use configuration via **environment variables** or `application.yml` / `application.properties`, not hard-coded values.
 - Keep changes **small and focused** (one responsibility per commit/patch).
+- Add documentation for new features and changes in the therefore created docs folder or contracts folder.
 
 ### Don't
 
@@ -57,7 +58,7 @@ Agents MUST respect the following stack choices:
 - **Backend Framework**: Spring Boot
 - **Database**: MySQL (initial choice, schema should remain portable)
 - **Persistence**: Spring Data / JPA and/or JOOQ (if present)
-- **Migrations**: Flyway or Liquibase
+- **Migrations**: Flyway
 - **Container Runtime**: Docker (via Docker Engine API or Java client)
 
 ---
@@ -66,10 +67,10 @@ Agents MUST respect the following stack choices:
 
 High-level modules:
 
-- `control-plane/`  
+- `backend/brain/`  
   Spring Boot application that exposes REST APIs and talks to the database.
 
-- `node-agent/`  
+- `backend/node-agent/`  
   Lightweight Java application that runs on each node and talks to the local Docker Engine and the Control Plane.
 
 - `webpanel/`  
