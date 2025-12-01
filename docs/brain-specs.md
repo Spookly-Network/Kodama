@@ -129,6 +129,11 @@ Entity:
     * `nodeVersion` (agent version string, set on registration / upgrade)
     * `authId` or `authTokenId` (for node authentication linkage)
 
+Persistence notes:
+
+* `nodes` table enforces unique `name`, with indexes on `status` and `region` for filtering.
+* `status` values are constrained to the defined enum set (`ONLINE`, `OFFLINE`, `UNKNOWN`).
+
 Plus a `NodeHeartbeat` log table if you want history; or just store last values on Node.
 
 ---
