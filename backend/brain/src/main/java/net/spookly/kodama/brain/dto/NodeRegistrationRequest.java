@@ -22,5 +22,12 @@ public class NodeRegistrationRequest {
     private NodeStatus status;
 
     @Min(1)
-    private int capacity;
+    private int capacitySlots;
+
+    @NotBlank
+    private String nodeVersion;
+
+    private boolean devMode;
+
+    private String tags;
 }

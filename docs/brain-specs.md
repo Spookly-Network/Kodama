@@ -124,9 +124,9 @@ Entity:
     * `region` (string)
     * `tags` (comma-separated or separate table)
     * `capacitySlots` (how many instances it can run)
-    * `usedSlots` (current usage, reported by node)
+    * `usedSlots` (current usage, updated on heartbeat)
     * `lastHeartbeatAt`
-    * `nodeVersion` (agent version string)
+    * `nodeVersion` (agent version string, set on registration / upgrade)
     * `authId` or `authTokenId` (for node authentication linkage)
 
 Plus a `NodeHeartbeat` log table if you want history; or just store last values on Node.
@@ -231,8 +231,9 @@ Endpoints (example paths, not final):
 
 * `POST /api/nodes/{nodeId}/heartbeat`
 
-    * Body: current slots usage, devMode, optional metrics.
+    * Body: current slots usage, status, optional metrics.
     * Response: maybe commands in response or just 200 OK.
+    * Node version/devMode changes are sent via registration/update, not in heartbeat.
 
 * `POST /api/nodes/{nodeId}/instances/{instanceId}/prepared`
 
