@@ -3,15 +3,16 @@ package net.spookly.kodama.brain.service;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 import net.spookly.kodama.brain.domain.node.Node;
 import net.spookly.kodama.brain.domain.node.NodeStatus;
+import net.spookly.kodama.brain.dto.NodeRegistrationResponse;
 import net.spookly.kodama.brain.dto.NodeDto;
 import net.spookly.kodama.brain.dto.NodeHeartbeatRequest;
 import net.spookly.kodama.brain.dto.NodeRegistrationRequest;
 import net.spookly.kodama.brain.repository.NodeRepository;
+import net.spookly.kodama.brain.config.NodeProperties;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,9 +23,11 @@ import org.springframework.web.server.ResponseStatusException;
 public class NodeService {
 
     private final NodeRepository nodeRepository;
+    private final NodeProperties nodeProperties;
 
-    public NodeService(NodeRepository nodeRepository) {
+    public NodeService(NodeRepository nodeRepository, NodeProperties nodeProperties) {
         this.nodeRepository = nodeRepository;
+        this.nodeProperties = nodeProperties;
     }
 
     public List<NodeDto> listNodes() {
@@ -34,13 +37,17 @@ public class NodeService {
                 .toList();
     }
 
-    public NodeDto registerNode(NodeRegistrationRequest request) {
+    public NodeRegistrationResponse registerNode(NodeRegistrationRequest request) {
         validateRegistration(request);
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         Node node = nodeRepository.findByName(request.getName())
-                .map(existing -> refreshRegistration(existing, request))
-                .orElseGet(() -> createNode(request));
+                .map(existing -> refreshRegistration(existing, request, now))
+                .orElseGet(() -> createNode(request, now));
 
-        return NodeDto.fromEntity(node);
+        return new NodeRegistrationResponse(
+                node.getId(),
+                nodeProperties.getHeartbeatIntervalSeconds()
+        );
     }
 
     public NodeDto heartbeat(UUID nodeId, NodeHeartbeatRequest request) {
@@ -51,29 +58,35 @@ public class NodeService {
         return NodeDto.fromEntity(node);
     }
 
-    private Node refreshRegistration(Node existing, NodeRegistrationRequest request) {
+    private Node refreshRegistration(Node existing, NodeRegistrationRequest request, OffsetDateTime now) {
+        NodeStatus status = request.getStatus() != null ? request.getStatus() : NodeStatus.UNKNOWN;
+        int usedSlots = Math.min(existing.getUsedSlots(), request.getCapacitySlots());
         existing.updateRegistration(
                 request.getRegion(),
                 request.isDevMode(),
                 request.getCapacitySlots(),
                 request.getNodeVersion(),
                 request.getTags(),
-                request.getStatus()
+                status,
+                request.getBaseUrl()
         );
+        existing.updateHeartbeat(status, usedSlots, now);
         return existing;
     }
 
-    private Node createNode(NodeRegistrationRequest request) {
+    private Node createNode(NodeRegistrationRequest request, OffsetDateTime now) {
+        NodeStatus status = request.getStatus() != null ? request.getStatus() : NodeStatus.UNKNOWN;
         Node node = new Node(
                 request.getName(),
                 request.getRegion(),
-                Objects.requireNonNullElse(request.getStatus(), NodeStatus.UNKNOWN),
+                status,
                 request.isDevMode(),
                 request.getCapacitySlots(),
                 0,
-                OffsetDateTime.now(ZoneOffset.UTC),
+                now,
                 request.getNodeVersion(),
-                request.getTags()
+                request.getTags(),
+                request.getBaseUrl()
         );
         return nodeRepository.save(node);
     }

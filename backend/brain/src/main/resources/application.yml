@@ -17,6 +17,9 @@ spring:
     enabled: true
     locations: ${SPRING_FLYWAY_LOCATIONS:classpath:db/migration}
 
+node:
+  heartbeat-interval-seconds: ${NODE_HEARTBEAT_INTERVAL_SECONDS:30}
+
 
 server:
   port: 8080

@@ -57,6 +57,9 @@ public class Node {
     @Column(name = "tags", columnDefinition = "TEXT")
     private String tags;
 
+    @Column(name = "base_url", length = 512)
+    private String baseUrl;
+
     public Node(
             String name,
             String region,
@@ -66,7 +69,8 @@ public class Node {
             int usedSlots,
             OffsetDateTime lastHeartbeatAt,
             String nodeVersion,
-            String tags) {
+            String tags,
+            String baseUrl) {
         validateSlotCounts(capacitySlots, usedSlots);
         this.name = Objects.requireNonNull(name, "name");
         this.region = Objects.requireNonNull(region, "region");
@@ -77,6 +81,7 @@ public class Node {
         this.lastHeartbeatAt = Objects.requireNonNull(lastHeartbeatAt, "lastHeartbeatAt");
         this.nodeVersion = Objects.requireNonNull(nodeVersion, "nodeVersion");
         this.tags = tags;
+        this.baseUrl = baseUrl;
     }
 
     public void updateRegistration(
@@ -85,13 +90,15 @@ public class Node {
             int capacitySlots,
             String nodeVersion,
             String tags,
-            NodeStatus status) {
+            NodeStatus status,
+            String baseUrl) {
         validateSlotCounts(capacitySlots, usedSlots);
         this.region = Objects.requireNonNull(region, "region");
         this.devMode = devMode;
         this.capacitySlots = capacitySlots;
         this.nodeVersion = Objects.requireNonNull(nodeVersion, "nodeVersion");
         this.tags = tags;
+        this.baseUrl = baseUrl;
         if (status != null) {
             this.status = status;
         }

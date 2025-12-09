@@ -8,6 +8,39 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
+  /api/nodes:
+    get:
+      tags: [Nodes]
+      summary: List nodes
+      responses:
+        "200":
+          description: Nodes ordered by name.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Node"
+  /api/nodes/register:
+    post:
+      tags: [Nodes]
+      summary: Register node
+      description: Insert or refresh node metadata.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NodeRegistrationRequest"
+      responses:
+        "200":
+          description: Node registered or updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NodeRegistrationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
   /api/templates:
     get:
       tags: [Templates]
@@ -108,6 +141,80 @@ components:
         type: string
         format: uuid
   schemas:
+    Node:
+      type: object
+      required: [id, name, region, status, devMode, capacitySlots, usedSlots, lastHeartbeatAt, nodeVersion]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        region:
+          type: string
+        status:
+          $ref: "#/components/schemas/NodeStatus"
+        devMode:
+          type: boolean
+        capacitySlots:
+          type: integer
+          format: int32
+        usedSlots:
+          type: integer
+          format: int32
+        lastHeartbeatAt:
+          type: string
+          format: date-time
+        nodeVersion:
+          type: string
+        tags:
+          type: string
+          nullable: true
+        baseUrl:
+          type: string
+          format: uri
+          nullable: true
+    NodeRegistrationRequest:
+      type: object
+      required: [name, region, capacitySlots, nodeVersion]
+      properties:
+        name:
+          type: string
+        region:
+          type: string
+        capacitySlots:
+          type: integer
+          format: int32
+          minimum: 1
+        nodeVersion:
+          type: string
+        devMode:
+          type: boolean
+          default: false
+        tags:
+          type: string
+          nullable: true
+        baseUrl:
+          type: string
+          format: uri
+          nullable: true
+        status:
+          $ref: "#/components/schemas/NodeStatus"
+          description: Optional override; defaults to ONLINE.
+    NodeRegistrationResponse:
+      type: object
+      required: [nodeId, heartbeatIntervalSeconds]
+      properties:
+        nodeId:
+          type: string
+          format: uuid
+        heartbeatIntervalSeconds:
+          type: integer
+          format: int32
+          description: Preferred heartbeat cadence communicated to the node.
+    NodeStatus:
+      type: string
+      enum: [ONLINE, OFFLINE, UNKNOWN]
     Template:
       type: object
       required: [id, name, description, type, createdAt, createdBy]
