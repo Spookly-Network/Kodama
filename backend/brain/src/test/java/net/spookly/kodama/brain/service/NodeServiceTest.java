@@ -1,13 +1,17 @@
 package net.spookly.kodama.brain.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 
 import net.spookly.kodama.brain.config.NodeProperties;
 import net.spookly.kodama.brain.domain.node.Node;
 import net.spookly.kodama.brain.domain.node.NodeStatus;
+import net.spookly.kodama.brain.dto.NodeDto;
+import net.spookly.kodama.brain.dto.NodeHeartbeatRequest;
 import net.spookly.kodama.brain.dto.NodeRegistrationRequest;
 import net.spookly.kodama.brain.dto.NodeRegistrationResponse;
 import net.spookly.kodama.brain.repository.NodeRepository;
@@ -22,6 +26,8 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @Testcontainers
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=validate")
@@ -113,5 +119,61 @@ class NodeServiceTest {
         assertThat(updated.getBaseUrl()).isEqualTo("http://node-2-new.internal");
         assertThat(updated.getLastHeartbeatAt().truncatedTo(ChronoUnit.MICROS))
                 .isAfterOrEqualTo(initialHeartbeat);
+    }
+
+    @Test
+    void heartbeatUpdatesNodeUsageAndTimestamp() {
+        OffsetDateTime initialHeartbeat = OffsetDateTime.now(ZoneOffset.UTC)
+                .minusMinutes(5)
+                .truncatedTo(ChronoUnit.MICROS);
+        Node node = new Node(
+                "node-3",
+                "us-east-1",
+                NodeStatus.UNKNOWN,
+                false,
+                6,
+                1,
+                initialHeartbeat,
+                "1.2.3",
+                "edge",
+                "http://node-3.internal"
+        );
+        Node persisted = nodeRepository.save(node);
+
+        NodeHeartbeatRequest request = new NodeHeartbeatRequest(NodeStatus.ONLINE, 4);
+
+        NodeDto response = nodeService.heartbeat(persisted.getId(), request);
+        Node reloaded = nodeRepository.findById(persisted.getId()).orElseThrow();
+
+        assertThat(response.getStatus()).isEqualTo(NodeStatus.ONLINE);
+        assertThat(response.getUsedSlots()).isEqualTo(4);
+        assertThat(reloaded.getStatus()).isEqualTo(NodeStatus.ONLINE);
+        assertThat(reloaded.getUsedSlots()).isEqualTo(4);
+        assertThat(reloaded.getLastHeartbeatAt().truncatedTo(ChronoUnit.MICROS))
+                .isAfter(initialHeartbeat);
+    }
+
+    @Test
+    void heartbeatRejectsUsedSlotsExceedingCapacity() {
+        Node node = new Node(
+                "node-4",
+                "us-west-2",
+                NodeStatus.ONLINE,
+                false,
+                2,
+                1,
+                OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS),
+                "2.0.0",
+                null,
+                "http://node-4.internal"
+        );
+        Node persisted = nodeRepository.save(node);
+
+        NodeHeartbeatRequest request = new NodeHeartbeatRequest(NodeStatus.ONLINE, 3);
+
+        assertThatThrownBy(() -> nodeService.heartbeat(persisted.getId(), request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST));
     }
 }

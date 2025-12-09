@@ -41,6 +41,30 @@ paths:
                 $ref: "#/components/schemas/NodeRegistrationResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+  /api/nodes/{nodeId}/heartbeat:
+    parameters:
+      - $ref: "#/components/parameters/NodeId"
+    post:
+      tags: [Nodes]
+      summary: Send heartbeat
+      description: Update node status and slot usage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NodeHeartbeatRequest"
+      responses:
+        "200":
+          description: Heartbeat processed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Node"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/templates:
     get:
       tags: [Templates]
@@ -132,6 +156,14 @@ paths:
           $ref: "#/components/responses/Conflict"
 components:
   parameters:
+    NodeId:
+      name: nodeId
+      in: path
+      required: true
+      description: Node identifier.
+      schema:
+        type: string
+        format: uuid
     TemplateId:
       name: id
       in: path
@@ -201,6 +233,16 @@ components:
         status:
           $ref: "#/components/schemas/NodeStatus"
           description: Optional override; defaults to ONLINE.
+    NodeHeartbeatRequest:
+      type: object
+      required: [status, usedSlots]
+      properties:
+        status:
+          $ref: "#/components/schemas/NodeStatus"
+        usedSlots:
+          type: integer
+          format: int32
+          minimum: 0
     NodeRegistrationResponse:
       type: object
       required: [nodeId, heartbeatIntervalSeconds]
