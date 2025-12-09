@@ -5,6 +5,7 @@ import java.util.List;
 import jakarta.validation.Valid;
 import net.spookly.kodama.brain.dto.NodeDto;
 import net.spookly.kodama.brain.dto.NodeRegistrationRequest;
+import net.spookly.kodama.brain.dto.NodeRegistrationResponse;
 import net.spookly.kodama.brain.service.NodeService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,9 +30,9 @@ public class NodeController {
         return nodeService.listNodes();
     }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public NodeDto registerNode(@Valid @RequestBody NodeRegistrationRequest request) {
+    @PostMapping("/register")
+    @ResponseStatus(HttpStatus.OK)
+    public NodeRegistrationResponse registerNode(@Valid @RequestBody NodeRegistrationRequest request) {
         return nodeService.registerNode(request);
     }
 }

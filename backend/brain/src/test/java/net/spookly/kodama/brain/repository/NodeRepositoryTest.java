@@ -50,7 +50,8 @@ class NodeRepositoryTest {
                 4,
                 heartbeat,
                 "1.2.3",
-                "primary,ssd"
+                "primary,ssd",
+                "http://node-1.internal"
         );
 
         Node saved = nodeRepository.save(node);
@@ -65,5 +66,6 @@ class NodeRepositoryTest {
         assertThat(persisted.getLastHeartbeatAt().toInstant()).isEqualTo(heartbeat.toInstant());
         assertThat(persisted.getNodeVersion()).isEqualTo("1.2.3");
         assertThat(persisted.getTags()).contains("primary");
+        assertThat(persisted.getBaseUrl()).isEqualTo("http://node-1.internal");
     }
 }

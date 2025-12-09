@@ -24,6 +24,7 @@ public class NodeDto {
     private OffsetDateTime lastHeartbeatAt;
     private String nodeVersion;
     private String tags;
+    private String baseUrl;
 
     public static NodeDto fromEntity(Node node) {
         return new NodeDto(
@@ -36,7 +37,8 @@ public class NodeDto {
                 node.getUsedSlots(),
                 node.getLastHeartbeatAt(),
                 node.getNodeVersion(),
-                node.getTags()
+                node.getTags(),
+                node.getBaseUrl()
         );
     }
 }
