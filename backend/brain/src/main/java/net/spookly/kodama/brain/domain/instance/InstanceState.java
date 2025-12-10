@@ -1,4 +1,11 @@
 package net.spookly.kodama.brain.domain.instance;
 
-public class InstanceState {
+public enum InstanceState {
+    REQUESTED,
+    PREPARING,
+    STARTING,
+    RUNNING,
+    STOPPING,
+    DESTROYED,
+    FAILED
 }
