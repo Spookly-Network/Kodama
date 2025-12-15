@@ -148,7 +148,7 @@ Entity:
     * `name`
     * `displayName`
     * `state` (ENUM: REQUESTED, PREPARING, STARTING, RUNNING, STOPPING, DESTROYED, FAILED)
-    * `requestedByUserId`
+    * `requestedByUserId` (nullable; only set when a human user initiated the request)
     * `node` (FK, nullable when not yet scheduled)
     * `portsJson` (or separate table if many ports)
     * `variablesJson` (key/value map: INSTANCE_ID, SERVER_NAME, SEED, etc.)
@@ -167,7 +167,7 @@ For state history: `InstanceEvent`
     * `id`
     * `instance` (FK)
     * `timestamp`
-    * `type` (ENUM: REQUESTED, SCHEDULED, PREPARE_SENT, PREPARED, START_SENT, RUNNING, STOP_SENT, STOPPED, DESTROY_SENT, DESTROYED, FAILED)
+    * `type` (ENUM: REQUEST_RECEIVED, NODE_SCHEDULED, PREPARE_DISPATCHED, PREPARE_COMPLETED, START_DISPATCHED, START_COMPLETED, STOP_DISPATCHED, STOP_COMPLETED, DESTROY_DISPATCHED, DESTROY_COMPLETED, FAILURE_REPORTED)
     * `payloadJson` (for extra info, exit code, error message, etc.)
 
 ---

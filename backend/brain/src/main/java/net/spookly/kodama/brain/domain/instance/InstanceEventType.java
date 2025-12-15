@@ -1,0 +1,15 @@
+package net.spookly.kodama.brain.domain.instance;
+
+public enum InstanceEventType {
+    REQUEST_RECEIVED,
+    NODE_SCHEDULED,
+    PREPARE_DISPATCHED,
+    PREPARE_COMPLETED,
+    START_DISPATCHED,
+    START_COMPLETED,
+    STOP_DISPATCHED,
+    STOP_COMPLETED,
+    DESTROY_DISPATCHED,
+    DESTROY_COMPLETED,
+    FAILURE_REPORTED
+}

@@ -8,6 +8,57 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
+  /api/instances:
+    get:
+      tags: [Instances]
+      summary: List instances
+      description: Returns all instances with their template layers.
+      responses:
+        "200":
+          description: Instances ordered by persistence default.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Instance"
+    post:
+      tags: [Instances]
+      summary: Create instance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInstanceRequest"
+      responses:
+        "201":
+          description: Instance created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Instance"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/instances/{id}:
+    parameters:
+      - $ref: "#/components/parameters/InstanceId"
+    get:
+      tags: [Instances]
+      summary: Get instance
+      responses:
+        "200":
+          description: Instance found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Instance"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/nodes:
     get:
       tags: [Nodes]
@@ -156,6 +207,14 @@ paths:
           $ref: "#/components/responses/Conflict"
 components:
   parameters:
+    InstanceId:
+      name: id
+      in: path
+      required: true
+      description: Instance identifier.
+      schema:
+        type: string
+        format: uuid
     NodeId:
       name: nodeId
       in: path
@@ -331,6 +390,111 @@ components:
     TemplateType:
       type: string
       enum: [CUSTOM]
+    Instance:
+      type: object
+      required:
+        [id, name, displayName, state, createdAt, updatedAt, templateLayers]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        displayName:
+          type: string
+        state:
+          $ref: "#/components/schemas/InstanceState"
+        nodeId:
+          type: string
+          format: uuid
+          nullable: true
+        requestedBy:
+          type: string
+          format: uuid
+          nullable: true
+        portsJson:
+          type: string
+          nullable: true
+        variablesJson:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        stoppedAt:
+          type: string
+          format: date-time
+          nullable: true
+        failureReason:
+          type: string
+          nullable: true
+        templateLayers:
+          type: array
+          items:
+            $ref: "#/components/schemas/InstanceTemplateLayer"
+    InstanceTemplateLayer:
+      type: object
+      required: [id, templateVersionId, orderIndex]
+      properties:
+        id:
+          type: string
+          format: uuid
+        templateVersionId:
+          type: string
+          format: uuid
+        orderIndex:
+          type: integer
+          format: int32
+          minimum: 0
+    CreateInstanceRequest:
+      type: object
+      required: [name, displayName, templateLayers]
+      properties:
+        name:
+          type: string
+        displayName:
+          type: string
+        requestedBy:
+          type: string
+          format: uuid
+          nullable: true
+        nodeId:
+          type: string
+          format: uuid
+          nullable: true
+        templateLayers:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/InstanceTemplateLayerRequest"
+        variablesJson:
+          type: string
+          nullable: true
+        portsJson:
+          type: string
+          nullable: true
+    InstanceTemplateLayerRequest:
+      type: object
+      required: [templateVersionId, orderIndex]
+      properties:
+        templateVersionId:
+          type: string
+          format: uuid
+        orderIndex:
+          type: integer
+          format: int32
+          minimum: 0
+    InstanceState:
+      type: string
+      enum:
+        [REQUESTED, PREPARING, STARTING, RUNNING, STOPPING, DESTROYED, FAILED]
     ErrorResponse:
       type: object
       properties:
