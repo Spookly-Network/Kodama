@@ -482,15 +482,22 @@ components:
           nullable: true
     InstanceTemplateLayerRequest:
       type: object
-      required: [templateVersionId, orderIndex]
+      description: Either `templateId` or `templateVersionId` is required. If `orderIndex` is omitted, list order is used.
+      required: []
       properties:
         templateVersionId:
           type: string
           format: uuid
+          description: Reference a specific template version.
+        templateId:
+          type: string
+          format: uuid
+          description: Reference a template; latest version is used when no version id is provided.
         orderIndex:
           type: integer
           format: int32
           minimum: 0
+          description: Optional explicit order; defaults to list order position.
     InstanceState:
       type: string
       enum:

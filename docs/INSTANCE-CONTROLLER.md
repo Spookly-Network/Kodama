@@ -34,14 +34,14 @@ Request body (`Content-Type: application/json`):
 | `portsJson` | string | Optional raw JSON string persisted verbatim. |
 
 `InstanceTemplateLayerRequest`:
-- `templateVersionId` (UUID, required). All referenced versions must exist; otherwise `404 Not Found`.
-- `orderIndex` (integer, >= 0). Order indexes must be unique; duplicates return `400 Bad Request`.
+- `templateVersionId` (UUID) or `templateId` (UUID). At least one is required; providing both must match. If only `templateId` is provided, the latest template version is used. Missing templates or versions return `404 Not Found`.
+- `orderIndex` (integer, >= 0, optional). Defaults to list order when omitted. Order indexes must be unique; duplicates return `400 Bad Request`.
 
 Behavior:
 - Validates that at least one template layer is provided.
-- Loads all referenced template versions before persisting.
+- Resolves template versions by id or by selecting the latest version for a template id.
 - Resolves the optional node id.
-- Persists the instance with `state=REQUESTED`, `createdAt`/`updatedAt` set to the current UTC time, and writes template layers in ascending `orderIndex`.
+- Persists the instance with `state=REQUESTED`, `createdAt`/`updatedAt` set to the current UTC time, and writes template layers in ascending `orderIndex` (explicit or implied from list order).
 - Records an `InstanceEvent` of type `REQUEST_RECEIVED`.
 - Does not schedule or start the instance; this controller only registers the request.
 

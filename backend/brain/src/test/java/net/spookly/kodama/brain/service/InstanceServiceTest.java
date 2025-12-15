@@ -112,6 +112,67 @@ class InstanceServiceTest {
     }
 
     @Test
+    void createInstanceAppliesListOrderWhenOrderIndexMissing() {
+        TemplateVersion base = createTemplateVersion("Base Template", "1.0.0");
+        TemplateVersion overlay = createTemplateVersion("Overlay Template", "1.0.0");
+
+        InstanceTemplateLayerRequest baseLayer = new InstanceTemplateLayerRequest();
+        baseLayer.setTemplateVersionId(base.getId());
+        InstanceTemplateLayerRequest overlayLayer = new InstanceTemplateLayerRequest();
+        overlayLayer.setTemplateVersionId(overlay.getId());
+
+        CreateInstanceRequest request = new CreateInstanceRequest(
+                "ordered-instance",
+                "Ordered",
+                REQUESTER_ID,
+                null,
+                List.of(baseLayer, overlayLayer),
+                null,
+                null
+        );
+
+        InstanceDto created = instanceService.createInstance(request);
+        List<InstanceTemplateLayer> layers = instanceTemplateLayerRepository.findAllByInstanceId(created.getId());
+
+        assertThat(layers).hasSize(2);
+        assertThat(layers.get(0).getTemplateVersion().getId()).isEqualTo(base.getId());
+        assertThat(layers.get(0).getOrderIndex()).isZero();
+        assertThat(layers.get(1).getTemplateVersion().getId()).isEqualTo(overlay.getId());
+        assertThat(layers.get(1).getOrderIndex()).isEqualTo(1);
+    }
+
+    @Test
+    void createInstanceUsesLatestTemplateVersionWhenOnlyTemplateIdProvided() {
+        Template template = createTemplate("Template With Versions");
+        OffsetDateTime earlier = OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(5);
+        TemplateVersion first = templateVersionRepository.save(new TemplateVersion(
+                template, "1.0.0", "checksum-1", "s3/key/1", null, earlier));
+        TemplateVersion second = templateVersionRepository.save(new TemplateVersion(
+                template, "1.1.0", "checksum-2", "s3/key/2", null, OffsetDateTime.now(ZoneOffset.UTC)));
+
+        InstanceTemplateLayerRequest layer = new InstanceTemplateLayerRequest();
+        layer.setTemplateId(template.getId());
+
+        CreateInstanceRequest request = new CreateInstanceRequest(
+                "latest-version-instance",
+                null,
+                REQUESTER_ID,
+                null,
+                List.of(layer),
+                null,
+                null
+        );
+
+        InstanceDto created = instanceService.createInstance(request);
+        List<InstanceTemplateLayer> layers = instanceTemplateLayerRepository.findAllByInstanceId(created.getId());
+
+        assertThat(layers).hasSize(1);
+        assertThat(layers.getFirst().getTemplateVersion().getId()).isEqualTo(second.getId());
+        assertThat(layers.getFirst().getOrderIndex()).isZero();
+        assertThat(second.getCreatedAt()).isAfter(first.getCreatedAt());
+    }
+
+    @Test
     void createInstanceRejectsDuplicateNames() {
         TemplateVersion version = createTemplateVersion("Dupe Template", "1.0.0");
         CreateInstanceRequest request = new CreateInstanceRequest(
@@ -151,8 +212,13 @@ class InstanceServiceTest {
                 "node-1",
                 "eu-west",
                 NodeStatus.ONLINE,
+                false,
+                10,
+                0,
                 OffsetDateTime.now(ZoneOffset.UTC),
-                10
+                "1.0.0",
+                "primary,ssd",
+                "http://node-1.internal"
         ));
         TemplateVersion version = createTemplateVersion("Node Template", "1.0.0");
 
@@ -170,6 +236,11 @@ class InstanceServiceTest {
         Instance persisted = instanceRepository.findById(created.getId()).orElseThrow();
         assertThat(persisted.getNode()).isNotNull();
         assertThat(persisted.getNode().getId()).isEqualTo(node.getId());
+    }
+
+    private Template createTemplate(String name) {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        return templateRepository.save(new Template(name, "desc", TemplateType.CUSTOM, now, REQUESTER_ID));
     }
 
     private TemplateVersion createTemplateVersion(String templateName, String version) {
