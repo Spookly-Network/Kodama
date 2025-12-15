@@ -3,7 +3,7 @@ info:
   title: Kodama Brain API
   version: "0.1.0"
   description: |
-    REST surface for managing templates and template versions.
+    REST surface for managing templates, instances, and template versions.
     All endpoints are served by the Brain service.
 servers:
   - url: http://localhost:8080

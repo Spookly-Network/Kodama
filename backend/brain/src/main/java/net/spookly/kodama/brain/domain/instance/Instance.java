@@ -80,10 +80,11 @@ public class Instance {
             String portsJson,
             String variablesJson,
             OffsetDateTime createdAt,
-            OffsetDateTime updatedAt,
-            OffsetDateTime startedAt,
-            OffsetDateTime stoppedAt,
-            String failureReason) {
+            OffsetDateTime updatedAt
+//            OffsetDateTime startedAt,
+//            OffsetDateTime stoppedAt,
+//            String failureReason
+    ) {
         this.name = name;
         this.displayName = displayName;
         this.state = state;
@@ -93,8 +94,8 @@ public class Instance {
         this.variablesJson = variablesJson;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
-        this.startedAt = startedAt;
-        this.stoppedAt = stoppedAt;
-        this.failureReason = failureReason;
+//        this.startedAt = startedAt;
+//        this.stoppedAt = stoppedAt;
+//        this.failureReason = failureReason;
     }
 }

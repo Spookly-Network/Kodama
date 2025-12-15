@@ -12,4 +12,7 @@ public interface InstanceEventRepository
         extends JpaRepository<@NonNull InstanceEvent, @NonNull UUID> {
 
     List<InstanceEvent> findByInstanceOrderByTimestampAsc(Instance instance);
+    List<InstanceEvent> findAllByInstanceIdOrderByTimestampAsc(UUID instanceId);
+
+
 }

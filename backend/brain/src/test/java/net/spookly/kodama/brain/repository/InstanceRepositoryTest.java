@@ -65,10 +65,7 @@ class InstanceRepositoryTest {
                 "{\"gamePort\":25565}",
                 "{\"SEED\":\"abc\"}",
                 now,
-                now,
-                OffsetDateTime.of(2025, 1, 1, 12, 5, 0, 0, ZoneOffset.UTC),
-                OffsetDateTime.of(2025, 1, 1, 14, 0, 0, 0, ZoneOffset.UTC),
-                "Stopped by user");
+                now);
 
         Instance savedInstance = instanceRepository.save(instance);
         Instance persisted = instanceRepository.findById(savedInstance.getId()).orElseThrow();
@@ -99,10 +96,7 @@ class InstanceRepositoryTest {
                 null,
                 null,
                 createdAt,
-                createdAt,
-                null,
-                null,
-                null);
+                createdAt);
 
         Instance savedInstance = instanceRepository.save(instance);
 
