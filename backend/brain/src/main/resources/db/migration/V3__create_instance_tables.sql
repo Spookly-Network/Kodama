@@ -1,9 +1,9 @@
 CREATE TABLE instances (
     id BINARY(16) NOT NULL,
     name VARCHAR(255) NOT NULL,
-    display_name VARCHAR(255) NOT NULL,
+    display_name VARCHAR(255) NULL,
     state VARCHAR(32) NOT NULL,
-    requested_by_user_id BINARY(16) NOT NULL,
+    requested_by_user_id BINARY(16) NULL,
     node_id BINARY(16) NULL,
     ports_json TEXT NULL,
     variables_json TEXT NULL,

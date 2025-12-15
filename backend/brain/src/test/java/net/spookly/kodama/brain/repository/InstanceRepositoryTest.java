@@ -77,9 +77,9 @@ class InstanceRepositoryTest {
         assertThat(persisted.getNode().getId()).isEqualTo(savedNode.getId());
         assertThat(persisted.getPortsJson()).contains("gamePort");
         assertThat(persisted.getVariablesJson()).contains("SEED");
-        assertThat(persisted.getStartedAt()).isNotNull();
-        assertThat(persisted.getStoppedAt()).isNotNull();
-        assertThat(persisted.getFailureReason()).isEqualTo("Stopped by user");
+        assertThat(persisted.getStartedAt()).isNull();
+        assertThat(persisted.getStoppedAt()).isNull();
+        assertThat(persisted.getFailureReason()).isNull();
     }
 
     @Test

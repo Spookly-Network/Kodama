@@ -116,16 +116,11 @@ class InstanceServiceTest {
         TemplateVersion version = createTemplateVersion("Dupe Template", "1.0.0");
         CreateInstanceRequest request = new CreateInstanceRequest(
                 "duplicate-instance",
-                null,
-                REQUESTER_ID,
-                null,
-                List.of(new InstanceTemplateLayerRequest(version.getId(), 0)),
-                null,
-                null
+                List.of(new InstanceTemplateLayerRequest(version.getId(), 0))
         );
 
-        instanceService.createInstance(request);
 
+        instanceService.createInstance(request);
         assertThatThrownBy(() -> instanceService.createInstance(request))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
