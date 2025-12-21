@@ -49,6 +49,16 @@ public class Instance {
     @JoinColumn(name = "node_id")
     private Node node;
 
+    @Column(name = "requested_region")
+    private String region;
+
+    @Lob
+    @Column(name = "requested_tags", columnDefinition = "TEXT")
+    private String tags;
+
+    @Column(name = "dev_mode_allowed")
+    private Boolean devModeAllowed;
+
     @Lob
     @Column(columnDefinition = "TEXT")
     private String portsJson;
@@ -77,6 +87,9 @@ public class Instance {
             InstanceState state,
             UUID requestedByUserId,
             Node node,
+            String region,
+            String tags,
+            Boolean devModeAllowed,
             String portsJson,
             String variablesJson,
             OffsetDateTime createdAt,
@@ -90,6 +103,9 @@ public class Instance {
         this.state = state;
         this.requestedByUserId = requestedByUserId;
         this.node = node;
+        this.region = region;
+        this.tags = tags;
+        this.devModeAllowed = devModeAllowed;
         this.portsJson = portsJson;
         this.variablesJson = variablesJson;
         this.createdAt = createdAt;

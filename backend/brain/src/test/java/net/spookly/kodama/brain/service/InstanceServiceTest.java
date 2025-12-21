@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import net.spookly.kodama.brain.domain.instance.Instance;
@@ -27,10 +28,13 @@ import net.spookly.kodama.brain.repository.InstanceTemplateLayerRepository;
 import net.spookly.kodama.brain.repository.NodeRepository;
 import net.spookly.kodama.brain.repository.TemplateRepository;
 import net.spookly.kodama.brain.repository.TemplateVersionRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -43,7 +47,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=validate")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import(InstanceService.class)
+@Import({InstanceService.class, InstanceServiceTest.ObjectMapperTestConfig.class})
 class InstanceServiceTest {
 
     @Container
@@ -80,25 +84,38 @@ class InstanceServiceTest {
     @Autowired
     private NodeRepository nodeRepository;
 
+    @TestConfiguration
+    static class ObjectMapperTestConfig {
+        @Bean
+        ObjectMapper objectMapper() {
+            return new ObjectMapper();
+        }
+    }
+
     @Test
     void createInstancePersistsLayersAndRequestedEvent() {
         TemplateVersion version = createTemplateVersion("Base Template", "1.0.0");
 
         CreateInstanceRequest request = new CreateInstanceRequest(
                 "instance-one",
-                "Instance One",
-                REQUESTER_ID,
-                null,
-                List.of(new InstanceTemplateLayerRequest(version.getId(), 0)),
-                "{\"SERVER\":\"alpha\"}",
-                "{\"PORT\":25565}"
+                List.of(new InstanceTemplateLayerRequest(version.getId(), 0))
         );
+        request.setDisplayName("Instance One");
+        request.setRequestedBy(REQUESTER_ID);
+        request.setRegion("eu-west-1");
+        request.setTags("primary,ssd");
+        request.setDevModeAllowed(Boolean.TRUE);
+        request.setVariables(Map.of("SERVER", "alpha"));
+        request.setPortsJson("{\"PORT\":25565}");
 
         InstanceDto created = instanceService.createInstance(request);
 
         Instance persisted = instanceRepository.findById(created.getId()).orElseThrow();
         assertThat(persisted.getState()).isEqualTo(InstanceState.REQUESTED);
         assertThat(persisted.getVariablesJson()).contains("SERVER");
+        assertThat(persisted.getRegion()).isEqualTo("eu-west-1");
+        assertThat(persisted.getTags()).isEqualTo("primary,ssd");
+        assertThat(persisted.getDevModeAllowed()).isTrue();
 
         List<InstanceTemplateLayer> layers = instanceTemplateLayerRepository.findAllByInstanceId(created.getId());
         assertThat(layers).hasSize(1);
@@ -123,13 +140,10 @@ class InstanceServiceTest {
 
         CreateInstanceRequest request = new CreateInstanceRequest(
                 "ordered-instance",
-                "Ordered",
-                REQUESTER_ID,
-                null,
-                List.of(baseLayer, overlayLayer),
-                null,
-                null
+                List.of(baseLayer, overlayLayer)
         );
+        request.setDisplayName("Ordered");
+        request.setRequestedBy(REQUESTER_ID);
 
         InstanceDto created = instanceService.createInstance(request);
         List<InstanceTemplateLayer> layers = instanceTemplateLayerRepository.findAllByInstanceId(created.getId());
@@ -155,13 +169,9 @@ class InstanceServiceTest {
 
         CreateInstanceRequest request = new CreateInstanceRequest(
                 "latest-version-instance",
-                null,
-                REQUESTER_ID,
-                null,
-                List.of(layer),
-                null,
-                null
+                List.of(layer)
         );
+        request.setRequestedBy(REQUESTER_ID);
 
         InstanceDto created = instanceService.createInstance(request);
         List<InstanceTemplateLayer> layers = instanceTemplateLayerRepository.findAllByInstanceId(created.getId());
@@ -192,13 +202,9 @@ class InstanceServiceTest {
     void createInstanceFailsWhenTemplateVersionMissing() {
         CreateInstanceRequest request = new CreateInstanceRequest(
                 "missing-template-version",
-                null,
-                REQUESTER_ID,
-                null,
-                List.of(new InstanceTemplateLayerRequest(UUID.randomUUID(), 0)),
-                null,
-                null
+                List.of(new InstanceTemplateLayerRequest(UUID.randomUUID(), 0))
         );
+        request.setRequestedBy(REQUESTER_ID);
 
         assertThatThrownBy(() -> instanceService.createInstance(request))
                 .isInstanceOf(ResponseStatusException.class)
@@ -224,18 +230,31 @@ class InstanceServiceTest {
 
         CreateInstanceRequest request = new CreateInstanceRequest(
                 "with-node",
-                null,
-                REQUESTER_ID,
-                node.getId(),
-                List.of(new InstanceTemplateLayerRequest(version.getId(), 0)),
-                null,
-                null
+                List.of(new InstanceTemplateLayerRequest(version.getId(), 0))
         );
+        request.setRequestedBy(REQUESTER_ID);
+        request.setNodeId(node.getId());
 
         InstanceDto created = instanceService.createInstance(request);
         Instance persisted = instanceRepository.findById(created.getId()).orElseThrow();
         assertThat(persisted.getNode()).isNotNull();
         assertThat(persisted.getNode().getId()).isEqualTo(node.getId());
+    }
+
+    @Test
+    void createInstanceRejectsVariablesAndVariablesJsonTogether() {
+        TemplateVersion version = createTemplateVersion("Mixed Variables", "1.0.0");
+        CreateInstanceRequest request = new CreateInstanceRequest(
+                "invalid-variables",
+                List.of(new InstanceTemplateLayerRequest(version.getId(), 0))
+        );
+        request.setVariables(Map.of("ENV", "prod"));
+        request.setVariablesJson("{\"ENV\":\"prod\"}");
+
+        assertThatThrownBy(() -> instanceService.createInstance(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     private Template createTemplate(String name) {

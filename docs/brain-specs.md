@@ -303,7 +303,7 @@ Groups:
 
     * `POST /api/instances`
 
-        * Payload: name, templateLayer definitions, variables, optional node constraints (region, tags).
+        * Payload: name, templateLayer definitions, variables, optional node constraints (region, tags, devModeAllowed).
     * `GET /api/instances`
     * `GET /api/instances/{id}`
     * `POST /api/instances/{id}/start`

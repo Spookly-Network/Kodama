@@ -62,6 +62,9 @@ class InstanceRepositoryTest {
                 InstanceState.RUNNING,
                 requestedBy,
                 savedNode,
+                "eu-west-1",
+                "primary,ssd",
+                Boolean.TRUE,
                 "{\"gamePort\":25565}",
                 "{\"SEED\":\"abc\"}",
                 now,
@@ -75,6 +78,9 @@ class InstanceRepositoryTest {
         assertThat(persisted.getState()).isEqualTo(InstanceState.RUNNING);
         assertThat(persisted.getRequestedByUserId()).isEqualTo(requestedBy);
         assertThat(persisted.getNode().getId()).isEqualTo(savedNode.getId());
+        assertThat(persisted.getRegion()).isEqualTo("eu-west-1");
+        assertThat(persisted.getTags()).isEqualTo("primary,ssd");
+        assertThat(persisted.getDevModeAllowed()).isTrue();
         assertThat(persisted.getPortsJson()).contains("gamePort");
         assertThat(persisted.getVariablesJson()).contains("SEED");
         assertThat(persisted.getStartedAt()).isNull();
@@ -92,6 +98,9 @@ class InstanceRepositoryTest {
                 "Instance Two",
                 InstanceState.REQUESTED,
                 requestedBy,
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,
