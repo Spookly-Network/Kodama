@@ -1,0 +1,201 @@
+[
+  {
+    "id": "#89",
+    "title": "[Epic] Cache-aware scheduling for template layers",
+    "summary": "Prefer nodes that already have the instance’s required template layers cached, to reduce cold starts and S3 traffic.",
+    "goal": "Scheduling decisions consider template cache affinity (as a preference), while keeping the existing eligibility rules and deterministic tie-breakers. Node agents report cache hits/downloads so the Brain can build a lightweight cache index.",
+    "context": "Nodes maintain a local template cache keyed by Template ID + Version + Checksum. When scheduling ignores cache state, instances often land on cold nodes and re-download templates. This epic adds a small Brain-side cache index and uses it during scheduling. Scheduling is also being refactored to resource-based selection (#83 / #86), so cache affinity must integrate cleanly after that refactor.",
+    "scope": "- Brain stores a lightweight node→template cache index (not a full filesystem listing).\n- Node reports cache outcomes during prepare (hit/download/mismatch).\n- Brain uses cache affinity to rank eligible nodes (preference, not hard constraint).\n- Purge-cache invalidates the Brain index for that node.\n- Tests + docs for the above.",
+    "tasks": "- [ ] #90\n- [ ] #91\n- [ ] #92\n- [ ] #93\n- [ ] #94\n- [ ] #95\n- [ ] #96\n- [ ] #97\n- [ ] #98",
+    "notes": "- Related: #83, #86\n- Keep scheduling deterministic (stable tie-breakers).",
+    "labels": [
+      "area: Brain",
+      "area: Node",
+      "area: template-system",
+      "prio: medium"
+    ],
+    "type": "Epic",
+    "parent": "",
+    "blockedby": [],
+    "milestone": "Template System v1"
+  },
+  {
+    "id": "#90",
+    "title": "[Feature] Brain: persist node template cache index",
+    "summary": "Add a lightweight DB-backed index that tracks which templates (id/version/checksum) are present in each node’s local cache.",
+    "details": "Scheduling needs a cheap way to estimate cache affinity without asking nodes for their full cache contents. This adds a Brain-side index table and a small service layer to upsert/query entries.",
+    "scope": "- Add table `node_template_cache` (or similar) with: node_id, template_id, version, checksum, last_seen_at.\n- Add repository + service methods:\n  - upsertEntries(nodeId, entries)\n  - getCachedTemplatesForNode(nodeId)\n  - countMatches(nodeId, requiredTemplates) (optional helper)\n- Ensure indexes exist for fast lookups (node_id + template_id + version + checksum).\n- Keep the table small and predictable (no giant JSON blobs).",
+    "acceptance": "- Migration runs successfully on MySQL.\n- Service can upsert and query cache entries for a node.\n- Lookups for (nodeId + template) are indexed and fast.",
+    "notes": "- Parent epic: #89",
+    "labels": [
+      "area: Brain",
+      "area: template-system",
+      "prio: medium"
+    ],
+    "type": "Feature",
+    "parent": "#89",
+    "blockedby": [],
+    "milestone": "Template System v1"
+  },
+  {
+    "id": "#91",
+    "title": "[Feature] Brain: accept template cache reports from nodes",
+    "summary": "Add an API endpoint for nodes to report cache hits/downloads for the templates used during prepare, and update the cache index accordingly.",
+    "details": "Nodes already know which template layers were cache hits vs downloaded during `prepare_instance`. The Brain should learn this incrementally by receiving a small report for only the templates involved in that instance.",
+    "scope": "- Add node-authenticated endpoint (or reuse existing node callback channel) to accept a `TemplateCacheReport` payload:\n  - nodeId, instanceId\n  - templates: [{templateId, version, checksum, status}]\n- Validate payload size and fields (reject unknown statuses / missing ids).\n- On `HIT` or `DOWNLOADED`: upsert into `node_template_cache` and update `last_seen_at`.\n- On `CHECKSUM_MISMATCH`: do not upsert unless accompanied by `DOWNLOADED` for the final checksum.\n- Add minimal logging (nodeId, instanceId, counts by status).",
+    "acceptance": "- Endpoint accepts a valid report and persists cache entries for HIT/DOWNLOADED.\n- Invalid payloads are rejected with a clear error response.\n- Repeated reports update `last_seen_at` instead of creating duplicates.",
+    "notes": "- Blocked by #90 (needs cache index table/service).\n- Parent epic: #89",
+    "labels": [
+      "area: Brain",
+      "area: Node",
+      "area: template-system",
+      "prio: medium"
+    ],
+    "type": "Feature",
+    "parent": "#89",
+    "blockedby": [
+      "#90"
+    ],
+    "milestone": "Template System v1"
+  },
+  {
+    "id": "#92",
+    "title": "[Feature] Node: report template cache outcomes during prepare",
+    "summary": "During `prepare_instance`, report which template layers were cache hits vs downloaded so the Brain can maintain a cache index.",
+    "details": "The node already checks if a template is present in the local cache and downloads it from S3 if not (or if checksum differs). This feature emits a small report back to the Brain that includes only the templates involved in the instance being prepared.",
+    "scope": "- Extend the prepare flow to track per-template outcome:\n  - HIT (found in cache and checksum matches)\n  - DOWNLOADED (fetched from S3 and cached)\n  - CHECKSUM_MISMATCH (found but checksum differs, triggers re-download)\n- Send a `TemplateCacheReport` to Brain once outcomes are known (end of prepare is fine).\n- Make reporting best-effort:\n  - if report fails, do not fail the whole prepare; log and continue.\n- Respect dev-mode behavior:\n  - if dev-mode forces refetch, report outcomes accordingly (likely DOWNLOADED).",
+    "acceptance": "- Node emits a report for every prepare that includes all template layers used.\n- A failed report does not break instance preparation.\n- Logs contain a single concise line per report (counts by status).",
+    "notes": "- Parent epic: #89\n- Depends on Brain endpoint (#91) only for end-to-end usefulness (node can still implement the report payload first).",
+    "labels": [
+      "area: Node",
+      "area: template-system",
+      "prio: medium"
+    ],
+    "type": "Feature",
+    "parent": "#89",
+    "blockedby": [],
+    "milestone": "Template System v1"
+  },
+  {
+    "id": "#93",
+    "title": "[Task] Brain: invalidate cache index on purge-cache command",
+    "summary": "When Brain triggers a template cache purge on a node, also clear the Brain-side cache index entries for that node.",
+    "details": "If the Brain keeps believing templates are cached after a purge, scheduling decisions will be wrong. This task ensures the Brain’s cache index stays consistent with the purge command semantics.",
+    "scope": "- Locate the code path that sends the purge-cache instruction to a node.\n- After dispatching purge-cache (or after receiving its acknowledgement, if that exists), delete cache index rows for the node.\n- Add logging: nodeId, removedRowCount.\n- If purge fails to send, do not delete the index.",
+    "acceptance": "- Purge-cache dispatch triggers cache index invalidation for the targeted node.\n- If purge cannot be sent, cache index is not deleted.",
+    "notes": "- Blocked by #90 (needs cache index persistence).\n- Parent epic: #89",
+    "labels": [
+      "area: Brain",
+      "area: template-system",
+      "prio: low"
+    ],
+    "type": "Task",
+    "parent": "#89",
+    "blockedby": [
+      "#90"
+    ],
+    "milestone": "Template System v1"
+  },
+  {
+    "id": "#94",
+    "title": "[Task] Brain: add optional cleanup for stale cache index entries",
+    "summary": "Add a small cleanup job or admin action to remove cache index entries that have not been seen for a long time.",
+    "details": "Nodes might be rebuilt, disks wiped, or caches manually cleared without a Brain purge. Stale rows can slowly accumulate and reduce accuracy. A simple cleanup keeps the table small and trustworthy.",
+    "scope": "- Decide on a conservative retention window (example: 14–30 days).\n- Implement cleanup as one of:\n  - scheduled job (daily), or\n  - admin endpoint / CLI command\n- Delete rows where `last_seen_at < now - retentionWindow`.\n- Log removedRowCount and retention window.",
+    "acceptance": "- Cleanup removes stale rows based on `last_seen_at` and retention config.\n- Cleanup can be disabled (config flag) if desired.",
+    "notes": "- Blocked by #90.\n- Parent epic: #89",
+    "labels": [
+      "area: Brain",
+      "area: template-system",
+      "prio: low"
+    ],
+    "type": "Task",
+    "parent": "#89",
+    "blockedby": [
+      "#90"
+    ],
+    "milestone": "Template System v1"
+  },
+  {
+    "id": "#95",
+    "title": "[Feature] Brain: rank nodes by template cache affinity during scheduling",
+    "summary": "After eligibility filtering, prefer the node that already has the most required template layers cached (id/version/checksum match).",
+    "details": "This adds a ranking step to scheduling. It must integrate with the resource-based scheduling refactor (#86) so cache affinity becomes an additional preference, not a replacement for resource fit. The result must stay deterministic.",
+    "scope": "- After hard filters pass (ONLINE, region/tags/devModeAllowed, and resource fit from #86):\n  - compute `cacheScore(node) = number of required templates cached on node`.\n- Pick the node with the highest cacheScore.\n- Tie-breakers (keep deterministic):\n  - follow the resource-based rule from #86 (e.g. highest remaining headroom / lowest utilization),\n  - then node name, then node id.\n- Dev-mode handling:\n  - if node is in dev-mode, treat cacheScore as 0 (cache affinity should not influence scheduling).\n- Add trace logging: instanceId, chosenNodeId, templateCount, cacheScore.",
+    "acceptance": "- With multiple eligible nodes, scheduling picks the one with highest cacheScore.\n- If cacheScore is equal, scheduling result matches the deterministic tie-breakers.\n- Dev-mode nodes are never preferred due to cache.",
+    "notes": "- Blocked by #86 (resource-based scheduling change) and #90 (cache index).\n- Parent epic: #89\n- Related: #83, #86",
+    "labels": [
+      "area: Brain",
+      "area: template-system",
+      "prio: high"
+    ],
+    "type": "Feature",
+    "parent": "#89",
+    "blockedby": [
+      "#86",
+      "#90"
+    ],
+    "milestone": "Template System v1"
+  },
+  {
+    "id": "#96",
+    "title": "[Task] Brain: unit tests for template cache index service",
+    "summary": "Add focused unit tests for the cache index upsert/query logic.",
+    "details": "Before scheduling uses the cache index, we want confidence that the persistence and matching behavior is correct and stable.",
+    "scope": "- Add unit tests for:\n  - upsert inserts new entries\n  - upsert updates last_seen_at for existing entries\n  - querying cached templates returns expected set\n  - (optional) matching helper counts exact matches by id/version/checksum\n- Keep tests fast (in-memory db if available, otherwise repository mocks + service tests).",
+    "acceptance": "- Tests cover insert + update behavior and pass in CI.\n- Edge cases (duplicate reports, mixed versions/checksums) are handled correctly.",
+    "notes": "- Blocked by #90.\n- Parent epic: #89",
+    "labels": [
+      "area: Brain",
+      "area: template-system",
+      "prio: medium"
+    ],
+    "type": "Task",
+    "parent": "#89",
+    "blockedby": [
+      "#90"
+    ],
+    "milestone": "Template System v1"
+  },
+  {
+    "id": "#97",
+    "title": "[Task] Brain: unit tests for cache-aware scheduling selection",
+    "summary": "Add unit tests proving scheduling prefers higher cache affinity while staying deterministic with tie-breakers.",
+    "details": "This locks in the intended behavior and prevents regressions when scheduling evolves.",
+    "scope": "- Add unit tests for:\n  - higher cacheScore wins when nodes are otherwise equally eligible\n  - tie-breakers are deterministic (resource rule from #86, then name/id)\n  - dev-mode node cacheScore treated as 0\n  - when no cache data exists, scheduler behavior falls back to normal selection",
+    "acceptance": "- Tests pass reliably and do not depend on timing or random ordering.\n- At least one test covers tie-break determinism.",
+    "notes": "- Blocked by #95.\n- Parent epic: #89",
+    "labels": [
+      "area: Brain",
+      "area: template-system",
+      "prio: medium"
+    ],
+    "type": "Task",
+    "parent": "#89",
+    "blockedby": [
+      "#95"
+    ],
+    "milestone": "Template System v1"
+  },
+  {
+    "id": "#98",
+    "title": "[Documentation] Document cache-aware scheduling and cache reporting",
+    "summary": "Update docs to describe the new cache index, node reporting, and scheduling ranking behavior.",
+    "details": "This feature spans Brain and Node. Without docs, it’s hard to debug why a node got selected or why cache affinity isn’t applied.",
+    "scope": "- Update `scheduling-service.md` with cache affinity ranking and tie-breakers.\n- Update `TEMPLATE-SYSTEM.md` with Brain-side cache index + report flow.\n- Update `NODE-FLOW.md` to mention reporting of cache outcomes during prepare.\n- Add a short troubleshooting section:\n  - how to inspect cache index for a node (db query / admin endpoint if available)\n  - why dev-mode disables cache preference",
+    "acceptance": "- Docs reflect the implemented behavior and reference relevant endpoints/tables.\n- A developer can understand why a node was preferred from reading the docs.",
+    "notes": "- Parent epic: #89",
+    "labels": [
+      "area: Brain",
+      "area: Node",
+      "area: template-system",
+      "prio: low"
+    ],
+    "type": "Documentation",
+    "parent": "#89",
+    "blockedby": [
+      "#95"
+    ],
+    "milestone": "Template System v1"
+  }
+]
