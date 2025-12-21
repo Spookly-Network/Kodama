@@ -19,6 +19,9 @@ spring:
 
 node:
   heartbeat-interval-seconds: ${NODE_HEARTBEAT_INTERVAL_SECONDS:30}
+  command-timeout-seconds: ${NODE_COMMAND_TIMEOUT_SECONDS:10}
+  command-max-attempts: ${NODE_COMMAND_MAX_ATTEMPTS:2}
+  command-retry-backoff-millis: ${NODE_COMMAND_RETRY_BACKOFF_MILLIS:500}
 
 
 server:
