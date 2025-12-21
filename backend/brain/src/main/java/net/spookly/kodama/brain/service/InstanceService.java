@@ -13,6 +13,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceEvent;
 import net.spookly.kodama.brain.domain.instance.InstanceEventType;
@@ -42,6 +44,7 @@ public class InstanceService {
     private final InstanceRepository instanceRepository;
     private final InstanceTemplateLayerRepository instanceTemplateLayerRepository;
     private final InstanceEventRepository instanceEventRepository;
+    private final ObjectMapper objectMapper;
     private final TemplateRepository templateRepository;
     private final TemplateVersionRepository templateVersionRepository;
     private final NodeRepository nodeRepository;
@@ -50,6 +53,7 @@ public class InstanceService {
             InstanceRepository instanceRepository,
             InstanceTemplateLayerRepository instanceTemplateLayerRepository,
             InstanceEventRepository instanceEventRepository,
+            ObjectMapper objectMapper,
             TemplateRepository templateRepository,
             TemplateVersionRepository templateVersionRepository,
             NodeRepository nodeRepository
@@ -57,6 +61,7 @@ public class InstanceService {
         this.instanceRepository = instanceRepository;
         this.instanceTemplateLayerRepository = instanceTemplateLayerRepository;
         this.instanceEventRepository = instanceEventRepository;
+        this.objectMapper = objectMapper;
         this.templateRepository = templateRepository;
         this.templateVersionRepository = templateVersionRepository;
         this.nodeRepository = nodeRepository;
@@ -98,14 +103,18 @@ public class InstanceService {
         }
 
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        String variablesJson = resolveVariablesJson(request);
         Instance instance = new Instance(
                 request.getName(),
                 request.getDisplayName(),
                 InstanceState.REQUESTED,
                 request.getRequestedBy(),
                 node,
+                request.getRegion(),
+                request.getTags(),
+                request.getDevModeAllowed(),
                 request.getPortsJson(),
-                request.getVariablesJson(),
+                variablesJson,
                 now,
                 now
         );
@@ -156,6 +165,23 @@ public class InstanceService {
             descriptors.add(new LayerDescriptor(layer.getTemplateVersionId(), layer.getTemplateId(), orderIndex));
         }
         return descriptors;
+    }
+
+    private String resolveVariablesJson(CreateInstanceRequest request) {
+        Map<String, String> variables = request.getVariables();
+        String variablesJson = request.getVariablesJson();
+        if (variables != null && variablesJson != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Provide either variables or variablesJson, not both");
+        }
+        if (variables == null) {
+            return variablesJson;
+        }
+        try {
+            return objectMapper.writeValueAsString(variables);
+        } catch (JsonProcessingException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unable to serialize variables", e);
+        }
     }
 
     private List<InstanceTemplateLayer> buildLayers(

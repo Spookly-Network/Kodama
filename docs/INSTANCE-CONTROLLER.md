@@ -29,7 +29,11 @@ Request body (`Content-Type: application/json`):
 | `displayName` | string | Required by persistence (must not be null or empty even though the DTO does not enforce it). |
 | `requestedBy` | UUID | Optional user id recorded as `requestedByUserId`. |
 | `nodeId` | UUID | Optional; must reference an existing node or the request returns `404 Not Found`. |
+| `region` | string | Optional node preference for scheduling. |
+| `tags` | string | Optional node preference; comma-separated tags. |
+| `devModeAllowed` | boolean | Optional node preference; when false, dev-mode nodes are excluded. |
 | `templateLayers` | array of `InstanceTemplateLayerRequest` | Required, non-empty; see below. |
+| `variables` | object | Optional variables map; serialized to `variablesJson`. Cannot be provided alongside `variablesJson`. |
 | `variablesJson` | string | Optional raw JSON string persisted verbatim. |
 | `portsJson` | string | Optional raw JSON string persisted verbatim. |
 
@@ -41,6 +45,7 @@ Behavior:
 - Validates that at least one template layer is provided.
 - Resolves template versions by id or by selecting the latest version for a template id.
 - Resolves the optional node id.
+- Serializes `variables` into `variablesJson` when provided (rejects requests that provide both).
 - Persists the instance with `state=REQUESTED`, `createdAt`/`updatedAt` set to the current UTC time, and writes template layers in ascending `orderIndex` (explicit or implied from list order).
 - Records an `InstanceEvent` of type `REQUEST_RECEIVED`.
 - Does not schedule or start the instance; this controller only registers the request.
@@ -61,6 +66,9 @@ Fields returned by all endpoints:
 - `state` (`InstanceState`: `REQUESTED`, `PREPARING`, `STARTING`, `RUNNING`, `STOPPING`, `DESTROYED`, `FAILED`)
 - `nodeId` (`UUID`, nullable)
 - `requestedBy` (`UUID`, nullable)
+- `region` (`String`, nullable)
+- `tags` (`String`, nullable)
+- `devModeAllowed` (`Boolean`, nullable)
 - `portsJson` (`String`, nullable)
 - `variablesJson` (`String`, nullable)
 - `createdAt`, `updatedAt`, `startedAt`, `stoppedAt` (`OffsetDateTime`, ISO-8601; `createdAt`/`updatedAt` minted in UTC)
@@ -83,11 +91,14 @@ POST /api/instances
   "displayName": "Lobby EU #1",
   "requestedBy": "11111111-2222-3333-4444-555555555555",
   "nodeId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  "region": "eu-west-1",
+  "tags": "primary,ssd",
+  "devModeAllowed": true,
   "templateLayers": [
     { "templateVersionId": "10000000-0000-0000-0000-000000000001", "orderIndex": 0 },
     { "templateVersionId": "10000000-0000-0000-0000-000000000002", "orderIndex": 1 }
   ],
-  "variablesJson": "{ \"ENV\": \"prod\", \"SEED\": \"12345\" }",
+  "variables": { "ENV": "prod", "SEED": "12345" },
   "portsJson": "{ \"game\": 25565 }"
 }
 ```
@@ -103,6 +114,9 @@ HTTP/1.1 201 Created
   "state": "REQUESTED",
   "nodeId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
   "requestedBy": "11111111-2222-3333-4444-555555555555",
+  "region": "eu-west-1",
+  "tags": "primary,ssd",
+  "devModeAllowed": true,
   "portsJson": "{ \"game\": 25565 }",
   "variablesJson": "{ \"ENV\": \"prod\", \"SEED\": \"12345\" }",
   "createdAt": "2024-06-10T18:42:31Z",
