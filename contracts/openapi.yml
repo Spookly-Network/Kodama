@@ -412,6 +412,18 @@ components:
           type: string
           format: uuid
           nullable: true
+        region:
+          type: string
+          nullable: true
+          description: Optional node preference for scheduling.
+        tags:
+          type: string
+          nullable: true
+          description: Optional node preference; comma-separated tags.
+        devModeAllowed:
+          type: boolean
+          nullable: true
+          description: Optional node preference; when false, dev-mode nodes are excluded.
         portsJson:
           type: string
           nullable: true
@@ -469,14 +481,31 @@ components:
           type: string
           format: uuid
           nullable: true
+        region:
+          type: string
+          nullable: true
+        tags:
+          type: string
+          nullable: true
+          description: Optional node preference; comma-separated tags.
+        devModeAllowed:
+          type: boolean
+          nullable: true
         templateLayers:
           type: array
           minItems: 1
           items:
             $ref: "#/components/schemas/InstanceTemplateLayerRequest"
+        variables:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: string
+          description: Variables map serialized into `variablesJson`. Mutually exclusive with `variablesJson`.
         variablesJson:
           type: string
           nullable: true
+          description: Raw JSON string persisted verbatim. Mutually exclusive with `variables`.
         portsJson:
           type: string
           nullable: true

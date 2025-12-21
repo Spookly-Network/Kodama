@@ -22,6 +22,9 @@ public class InstanceDto {
     private InstanceState state;
     private UUID nodeId;
     private UUID requestedBy;
+    private String region;
+    private String tags;
+    private Boolean devModeAllowed;
     private String portsJson;
     private String variablesJson;
     private OffsetDateTime createdAt;
@@ -43,6 +46,9 @@ public class InstanceDto {
                 instance.getState(),
                 instance.getNode() == null ? null : instance.getNode().getId(),
                 instance.getRequestedByUserId(),
+                instance.getRegion(),
+                instance.getTags(),
+                instance.getDevModeAllowed(),
                 instance.getPortsJson(),
                 instance.getVariablesJson(),
                 instance.getCreatedAt(),

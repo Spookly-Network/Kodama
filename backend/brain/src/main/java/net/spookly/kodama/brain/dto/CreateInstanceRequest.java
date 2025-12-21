@@ -1,6 +1,7 @@
 package net.spookly.kodama.brain.dto;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import jakarta.validation.Valid;
@@ -25,10 +26,18 @@ public class CreateInstanceRequest {
 
     private UUID nodeId;
 
+    private String region;
+
+    private String tags;
+
+    private Boolean devModeAllowed;
+
     @NonNull
     @NotEmpty
     @Valid
     private List<InstanceTemplateLayerRequest> templateLayers;
+
+    private Map<String, String> variables;
 
     private String variablesJson;
 
