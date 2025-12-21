@@ -53,7 +53,7 @@ class InstanceRepositoryTest {
         OffsetDateTime now = OffsetDateTime.of(2025, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC);
         UUID requestedBy = UUID.fromString("00000000-0000-0000-0000-000000000042");
 
-        Node node = new Node("node-1", "eu-west-1", NodeStatus.ONLINE, now, 10);
+        Node node = new Node("node-1", "eu-west-1", NodeStatus.ONLINE, false, 10,0, now, "1.0.0", "primary,ssd", "http://node-1.internal");
         Node savedNode = nodeRepository.save(node);
 
         Instance instance = new Instance(

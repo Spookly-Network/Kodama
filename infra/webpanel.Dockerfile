@@ -3,10 +3,10 @@ FROM node:22-alpine AS build
 WORKDIR /app
 
 COPY webpanel/package*.json ./
-RUN pnpm install
+RUN npm install
 
 COPY webpanel/. .
-RUN pnpm run build
+RUN npm run build
 
 # Runtime-Stage
 FROM node:22-alpine

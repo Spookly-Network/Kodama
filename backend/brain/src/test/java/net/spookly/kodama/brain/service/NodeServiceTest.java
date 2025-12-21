@@ -33,7 +33,7 @@ import org.springframework.web.server.ResponseStatusException;
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=validate")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @EnableConfigurationProperties(NodeProperties.class)
-@Import({NodeService.class, NodeProperties.class})
+@Import(NodeService.class)
 class NodeServiceTest {
 
     @Container

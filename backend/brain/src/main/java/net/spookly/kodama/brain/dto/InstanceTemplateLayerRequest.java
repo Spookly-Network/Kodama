@@ -15,9 +15,15 @@ import lombok.Setter;
 @AllArgsConstructor
 public class InstanceTemplateLayerRequest {
 
-    @NotNull
     private UUID templateVersionId;
 
+    private UUID templateId;
+
     @Min(0)
-    private int orderIndex;
+    private Integer orderIndex;
+
+    public InstanceTemplateLayerRequest(@NotNull UUID templateVersionId, int orderIndex) {
+        this.templateVersionId = templateVersionId;
+        this.orderIndex = orderIndex;
+    }
 }

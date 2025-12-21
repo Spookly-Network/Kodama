@@ -1,2 +1,0 @@
-ALTER TABLE nodes
-    ADD COLUMN base_url VARCHAR(512) NULL AFTER tags;

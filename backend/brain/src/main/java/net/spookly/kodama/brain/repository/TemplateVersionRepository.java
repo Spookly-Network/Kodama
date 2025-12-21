@@ -14,4 +14,6 @@ public interface TemplateVersionRepository extends JpaRepository<@NonNull Templa
     Optional<TemplateVersion> findByTemplateAndVersion(Template template, String version);
 
     List<TemplateVersion> findAllByTemplateOrderByCreatedAtDesc(Template template);
+
+    Optional<TemplateVersion> findFirstByTemplateOrderByCreatedAtDesc(Template template);
 }
