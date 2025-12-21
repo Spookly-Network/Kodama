@@ -509,6 +509,8 @@ components:
         portsJson:
           type: string
           nullable: true
+      not:
+        required: [variables, variablesJson]
     InstanceTemplateLayerRequest:
       type: object
       description: Either `templateId` or `templateVersionId` is required. If `orderIndex` is omitted, list order is used.
