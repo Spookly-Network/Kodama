@@ -257,6 +257,95 @@ class InstanceServiceTest {
                 .isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
+    @Test
+    void reportPreparedUpdatesStateAndLogsEvent() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Node node = nodeRepository.save(new Node(
+                "node-callback",
+                "eu-west-1",
+                NodeStatus.ONLINE,
+                false,
+                4,
+                1,
+                now,
+                "1.0.0",
+                null,
+                "http://node.local"
+        ));
+        Instance instance = instanceRepository.save(new Instance(
+                "instance-callback",
+                "Callback Instance",
+                InstanceState.PREPARING,
+                REQUESTER_ID,
+                node,
+                null,
+                null,
+                null,
+                null,
+                null,
+                now,
+                now
+        ));
+
+        instanceService.reportInstancePrepared(node.getId(), instance.getId());
+
+        Instance persisted = instanceRepository.findById(instance.getId()).orElseThrow();
+        assertThat(persisted.getState()).isEqualTo(InstanceState.PREPARED);
+
+        List<InstanceEvent> events =
+                instanceEventRepository.findAllByInstanceIdOrderByTimestampAsc(instance.getId());
+        assertThat(events).isNotEmpty();
+        assertThat(events.getLast().getType()).isEqualTo(InstanceEventType.PREPARE_COMPLETED);
+    }
+
+    @Test
+    void reportPreparedRejectsMismatchedNode() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Node node = nodeRepository.save(new Node(
+                "node-primary",
+                "eu-west-1",
+                NodeStatus.ONLINE,
+                false,
+                4,
+                0,
+                now,
+                "1.0.0",
+                null,
+                "http://node.primary"
+        ));
+        Node otherNode = nodeRepository.save(new Node(
+                "node-secondary",
+                "eu-west-1",
+                NodeStatus.ONLINE,
+                false,
+                4,
+                0,
+                now,
+                "1.0.0",
+                null,
+                "http://node.secondary"
+        ));
+        Instance instance = instanceRepository.save(new Instance(
+                "instance-wrong-node",
+                "Wrong Node Instance",
+                InstanceState.PREPARING,
+                REQUESTER_ID,
+                node,
+                null,
+                null,
+                null,
+                null,
+                null,
+                now,
+                now
+        ));
+
+        assertThatThrownBy(() -> instanceService.reportInstancePrepared(otherNode.getId(), instance.getId()))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+    }
+
     private Template createTemplate(String name) {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         return templateRepository.save(new Template(name, "desc", TemplateType.CUSTOM, now, REQUESTER_ID));

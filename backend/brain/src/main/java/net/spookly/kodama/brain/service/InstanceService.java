@@ -129,6 +129,34 @@ public class InstanceService {
         return InstanceDto.fromEntity(savedInstance, layers);
     }
 
+    public void reportInstancePrepared(UUID nodeId, UUID instanceId) {
+        Instance instance = loadInstanceForNode(nodeId, instanceId);
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        instance.markPrepared(now);
+        instanceEventRepository.save(new InstanceEvent(instance, now, InstanceEventType.PREPARE_COMPLETED, null));
+    }
+
+    public void reportInstanceRunning(UUID nodeId, UUID instanceId) {
+        Instance instance = loadInstanceForNode(nodeId, instanceId);
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        instance.markRunning(now);
+        instanceEventRepository.save(new InstanceEvent(instance, now, InstanceEventType.START_COMPLETED, null));
+    }
+
+    public void reportInstanceStopped(UUID nodeId, UUID instanceId) {
+        Instance instance = loadInstanceForNode(nodeId, instanceId);
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        instance.markStopped(now);
+        instanceEventRepository.save(new InstanceEvent(instance, now, InstanceEventType.STOP_COMPLETED, null));
+    }
+
+    public void reportInstanceFailed(UUID nodeId, UUID instanceId) {
+        Instance instance = loadInstanceForNode(nodeId, instanceId);
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        instance.markFailed(now, null);
+        instanceEventRepository.save(new InstanceEvent(instance, now, InstanceEventType.FAILURE_REPORTED, null));
+    }
+
     private Map<UUID, List<InstanceTemplateLayer>> findLayers(List<Instance> instances) {
         if (instances.isEmpty()) {
             return Map.of();
@@ -261,6 +289,20 @@ public class InstanceService {
         }
 
         return resolved;
+    }
+
+    private Instance loadInstanceForNode(UUID nodeId, UUID instanceId) {
+        nodeRepository.findById(nodeId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Node not found"));
+        Instance instance = instanceRepository.findById(instanceId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Instance not found"));
+        if (instance.getNode() == null || instance.getNode().getId() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Instance is not assigned to a node");
+        }
+        if (!instance.getNode().getId().equals(nodeId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Instance is not assigned to the requested node");
+        }
+        return instance;
     }
 
     private record LayerDescriptor(UUID templateVersionId, UUID templateId, int orderIndex) {
