@@ -116,6 +116,66 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+  /api/nodes/{nodeId}/instances/{instanceId}/prepared:
+    parameters:
+      - $ref: "#/components/parameters/NodeId"
+      - $ref: "#/components/parameters/NodeInstanceId"
+    post:
+      tags: [Nodes]
+      summary: Report instance prepared
+      description: Callback from node when an instance finishes preparation.
+      responses:
+        "200":
+          description: Callback accepted.
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/nodes/{nodeId}/instances/{instanceId}/running:
+    parameters:
+      - $ref: "#/components/parameters/NodeId"
+      - $ref: "#/components/parameters/NodeInstanceId"
+    post:
+      tags: [Nodes]
+      summary: Report instance running
+      description: Callback from node when an instance is running.
+      responses:
+        "200":
+          description: Callback accepted.
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/nodes/{nodeId}/instances/{instanceId}/stopped:
+    parameters:
+      - $ref: "#/components/parameters/NodeId"
+      - $ref: "#/components/parameters/NodeInstanceId"
+    post:
+      tags: [Nodes]
+      summary: Report instance stopped
+      description: Callback from node when an instance stops.
+      responses:
+        "200":
+          description: Callback accepted.
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/nodes/{nodeId}/instances/{instanceId}/failed:
+    parameters:
+      - $ref: "#/components/parameters/NodeId"
+      - $ref: "#/components/parameters/NodeInstanceId"
+    post:
+      tags: [Nodes]
+      summary: Report instance failed
+      description: Callback from node when an instance reports failure.
+      responses:
+        "200":
+          description: Callback accepted.
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /api/templates:
     get:
       tags: [Templates]
@@ -220,6 +280,14 @@ components:
       in: path
       required: true
       description: Node identifier.
+      schema:
+        type: string
+        format: uuid
+    NodeInstanceId:
+      name: instanceId
+      in: path
+      required: true
+      description: Instance identifier.
       schema:
         type: string
         format: uuid
@@ -532,7 +600,7 @@ components:
     InstanceState:
       type: string
       enum:
-        [REQUESTED, PREPARING, STARTING, RUNNING, STOPPING, DESTROYED, FAILED]
+        [REQUESTED, PREPARING, PREPARED, STARTING, RUNNING, STOPPING, STOPPED, DESTROYED, FAILED]
     ErrorResponse:
       type: object
       properties:
