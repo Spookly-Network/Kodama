@@ -1,6 +1,7 @@
 package net.spookly.kodama.brain.domain.instance;
 
 import java.time.OffsetDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -113,5 +114,40 @@ public class Instance {
 //        this.startedAt = startedAt;
 //        this.stoppedAt = stoppedAt;
 //        this.failureReason = failureReason;
+    }
+
+    public void markPrepared(OffsetDateTime timestamp) {
+        updateLifecycle(InstanceState.PREPARED, timestamp);
+        this.failureReason = null;
+    }
+
+    public void markRunning(OffsetDateTime timestamp) {
+        updateLifecycle(InstanceState.RUNNING, timestamp);
+        if (this.startedAt == null) {
+            this.startedAt = timestamp;
+        }
+        this.stoppedAt = null;
+        this.failureReason = null;
+    }
+
+    public void markStopped(OffsetDateTime timestamp) {
+        updateLifecycle(InstanceState.STOPPED, timestamp);
+        if (this.stoppedAt == null) {
+            this.stoppedAt = timestamp;
+        }
+        this.failureReason = null;
+    }
+
+    public void markFailed(OffsetDateTime timestamp, String failureReason) {
+        updateLifecycle(InstanceState.FAILED, timestamp);
+        this.failureReason = failureReason;
+        if (this.stoppedAt == null) {
+            this.stoppedAt = timestamp;
+        }
+    }
+
+    private void updateLifecycle(InstanceState state, OffsetDateTime timestamp) {
+        this.state = Objects.requireNonNull(state, "state");
+        this.updatedAt = Objects.requireNonNull(timestamp, "timestamp");
     }
 }
