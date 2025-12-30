@@ -161,6 +161,21 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /api/nodes/{nodeId}/instances/{instanceId}/destroyed:
+    parameters:
+      - $ref: "#/components/parameters/NodeId"
+      - $ref: "#/components/parameters/NodeInstanceId"
+    post:
+      tags: [Nodes]
+      summary: Report instance destroyed
+      description: Callback from node when an instance is destroyed.
+      responses:
+        "200":
+          description: Callback accepted.
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /api/nodes/{nodeId}/instances/{instanceId}/failed:
     parameters:
       - $ref: "#/components/parameters/NodeId"

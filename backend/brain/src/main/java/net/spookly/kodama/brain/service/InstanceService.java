@@ -44,6 +44,7 @@ public class InstanceService {
     private final InstanceRepository instanceRepository;
     private final InstanceTemplateLayerRepository instanceTemplateLayerRepository;
     private final InstanceEventRepository instanceEventRepository;
+    private final InstanceStateMachine instanceStateMachine;
     private final ObjectMapper objectMapper;
     private final TemplateRepository templateRepository;
     private final TemplateVersionRepository templateVersionRepository;
@@ -53,6 +54,7 @@ public class InstanceService {
             InstanceRepository instanceRepository,
             InstanceTemplateLayerRepository instanceTemplateLayerRepository,
             InstanceEventRepository instanceEventRepository,
+            InstanceStateMachine instanceStateMachine,
             ObjectMapper objectMapper,
             TemplateRepository templateRepository,
             TemplateVersionRepository templateVersionRepository,
@@ -61,6 +63,7 @@ public class InstanceService {
         this.instanceRepository = instanceRepository;
         this.instanceTemplateLayerRepository = instanceTemplateLayerRepository;
         this.instanceEventRepository = instanceEventRepository;
+        this.instanceStateMachine = instanceStateMachine;
         this.objectMapper = objectMapper;
         this.templateRepository = templateRepository;
         this.templateVersionRepository = templateVersionRepository;
@@ -132,29 +135,31 @@ public class InstanceService {
     public void reportInstancePrepared(UUID nodeId, UUID instanceId) {
         Instance instance = loadInstanceForNode(nodeId, instanceId);
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        instance.markPrepared(now);
-        instanceEventRepository.save(new InstanceEvent(instance, now, InstanceEventType.PREPARE_COMPLETED, null));
+        instanceStateMachine.transition(instance, InstanceState.STARTING, InstanceEventType.PREPARE_COMPLETED, now);
     }
 
     public void reportInstanceRunning(UUID nodeId, UUID instanceId) {
         Instance instance = loadInstanceForNode(nodeId, instanceId);
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        instance.markRunning(now);
-        instanceEventRepository.save(new InstanceEvent(instance, now, InstanceEventType.START_COMPLETED, null));
+        instanceStateMachine.transition(instance, InstanceState.RUNNING, InstanceEventType.START_COMPLETED, now);
     }
 
     public void reportInstanceStopped(UUID nodeId, UUID instanceId) {
         Instance instance = loadInstanceForNode(nodeId, instanceId);
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        instance.markStopped(now);
-        instanceEventRepository.save(new InstanceEvent(instance, now, InstanceEventType.STOP_COMPLETED, null));
+        instanceStateMachine.transition(instance, InstanceState.STOPPED, InstanceEventType.STOP_COMPLETED, now);
+    }
+
+    public void reportInstanceDestroyed(UUID nodeId, UUID instanceId) {
+        Instance instance = loadInstanceForNode(nodeId, instanceId);
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        instanceStateMachine.transition(instance, InstanceState.DESTROYED, InstanceEventType.DESTROY_COMPLETED, now);
     }
 
     public void reportInstanceFailed(UUID nodeId, UUID instanceId) {
         Instance instance = loadInstanceForNode(nodeId, instanceId);
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        instance.markFailed(now, null);
-        instanceEventRepository.save(new InstanceEvent(instance, now, InstanceEventType.FAILURE_REPORTED, null));
+        instanceStateMachine.transition(instance, InstanceState.FAILED, InstanceEventType.FAILURE_REPORTED, now, null);
     }
 
     private Map<UUID, List<InstanceTemplateLayer>> findLayers(List<Instance> instances) {

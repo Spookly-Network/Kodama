@@ -38,6 +38,12 @@ public class NodeCallbackController {
         instanceService.reportInstanceStopped(nodeId, instanceId);
     }
 
+    @PostMapping("/destroyed")
+    @ResponseStatus(HttpStatus.OK)
+    public void destroyed(@PathVariable UUID nodeId, @PathVariable UUID instanceId) {
+        instanceService.reportInstanceDestroyed(nodeId, instanceId);
+    }
+
     @PostMapping("/failed")
     @ResponseStatus(HttpStatus.OK)
     public void failed(@PathVariable UUID nodeId, @PathVariable UUID instanceId) {
