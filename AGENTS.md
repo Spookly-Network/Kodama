@@ -121,3 +121,14 @@ When creating tests:
   - template configuration
   - optional integration modules
   not in the core scheduling and orchestration logic.
+
+## Agent rules: always read `.agents/`
+
+Before you make any change in this repository, you **must** read the entire `.agents/` directory.
+
+The files in `.agents/` are the **source of truth** for how you work in this repo:
+- follow them **exactly**
+- if there is a conflict between documents, **`.agents/` wins**
+- do not guess or invent missing rules, look them up in `.agents/`
+
+If you didn’t read `.agents/`, you are not ready to start coding.
