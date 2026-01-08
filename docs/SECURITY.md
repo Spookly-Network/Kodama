@@ -6,8 +6,10 @@ This document outlines how authentication and authorization works across the pla
 
 ## 1. User Authentication
 
-Options:
-- Local JWT
+Current implementation:
+- Local JWT issued by the Brain (`/api/auth/login`) using users configured in `brain.security.users`.
+
+Future options:
 - External provider (OIDC)
 
 Roles:

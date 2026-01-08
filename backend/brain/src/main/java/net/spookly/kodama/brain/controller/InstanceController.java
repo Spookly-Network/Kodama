@@ -8,6 +8,7 @@ import net.spookly.kodama.brain.dto.CreateInstanceRequest;
 import net.spookly.kodama.brain.dto.InstanceDto;
 import net.spookly.kodama.brain.service.InstanceService;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,17 +28,20 @@ public class InstanceController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR','VIEWER')")
     public List<InstanceDto> listInstances() {
         return instanceService.listInstances();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR','VIEWER')")
     public InstanceDto getInstance(@PathVariable UUID id) {
         return instanceService.getInstance(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
     public InstanceDto createInstance(@Valid @RequestBody CreateInstanceRequest request) {
         return instanceService.createInstance(request);
     }
