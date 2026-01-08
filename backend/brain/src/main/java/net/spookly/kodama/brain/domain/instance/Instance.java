@@ -121,6 +121,16 @@ public class Instance {
         this.failureReason = null;
     }
 
+    public void markPreparing(OffsetDateTime timestamp) {
+        updateLifecycle(InstanceState.PREPARING, timestamp);
+        this.failureReason = null;
+    }
+
+    public void markStarting(OffsetDateTime timestamp) {
+        updateLifecycle(InstanceState.STARTING, timestamp);
+        this.failureReason = null;
+    }
+
     public void markRunning(OffsetDateTime timestamp) {
         updateLifecycle(InstanceState.RUNNING, timestamp);
         if (this.startedAt == null) {
@@ -130,8 +140,21 @@ public class Instance {
         this.failureReason = null;
     }
 
+    public void markStopping(OffsetDateTime timestamp) {
+        updateLifecycle(InstanceState.STOPPING, timestamp);
+        this.failureReason = null;
+    }
+
     public void markStopped(OffsetDateTime timestamp) {
         updateLifecycle(InstanceState.STOPPED, timestamp);
+        if (this.stoppedAt == null) {
+            this.stoppedAt = timestamp;
+        }
+        this.failureReason = null;
+    }
+
+    public void markDestroyed(OffsetDateTime timestamp) {
+        updateLifecycle(InstanceState.DESTROYED, timestamp);
         if (this.stoppedAt == null) {
             this.stoppedAt = timestamp;
         }

@@ -47,7 +47,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=validate")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({InstanceService.class, InstanceServiceTest.ObjectMapperTestConfig.class})
+@Import({InstanceService.class, InstanceStateMachine.class, InstanceServiceTest.ObjectMapperTestConfig.class})
 class InstanceServiceTest {
 
     @Container
@@ -290,7 +290,7 @@ class InstanceServiceTest {
         instanceService.reportInstancePrepared(node.getId(), instance.getId());
 
         Instance persisted = instanceRepository.findById(instance.getId()).orElseThrow();
-        assertThat(persisted.getState()).isEqualTo(InstanceState.PREPARED);
+        assertThat(persisted.getState()).isEqualTo(InstanceState.STARTING);
 
         List<InstanceEvent> events =
                 instanceEventRepository.findAllByInstanceIdOrderByTimestampAsc(instance.getId());
@@ -344,6 +344,88 @@ class InstanceServiceTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
                 .isEqualTo(HttpStatus.CONFLICT);
+    }
+
+    @Test
+    void reportStoppedUpdatesStateAndLogsEvent() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Node node = nodeRepository.save(new Node(
+                "node-stop",
+                "eu-west-1",
+                NodeStatus.ONLINE,
+                false,
+                4,
+                1,
+                now,
+                "1.0.0",
+                null,
+                "http://node.stop"
+        ));
+        Instance instance = instanceRepository.save(new Instance(
+                "instance-stop",
+                "Stop Instance",
+                InstanceState.STOPPING,
+                REQUESTER_ID,
+                node,
+                null,
+                null,
+                null,
+                null,
+                null,
+                now,
+                now
+        ));
+
+        instanceService.reportInstanceStopped(node.getId(), instance.getId());
+
+        Instance persisted = instanceRepository.findById(instance.getId()).orElseThrow();
+        assertThat(persisted.getState()).isEqualTo(InstanceState.STOPPED);
+
+        List<InstanceEvent> events =
+                instanceEventRepository.findAllByInstanceIdOrderByTimestampAsc(instance.getId());
+        assertThat(events).isNotEmpty();
+        assertThat(events.getLast().getType()).isEqualTo(InstanceEventType.STOP_COMPLETED);
+    }
+
+    @Test
+    void reportDestroyedUpdatesStateAndLogsEvent() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Node node = nodeRepository.save(new Node(
+                "node-destroy",
+                "eu-west-1",
+                NodeStatus.ONLINE,
+                false,
+                4,
+                1,
+                now,
+                "1.0.0",
+                null,
+                "http://node.destroy"
+        ));
+        Instance instance = instanceRepository.save(new Instance(
+                "instance-destroy",
+                "Destroy Instance",
+                InstanceState.STOPPING,
+                REQUESTER_ID,
+                node,
+                null,
+                null,
+                null,
+                null,
+                null,
+                now,
+                now
+        ));
+
+        instanceService.reportInstanceDestroyed(node.getId(), instance.getId());
+
+        Instance persisted = instanceRepository.findById(instance.getId()).orElseThrow();
+        assertThat(persisted.getState()).isEqualTo(InstanceState.DESTROYED);
+
+        List<InstanceEvent> events =
+                instanceEventRepository.findAllByInstanceIdOrderByTimestampAsc(instance.getId());
+        assertThat(events).isNotEmpty();
+        assertThat(events.getLast().getType()).isEqualTo(InstanceEventType.DESTROY_COMPLETED);
     }
 
     private Template createTemplate(String name) {
