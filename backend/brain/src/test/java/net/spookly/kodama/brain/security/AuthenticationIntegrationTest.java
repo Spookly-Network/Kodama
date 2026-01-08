@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.util.List;
 
 import net.spookly.kodama.brain.config.BrainSecurityProperties;
+import net.spookly.kodama.brain.config.MethodSecurityConfig;
 import net.spookly.kodama.brain.config.SecurityConfig;
 import net.spookly.kodama.brain.controller.AuthController;
 import net.spookly.kodama.brain.controller.InstanceController;
@@ -29,7 +30,14 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = {AuthController.class, InstanceController.class, TemplateController.class})
 @EnableConfigurationProperties(BrainSecurityProperties.class)
-@Import({SecurityConfig.class, JwtAuthFilter.class, JwtTokenService.class, ConfiguredUserStore.class, AuthService.class})
+@Import({
+        SecurityConfig.class,
+        MethodSecurityConfig.class,
+        JwtAuthFilter.class,
+        JwtTokenService.class,
+        ConfiguredUserStore.class,
+        AuthService.class
+})
 @TestPropertySource(properties = {
         "brain.security.enabled=true",
         "brain.security.jwt.issuer=kodama-test",

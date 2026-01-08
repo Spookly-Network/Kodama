@@ -39,7 +39,7 @@ Password values without a `{id}` prefix are treated as `{noop}` for development.
 - Missing or invalid tokens return `401 Unauthorized`.
 - Tokens expire after `token-ttl-seconds` and must be refreshed via login.
 - `VIEWER` tokens are read-only; write endpoints return `403 Forbidden`.
-- Set `brain.security.enabled=false` to disable auth in local development.
+- Set `brain.security.enabled=false` to disable HTTP and method security in local development.
 
 ## Links
 - Config: `backend/brain/src/main/java/net/spookly/kodama/brain/config/BrainSecurityProperties.java`
