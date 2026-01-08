@@ -1,4 +1,7 @@
 package net.spookly.kodama.brain.security;
 
-public class Role {
+public enum Role {
+    ADMIN,
+    OPERATOR,
+    VIEWER
 }
