@@ -19,6 +19,8 @@ public class BrainSecurityProperties {
 
     private List<UserDefinition> users = new ArrayList<>();
 
+    private NodeAuth node = new NodeAuth();
+
     public void validate() {
         if (!enabled) {
             return;
@@ -58,6 +60,15 @@ public class BrainSecurityProperties {
                         "brain.security.users.roles must be configured for " + user.getUsername());
             }
         }
+        if (node == null) {
+            throw new IllegalStateException("brain.security.node must be configured");
+        }
+        if (node.getToken() == null || node.getToken().isBlank()) {
+            throw new IllegalStateException("brain.security.node.token must be configured");
+        }
+        if (node.getHeaderName() == null || node.getHeaderName().isBlank()) {
+            throw new IllegalStateException("brain.security.node.header-name must be configured");
+        }
     }
 
     public boolean isEnabled() {
@@ -82,6 +93,14 @@ public class BrainSecurityProperties {
 
     public void setUsers(List<UserDefinition> users) {
         this.users = users;
+    }
+
+    public NodeAuth getNode() {
+        return node;
+    }
+
+    public void setNode(NodeAuth node) {
+        this.node = node;
     }
 
     public static class Jwt {
@@ -163,6 +182,29 @@ public class BrainSecurityProperties {
 
         public void setRoles(Set<Role> roles) {
             this.roles = roles;
+        }
+    }
+
+    public static class NodeAuth {
+
+        private String token;
+
+        private String headerName = "X-Node-Token";
+
+        public String getToken() {
+            return token;
+        }
+
+        public void setToken(String token) {
+            this.token = token;
+        }
+
+        public String getHeaderName() {
+            return headerName;
+        }
+
+        public void setHeaderName(String headerName) {
+            this.headerName = headerName;
         }
     }
 }

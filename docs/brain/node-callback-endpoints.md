@@ -26,10 +26,11 @@ Base path: `/api/nodes/{nodeId}/instances/{instanceId}`
 
 - `nodeId` must exist.
 - `instanceId` must exist and be assigned to the provided `nodeId`.
-- Requires a bearer token with `ADMIN` or `OPERATOR` role.
+- Requires the node authentication token via `X-Node-Token`.
 
 ## Responses
 
 - `200 OK` for valid callbacks.
+- `401 Unauthorized` when the node token is missing or invalid.
 - `404 Not Found` when node or instance does not exist.
 - `409 Conflict` when the instance is not assigned to the node.

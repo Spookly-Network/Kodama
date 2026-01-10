@@ -20,6 +20,10 @@ class JwtTokenServiceTest {
         jwt.setSecret("01234567890123456789012345678901");
         jwt.setTokenTtlSeconds(3600);
         securityProperties.setJwt(jwt);
+        BrainSecurityProperties.NodeAuth nodeAuth = new BrainSecurityProperties.NodeAuth();
+        nodeAuth.setToken("test-node-token");
+        nodeAuth.setHeaderName("X-Node-Token");
+        securityProperties.setNode(nodeAuth);
 
         BrainSecurityProperties.UserDefinition user = new BrainSecurityProperties.UserDefinition();
         user.setUsername("admin");
