@@ -26,6 +26,7 @@ Base path: `/api/nodes/{nodeId}/instances/{instanceId}`
 
 - `nodeId` must exist.
 - `instanceId` must exist and be assigned to the provided `nodeId`.
+- Requires a bearer token with `ADMIN` or `OPERATOR` role.
 
 ## Responses
 
