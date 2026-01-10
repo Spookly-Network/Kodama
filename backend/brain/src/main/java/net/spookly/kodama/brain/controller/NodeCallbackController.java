@@ -23,35 +23,35 @@ public class NodeCallbackController {
 
     @PostMapping("/prepared")
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
     public void prepared(@PathVariable UUID nodeId, @PathVariable UUID instanceId) {
         instanceService.reportInstancePrepared(nodeId, instanceId);
     }
 
     @PostMapping("/running")
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
     public void running(@PathVariable UUID nodeId, @PathVariable UUID instanceId) {
         instanceService.reportInstanceRunning(nodeId, instanceId);
     }
 
     @PostMapping("/stopped")
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
     public void stopped(@PathVariable UUID nodeId, @PathVariable UUID instanceId) {
         instanceService.reportInstanceStopped(nodeId, instanceId);
     }
 
     @PostMapping("/destroyed")
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
     public void destroyed(@PathVariable UUID nodeId, @PathVariable UUID instanceId) {
         instanceService.reportInstanceDestroyed(nodeId, instanceId);
     }
 
     @PostMapping("/failed")
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
     public void failed(@PathVariable UUID nodeId, @PathVariable UUID instanceId) {
         instanceService.reportInstanceFailed(nodeId, instanceId);
     }

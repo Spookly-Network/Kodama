@@ -30,21 +30,21 @@ public class NodeController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR','VIEWER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
     public List<NodeDto> listNodes() {
         return nodeService.listNodes();
     }
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
     public NodeRegistrationResponse registerNode(@Valid @RequestBody NodeRegistrationRequest request) {
         return nodeService.registerNode(request);
     }
 
     @PostMapping("/{nodeId}/heartbeat")
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
     public NodeDto heartbeat(
             @PathVariable UUID nodeId,
             @Valid @RequestBody NodeHeartbeatRequest request) {

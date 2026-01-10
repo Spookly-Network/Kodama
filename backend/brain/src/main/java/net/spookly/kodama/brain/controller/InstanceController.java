@@ -28,20 +28,20 @@ public class InstanceController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR','VIEWER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
     public List<InstanceDto> listInstances() {
         return instanceService.listInstances();
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR','VIEWER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
     public InstanceDto getInstance(@PathVariable UUID id) {
         return instanceService.getInstance(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
     public InstanceDto createInstance(@Valid @RequestBody CreateInstanceRequest request) {
         return instanceService.createInstance(request);
     }

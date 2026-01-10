@@ -1,6 +1,7 @@
 package net.spookly.kodama.brain.security;
 
 import static org.mockito.BDDMockito.given;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -21,11 +22,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = {AuthController.class, InstanceController.class, TemplateController.class})
@@ -36,7 +38,8 @@ import org.springframework.test.web.servlet.MockMvc;
         JwtAuthFilter.class,
         JwtTokenService.class,
         ConfiguredUserStore.class,
-        AuthService.class
+        AuthService.class,
+        TestSecurityBootstrapConfig.class
 })
 @TestPropertySource(properties = {
         "brain.security.enabled=true",
@@ -60,15 +63,12 @@ class AuthenticationIntegrationTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private JwtTokenService tokenService;
-
-    @Autowired
     private ConfiguredUserStore userStore;
 
-    @MockBean
+    @MockitoBean
     private InstanceService instanceService;
 
-    @MockBean
+    @MockitoBean
     private TemplateService templateService;
 
     @BeforeEach
@@ -108,16 +108,26 @@ class AuthenticationIntegrationTest {
 
     @Test
     void listInstancesWithValidTokenIsOk() throws Exception {
-        String token = tokenService.issueToken(userStore.findByUsername("admin").orElseThrow()).token();
+        UserPrincipal principal = userStore.findByUsername("admin").orElseThrow();
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
+                principal,
+                null,
+                principal.getAuthorities()
+        );
 
         mockMvc.perform(get("/api/instances")
-                        .header("Authorization", "Bearer " + token))
+                        .with(authentication(authenticationToken)))
                 .andExpect(status().isOk());
     }
 
     @Test
     void createTemplateWithViewerRoleIsForbidden() throws Exception {
-        String token = tokenService.issueToken(userStore.findByUsername("viewer").orElseThrow()).token();
+        UserPrincipal principal = userStore.findByUsername("viewer").orElseThrow();
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
+                principal,
+                null,
+                principal.getAuthorities()
+        );
 
         String body = """
                 {
@@ -131,7 +141,7 @@ class AuthenticationIntegrationTest {
         mockMvc.perform(post("/api/templates")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body)
-                        .header("Authorization", "Bearer " + token))
+                        .with(authentication(authenticationToken)))
                 .andExpect(status().isForbidden());
     }
 }

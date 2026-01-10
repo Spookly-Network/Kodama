@@ -30,27 +30,27 @@ public class TemplateController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR','VIEWER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
     public List<TemplateDto> listTemplates() {
         return templateService.listTemplates();
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR','VIEWER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
     public TemplateDto getTemplate(@PathVariable UUID id) {
         return templateService.getTemplate(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
     public TemplateDto createTemplate(@Valid @RequestBody CreateTemplateRequest request) {
         return templateService.createTemplate(request);
     }
 
     @PostMapping("/{id}/versions")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
     public TemplateVersionDto addVersion(
             @PathVariable UUID id,
             @Valid @RequestBody CreateTemplateVersionRequest request
@@ -59,7 +59,7 @@ public class TemplateController {
     }
 
     @GetMapping("/{id}/versions")
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR','VIEWER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
     public List<TemplateVersionDto> listVersions(@PathVariable UUID id) {
         return templateService.listVersions(id);
     }

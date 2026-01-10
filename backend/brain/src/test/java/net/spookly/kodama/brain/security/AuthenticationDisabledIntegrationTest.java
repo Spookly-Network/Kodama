@@ -15,10 +15,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = InstanceController.class)
@@ -28,7 +28,8 @@ import org.springframework.test.web.servlet.MockMvc;
         MethodSecurityConfig.class,
         JwtAuthFilter.class,
         JwtTokenService.class,
-        ConfiguredUserStore.class
+        ConfiguredUserStore.class,
+        TestSecurityBootstrapConfig.class
 })
 @TestPropertySource(properties = "brain.security.enabled=false")
 class AuthenticationDisabledIntegrationTest {
@@ -36,7 +37,7 @@ class AuthenticationDisabledIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private InstanceService instanceService;
 
     @BeforeEach
@@ -50,3 +51,4 @@ class AuthenticationDisabledIntegrationTest {
                 .andExpect(status().isOk());
     }
 }
+//codex resume 019b9e4b-3f3a-70e1-9ebe-05aad51ffc22
