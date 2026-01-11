@@ -37,14 +37,14 @@ public class NodeController {
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+    @PreAuthorize("hasAuthority('ROLE_NODE')")
     public NodeRegistrationResponse registerNode(@Valid @RequestBody NodeRegistrationRequest request) {
         return nodeService.registerNode(request);
     }
 
     @PostMapping("/{nodeId}/heartbeat")
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+    @PreAuthorize("hasAuthority('ROLE_NODE')")
     public NodeDto heartbeat(
             @PathVariable UUID nodeId,
             @Valid @RequestBody NodeHeartbeatRequest request) {

@@ -1,9 +1,11 @@
 package net.spookly.kodama.brain.config;
 
 import net.spookly.kodama.brain.security.JwtAuthFilter;
+import net.spookly.kodama.brain.security.NodeAuthFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -20,7 +22,8 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             BrainSecurityProperties securityProperties,
-            JwtAuthFilter jwtAuthFilter
+            JwtAuthFilter jwtAuthFilter,
+            NodeAuthFilter nodeAuthFilter
     ) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -37,6 +40,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .anyRequest().permitAll()
                 )
+                .addFilterBefore(nodeAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -45,5 +49,19 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+    }
+
+    @Bean
+    public FilterRegistrationBean<NodeAuthFilter> nodeAuthFilterRegistration(NodeAuthFilter nodeAuthFilter) {
+        FilterRegistrationBean<NodeAuthFilter> registration = new FilterRegistrationBean<>(nodeAuthFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<JwtAuthFilter> jwtAuthFilterRegistration(JwtAuthFilter jwtAuthFilter) {
+        FilterRegistrationBean<JwtAuthFilter> registration = new FilterRegistrationBean<>(jwtAuthFilter);
+        registration.setEnabled(false);
+        return registration;
     }
 }

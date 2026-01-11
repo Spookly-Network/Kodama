@@ -118,6 +118,8 @@ paths:
       tags: [Nodes]
       summary: Register node
       description: Insert or refresh node metadata.
+      security:
+        - nodeToken: []
       requestBody:
         required: true
         content:
@@ -144,6 +146,8 @@ paths:
       tags: [Nodes]
       summary: Send heartbeat
       description: Update node status and slot usage.
+      security:
+        - nodeToken: []
       requestBody:
         required: true
         content:
@@ -173,6 +177,8 @@ paths:
       tags: [Nodes]
       summary: Report instance prepared
       description: Callback from node when an instance finishes preparation.
+      security:
+        - nodeToken: []
       responses:
         "200":
           description: Callback accepted.
@@ -192,6 +198,8 @@ paths:
       tags: [Nodes]
       summary: Report instance running
       description: Callback from node when an instance is running.
+      security:
+        - nodeToken: []
       responses:
         "200":
           description: Callback accepted.
@@ -211,6 +219,8 @@ paths:
       tags: [Nodes]
       summary: Report instance stopped
       description: Callback from node when an instance stops.
+      security:
+        - nodeToken: []
       responses:
         "200":
           description: Callback accepted.
@@ -230,6 +240,8 @@ paths:
       tags: [Nodes]
       summary: Report instance destroyed
       description: Callback from node when an instance is destroyed.
+      security:
+        - nodeToken: []
       responses:
         "200":
           description: Callback accepted.
@@ -249,6 +261,8 @@ paths:
       tags: [Nodes]
       summary: Report instance failed
       description: Callback from node when an instance reports failure.
+      security:
+        - nodeToken: []
       responses:
         "200":
           description: Callback accepted.
@@ -375,6 +389,11 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    nodeToken:
+      type: apiKey
+      in: header
+      name: X-Node-Token
+      description: Shared token required for node callbacks and registration.
   parameters:
     InstanceId:
       name: id

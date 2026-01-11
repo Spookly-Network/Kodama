@@ -109,6 +109,7 @@ When creating tests:
 - Use **Testcontainers** for integration tests that touch Docker or MySQL.
 - Do not mock the Docker Engine if you can use Testcontainers to simulate it.
 - Keep unit tests fast and focused on core logic (e.g. scheduling decisions).
+- Run tests locally with `./gradlew test` or `./gradlew test --tests <test_class_name>`
 
 ---
 

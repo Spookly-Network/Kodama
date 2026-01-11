@@ -43,14 +43,14 @@ public class TemplateController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public TemplateDto createTemplate(@Valid @RequestBody CreateTemplateRequest request) {
         return templateService.createTemplate(request);
     }
 
     @PostMapping("/{id}/versions")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public TemplateVersionDto addVersion(
             @PathVariable UUID id,
             @Valid @RequestBody CreateTemplateVersionRequest request

@@ -30,6 +30,9 @@ brain:
       issuer: ${BRAIN_JWT_ISSUER:kodama-brain}
       secret: ${BRAIN_JWT_SECRET:}
       token-ttl-seconds: ${BRAIN_JWT_TTL_SECONDS:3600}
+    node:
+      token: ${BRAIN_NODE_AUTH_TOKEN:}
+      header-name: ${BRAIN_NODE_AUTH_HEADER_NAME:X-Node-Token}
     users:
       - username: ${BRAIN_ADMIN_USERNAME:admin}
         display-name: ${BRAIN_ADMIN_DISPLAY_NAME:Admin}

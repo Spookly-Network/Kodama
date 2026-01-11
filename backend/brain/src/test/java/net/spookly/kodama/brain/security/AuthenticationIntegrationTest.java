@@ -15,6 +15,8 @@ import net.spookly.kodama.brain.config.SecurityConfig;
 import net.spookly.kodama.brain.controller.AuthController;
 import net.spookly.kodama.brain.controller.InstanceController;
 import net.spookly.kodama.brain.controller.TemplateController;
+import net.spookly.kodama.brain.dto.InstanceDto;
+import net.spookly.kodama.brain.dto.TemplateDto;
 import net.spookly.kodama.brain.service.AuthService;
 import net.spookly.kodama.brain.service.InstanceService;
 import net.spookly.kodama.brain.service.TemplateService;
@@ -46,6 +48,7 @@ import org.springframework.test.web.servlet.MockMvc;
         "brain.security.jwt.issuer=kodama-test",
         "brain.security.jwt.secret=01234567890123456789012345678901",
         "brain.security.jwt.token-ttl-seconds=3600",
+        "brain.security.node.token=test-node-token",
         "brain.security.users[0].username=admin",
         "brain.security.users[0].display-name=Admin",
         "brain.security.users[0].email=admin@example.com",
@@ -55,7 +58,12 @@ import org.springframework.test.web.servlet.MockMvc;
         "brain.security.users[1].display-name=Viewer",
         "brain.security.users[1].email=viewer@example.com",
         "brain.security.users[1].password={noop}view-pass",
-        "brain.security.users[1].roles=VIEWER"
+        "brain.security.users[1].roles=VIEWER",
+        "brain.security.users[2].username=operator",
+        "brain.security.users[2].display-name=Operator",
+        "brain.security.users[2].email=operator@example.com",
+        "brain.security.users[2].password={noop}op-pass",
+        "brain.security.users[2].roles=OPERATOR"
 })
 class AuthenticationIntegrationTest {
 
@@ -143,5 +151,117 @@ class AuthenticationIntegrationTest {
                         .content(body)
                         .with(authentication(authenticationToken)))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void createTemplateWithOperatorRoleIsForbidden() throws Exception {
+        UserPrincipal principal = userStore.findByUsername("operator").orElseThrow();
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
+                principal,
+                null,
+                principal.getAuthorities()
+        );
+
+        String body = """
+                {
+                  "name": "t1",
+                  "description": "Template",
+                  "type": "CUSTOM",
+                  "createdBy": "00000000-0000-0000-0000-000000000000"
+                }
+                """;
+
+        mockMvc.perform(post("/api/templates")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body)
+                        .with(authentication(authenticationToken)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void createInstanceWithViewerRoleIsForbidden() throws Exception {
+        UserPrincipal principal = userStore.findByUsername("viewer").orElseThrow();
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
+                principal,
+                null,
+                principal.getAuthorities()
+        );
+
+        String body = """
+                {
+                  "name": "instance-1",
+                  "templateLayers": [
+                    {
+                      "templateVersionId": "00000000-0000-0000-0000-000000000000",
+                      "orderIndex": 0
+                    }
+                  ]
+                }
+                """;
+
+        mockMvc.perform(post("/api/instances")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body)
+                        .with(authentication(authenticationToken)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void createInstanceWithAdminRoleIsCreated() throws Exception {
+        UserPrincipal principal = userStore.findByUsername("admin").orElseThrow();
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
+                principal,
+                null,
+                principal.getAuthorities()
+        );
+
+        given(instanceService.createInstance(org.mockito.ArgumentMatchers.any()))
+                .willReturn(new InstanceDto());
+
+        String body = """
+                {
+                  "name": "instance-1",
+                  "templateLayers": [
+                    {
+                      "templateVersionId": "00000000-0000-0000-0000-000000000000",
+                      "orderIndex": 0
+                    }
+                  ]
+                }
+                """;
+
+        mockMvc.perform(post("/api/instances")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body)
+                        .with(authentication(authenticationToken)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void createTemplateWithAdminRoleIsCreated() throws Exception {
+        UserPrincipal principal = userStore.findByUsername("admin").orElseThrow();
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
+                principal,
+                null,
+                principal.getAuthorities()
+        );
+
+        given(templateService.createTemplate(org.mockito.ArgumentMatchers.any()))
+                .willReturn(new TemplateDto());
+
+        String body = """
+                {
+                  "name": "t1",
+                  "description": "Template",
+                  "type": "CUSTOM",
+                  "createdBy": "00000000-0000-0000-0000-000000000000"
+                }
+                """;
+
+        mockMvc.perform(post("/api/templates")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body)
+                        .with(authentication(authenticationToken)))
+                .andExpect(status().isCreated());
     }
 }
