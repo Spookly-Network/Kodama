@@ -12,6 +12,12 @@ public class NodeProperties {
     private int heartbeatIntervalSeconds = 30;
 
     @Min(1)
+    private int heartbeatTimeoutSeconds = 90;
+
+    @Min(1)
+    private int heartbeatMonitorIntervalSeconds = 60;
+
+    @Min(1)
     private int commandTimeoutSeconds = 10;
 
     @Min(1)
@@ -26,6 +32,22 @@ public class NodeProperties {
 
     public void setHeartbeatIntervalSeconds(int heartbeatIntervalSeconds) {
         this.heartbeatIntervalSeconds = heartbeatIntervalSeconds;
+    }
+
+    public int getHeartbeatTimeoutSeconds() {
+        return heartbeatTimeoutSeconds;
+    }
+
+    public void setHeartbeatTimeoutSeconds(int heartbeatTimeoutSeconds) {
+        this.heartbeatTimeoutSeconds = heartbeatTimeoutSeconds;
+    }
+
+    public int getHeartbeatMonitorIntervalSeconds() {
+        return heartbeatMonitorIntervalSeconds;
+    }
+
+    public void setHeartbeatMonitorIntervalSeconds(int heartbeatMonitorIntervalSeconds) {
+        this.heartbeatMonitorIntervalSeconds = heartbeatMonitorIntervalSeconds;
     }
 
     public int getCommandTimeoutSeconds() {

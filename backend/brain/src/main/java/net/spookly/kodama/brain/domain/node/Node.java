@@ -111,6 +111,10 @@ public class Node {
         this.lastHeartbeatAt = Objects.requireNonNull(lastHeartbeatAt, "lastHeartbeatAt");
     }
 
+    public void markOffline() {
+        this.status = NodeStatus.OFFLINE;
+    }
+
     private void validateSlotCounts(int capacitySlots, int usedSlots) {
         if (capacitySlots < 1) {
             throw new IllegalArgumentException("capacitySlots must be positive");
