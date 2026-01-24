@@ -14,5 +14,7 @@ public interface NodeRepository extends JpaRepository<@NonNull Node, @NonNull UU
 
     Optional<Node> findByName(String name);
 
+    long countByStatus(NodeStatus status);
+
     List<Node> findByStatusNotAndLastHeartbeatAtBefore(NodeStatus status, OffsetDateTime threshold);
 }
