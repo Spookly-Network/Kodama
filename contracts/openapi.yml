@@ -10,6 +10,57 @@ servers:
 security:
   - bearerAuth: []
 paths:
+  /actuator/health:
+    get:
+      tags: [Operations]
+      summary: Health status
+      description: Returns overall service health including component statuses.
+      security: []
+      responses:
+        "200":
+          description: Health status for the Brain service.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /actuator/metrics:
+    get:
+      tags: [Operations]
+      summary: Metrics index
+      description: Returns available metric names.
+      security: []
+      responses:
+        "200":
+          description: Metric names exposed by Brain.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetricsNamesResponse"
+  /actuator/metrics/{metricName}:
+    get:
+      tags: [Operations]
+      summary: Metric details
+      description: Returns measurements for a specific metric.
+      security: []
+      parameters:
+        - name: metricName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tag
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Tag filter in the format `key:value`. Repeat to apply multiple filters.
+      responses:
+        "200":
+          description: Metric measurements and available tags.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetricResponse"
   /api/auth/login:
     post:
       tags: [Auth]
@@ -428,6 +479,78 @@ components:
         type: string
         format: uuid
   schemas:
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: UP
+        components:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/HealthComponent"
+    HealthComponent:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: UP
+        details:
+          type: object
+          additionalProperties: true
+        components:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/HealthComponent"
+    MetricsNamesResponse:
+      type: object
+      required: [names]
+      properties:
+        names:
+          type: array
+          items:
+            type: string
+    MetricResponse:
+      type: object
+      required: [name, measurements]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        baseUnit:
+          type: string
+          nullable: true
+        measurements:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetricMeasurement"
+        availableTags:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetricAvailableTag"
+    MetricMeasurement:
+      type: object
+      required: [statistic, value]
+      properties:
+        statistic:
+          type: string
+        value:
+          type: number
+          format: double
+    MetricAvailableTag:
+      type: object
+      required: [tag, values]
+      properties:
+        tag:
+          type: string
+        values:
+          type: array
+          items:
+            type: string
     LoginRequest:
       type: object
       required: [username, password]

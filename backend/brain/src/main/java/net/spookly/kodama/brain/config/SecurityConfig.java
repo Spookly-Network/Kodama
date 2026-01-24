@@ -37,7 +37,12 @@ public class SecurityConfig {
 
         http.authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login").permitAll()
-                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers(
+                                "/actuator/health",
+                                "/actuator/info",
+                                "/actuator/metrics",
+                                "/actuator/metrics/**"
+                        ).permitAll()
                         .anyRequest().permitAll()
                 )
                 .addFilterBefore(nodeAuthFilter, UsernamePasswordAuthenticationFilter.class)
