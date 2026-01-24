@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: kodama-node-agent
+  main:
+    web-application-type: none
+
+node-agent:
+  node-id: ${NODE_AGENT_ID:local}
+  node-name: ${NODE_AGENT_NAME:local-node}
+  brain-base-url: ${NODE_AGENT_BRAIN_BASE_URL:}
+  docker-host: ${NODE_AGENT_DOCKER_HOST:}
+  workspace-dir: ${NODE_AGENT_WORKSPACE_DIR:./data}
