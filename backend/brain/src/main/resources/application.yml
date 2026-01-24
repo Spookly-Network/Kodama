@@ -25,6 +25,22 @@ node:
   command-max-attempts: ${NODE_COMMAND_MAX_ATTEMPTS:2}
   command-retry-backoff-millis: ${NODE_COMMAND_RETRY_BACKOFF_MILLIS:500}
 
+brain:
+  security:
+    enabled: ${BRAIN_SECURITY_ENABLED:true}
+    jwt:
+      issuer: ${BRAIN_JWT_ISSUER:kodama-brain}
+      secret: ${BRAIN_JWT_SECRET:}
+      token-ttl-seconds: ${BRAIN_JWT_TTL_SECONDS:3600}
+    node:
+      token: ${BRAIN_NODE_AUTH_TOKEN:}
+      header-name: ${BRAIN_NODE_AUTH_HEADER_NAME:X-Node-Token}
+    users:
+      - username: ${BRAIN_ADMIN_USERNAME:admin}
+        display-name: ${BRAIN_ADMIN_DISPLAY_NAME:Admin}
+        email: ${BRAIN_ADMIN_EMAIL:admin@example.com}
+        password: ${BRAIN_ADMIN_PASSWORD:}
+        roles: ADMIN
 
 server:
   port: 8080

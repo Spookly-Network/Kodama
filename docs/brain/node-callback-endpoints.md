@@ -7,7 +7,7 @@ Base path: `/api/nodes/{nodeId}/instances/{instanceId}`
 ## Endpoints
 
 - `POST /prepared`
-  - Updates instance state to `PREPARED`.
+  - Updates instance state to `STARTING`.
   - Logs `PREPARE_COMPLETED` event.
 - `POST /running`
   - Updates instance state to `RUNNING`.
@@ -15,6 +15,9 @@ Base path: `/api/nodes/{nodeId}/instances/{instanceId}`
 - `POST /stopped`
   - Updates instance state to `STOPPED`.
   - Logs `STOP_COMPLETED` event.
+- `POST /destroyed`
+  - Updates instance state to `DESTROYED`.
+  - Logs `DESTROY_COMPLETED` event.
 - `POST /failed`
   - Updates instance state to `FAILED`.
   - Logs `FAILURE_REPORTED` event.
@@ -23,9 +26,11 @@ Base path: `/api/nodes/{nodeId}/instances/{instanceId}`
 
 - `nodeId` must exist.
 - `instanceId` must exist and be assigned to the provided `nodeId`.
+- Requires the node authentication token via `X-Node-Token`.
 
 ## Responses
 
 - `200 OK` for valid callbacks.
+- `401 Unauthorized` when the node token is missing or invalid.
 - `404 Not Found` when node or instance does not exist.
 - `409 Conflict` when the instance is not assigned to the node.

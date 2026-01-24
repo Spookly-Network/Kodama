@@ -10,6 +10,7 @@ import net.spookly.kodama.brain.dto.TemplateDto;
 import net.spookly.kodama.brain.dto.TemplateVersionDto;
 import net.spookly.kodama.brain.service.TemplateService;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,23 +30,27 @@ public class TemplateController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
     public List<TemplateDto> listTemplates() {
         return templateService.listTemplates();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
     public TemplateDto getTemplate(@PathVariable UUID id) {
         return templateService.getTemplate(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public TemplateDto createTemplate(@Valid @RequestBody CreateTemplateRequest request) {
         return templateService.createTemplate(request);
     }
 
     @PostMapping("/{id}/versions")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public TemplateVersionDto addVersion(
             @PathVariable UUID id,
             @Valid @RequestBody CreateTemplateVersionRequest request
@@ -54,6 +59,7 @@ public class TemplateController {
     }
 
     @GetMapping("/{id}/versions")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
     public List<TemplateVersionDto> listVersions(@PathVariable UUID id) {
         return templateService.listVersions(id);
     }

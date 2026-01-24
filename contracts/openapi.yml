@@ -7,7 +7,32 @@ info:
     All endpoints are served by the Brain service.
 servers:
   - url: http://localhost:8080
+security:
+  - bearerAuth: []
 paths:
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      description: Exchange credentials for a bearer token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /api/instances:
     get:
       tags: [Instances]
@@ -22,6 +47,10 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Instance"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
     post:
       tags: [Instances]
       summary: Create instance
@@ -38,6 +67,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Instance"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
@@ -57,6 +90,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Instance"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
   /api/nodes:
@@ -72,11 +109,17 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Node"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /api/nodes/register:
     post:
       tags: [Nodes]
       summary: Register node
       description: Insert or refresh node metadata.
+      security:
+        - nodeToken: []
       requestBody:
         required: true
         content:
@@ -90,6 +133,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NodeRegistrationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "400":
           $ref: "#/components/responses/BadRequest"
   /api/nodes/{nodeId}/heartbeat:
@@ -99,6 +146,8 @@ paths:
       tags: [Nodes]
       summary: Send heartbeat
       description: Update node status and slot usage.
+      security:
+        - nodeToken: []
       requestBody:
         required: true
         content:
@@ -112,6 +161,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Node"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
@@ -124,9 +177,15 @@ paths:
       tags: [Nodes]
       summary: Report instance prepared
       description: Callback from node when an instance finishes preparation.
+      security:
+        - nodeToken: []
       responses:
         "200":
           description: Callback accepted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
@@ -139,9 +198,15 @@ paths:
       tags: [Nodes]
       summary: Report instance running
       description: Callback from node when an instance is running.
+      security:
+        - nodeToken: []
       responses:
         "200":
           description: Callback accepted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
@@ -154,9 +219,36 @@ paths:
       tags: [Nodes]
       summary: Report instance stopped
       description: Callback from node when an instance stops.
+      security:
+        - nodeToken: []
       responses:
         "200":
           description: Callback accepted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/nodes/{nodeId}/instances/{instanceId}/destroyed:
+    parameters:
+      - $ref: "#/components/parameters/NodeId"
+      - $ref: "#/components/parameters/NodeInstanceId"
+    post:
+      tags: [Nodes]
+      summary: Report instance destroyed
+      description: Callback from node when an instance is destroyed.
+      security:
+        - nodeToken: []
+      responses:
+        "200":
+          description: Callback accepted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
@@ -169,9 +261,15 @@ paths:
       tags: [Nodes]
       summary: Report instance failed
       description: Callback from node when an instance reports failure.
+      security:
+        - nodeToken: []
       responses:
         "200":
           description: Callback accepted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
@@ -190,6 +288,10 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Template"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
     post:
       tags: [Templates]
       summary: Create template
@@ -206,6 +308,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Template"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "400":
           $ref: "#/components/responses/BadRequest"
         "409":
@@ -223,6 +329,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Template"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
   /api/templates/{id}/versions:
@@ -241,6 +351,10 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/TemplateVersion"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
     post:
@@ -259,6 +373,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TemplateVersion"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
@@ -266,6 +384,16 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    nodeToken:
+      type: apiKey
+      in: header
+      name: X-Node-Token
+      description: Shared token required for node callbacks and registration.
   parameters:
     InstanceId:
       name: id
@@ -300,6 +428,31 @@ components:
         type: string
         format: uuid
   schemas:
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+    LoginResponse:
+      type: object
+      required: [accessToken, tokenType, expiresAt, roles]
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          example: Bearer
+        expiresAt:
+          type: string
+          format: date-time
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Role"
     Node:
       type: object
       required: [id, name, region, status, devMode, capacitySlots, usedSlots, lastHeartbeatAt, nodeVersion]
@@ -458,6 +611,9 @@ components:
     TemplateType:
       type: string
       enum: [CUSTOM]
+    Role:
+      type: string
+      enum: [ADMIN, OPERATOR, VIEWER]
     Instance:
       type: object
       required:
@@ -615,6 +771,18 @@ components:
   responses:
     BadRequest:
       description: Validation failed.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Authentication required or invalid credentials.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Authenticated but not allowed.
       content:
         application/json:
           schema:
