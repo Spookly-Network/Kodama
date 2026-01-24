@@ -25,6 +25,13 @@ node:
   command-max-attempts: ${NODE_COMMAND_MAX_ATTEMPTS:2}
   command-retry-backoff-millis: ${NODE_COMMAND_RETRY_BACKOFF_MILLIS:500}
 
+instance:
+  stale-detection:
+    enabled: ${INSTANCE_STALE_DETECTION_ENABLED:true}
+    monitor-interval-seconds: ${INSTANCE_STALE_DETECTION_INTERVAL_SECONDS:60}
+    preparing-timeout-seconds: ${INSTANCE_PREPARING_TIMEOUT_SECONDS:300}
+    starting-timeout-seconds: ${INSTANCE_STARTING_TIMEOUT_SECONDS:300}
+
 brain:
   security:
     enabled: ${BRAIN_SECURITY_ENABLED:true}
