@@ -31,6 +31,10 @@ Node callbacks map to the state machine:
 - `/destroyed` transitions to `DESTROYED` and logs `DESTROY_COMPLETED`.
 - `/failed` transitions to `FAILED` and logs `FAILURE_REPORTED`.
 
+Scheduled monitoring:
+
+- Stale PREPARING/STARTING instances transition to `FAILED` and log `FAILURE_TIMEOUT` with failure reason `timeout`.
+
 Invalid transitions throw `InvalidInstanceStateTransitionException`.
 
 ## Edge cases / risks
