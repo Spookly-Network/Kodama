@@ -5,8 +5,18 @@ spring:
     web-application-type: none
 
 node-agent:
-  node-id: ${NODE_AGENT_ID:local}
-  node-name: ${NODE_AGENT_NAME:local-node}
+  node-id: ${NODE_AGENT_ID:}
+  node-name: ${NODE_AGENT_NAME:}
   brain-base-url: ${NODE_AGENT_BRAIN_BASE_URL:}
   docker-host: ${NODE_AGENT_DOCKER_HOST:}
   workspace-dir: ${NODE_AGENT_WORKSPACE_DIR:./data}
+  cache-dir: ${NODE_AGENT_CACHE_DIR:}
+  auth:
+    token-path: ${NODE_AGENT_AUTH_TOKEN_PATH:}
+    cert-path: ${NODE_AGENT_AUTH_CERT_PATH:}
+  s3:
+    endpoint: ${NODE_AGENT_S3_ENDPOINT:}
+    region: ${NODE_AGENT_S3_REGION:}
+    bucket: ${NODE_AGENT_S3_BUCKET:}
+    access-key: ${NODE_AGENT_S3_ACCESS_KEY:}
+    secret-key: ${NODE_AGENT_S3_SECRET_KEY:}
