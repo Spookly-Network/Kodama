@@ -27,20 +27,29 @@ jobs:
           ./gradlew spotlessApply
           ./gradlew build
 
-  set-project-status:
-    needs: build
-    runs-on: ubuntu-latest
-    if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' }}
-
-    steps:
-    
-      - name: Checkout
-        uses: actions/checkout@v4
-        
-      - name: Set PR status to 'In review' in project
-        uses: ./.github/actions/set-project-status
+      - name: Upload build artifacts
+        uses: actions/cache@v5.0.2
         with:
-          project-owner: your-org-or-user          # anpassen
-          project-number: 1                        # aus Project-URL
-          status-name: "In review"
-          token: ${{ secrets.GH_PROJECT_TOKEN }}
+          path: |
+            backend/brain/build
+            backend/node-agent/build
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+#  test-brain:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Set up JDK
+#        uses: actions/setup-java@v4
+#        with:
+#          distribution: temurin
+#          java-version: "25"
+#
+#  test-node:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Set up JDK
+#        uses: actions/setup-java@v4
+#        with:
+#          distribution: temurin
+#          java-version: "25"
