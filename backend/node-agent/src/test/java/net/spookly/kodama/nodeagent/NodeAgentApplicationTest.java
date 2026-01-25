@@ -8,10 +8,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest(properties = {
-        "node-agent.node-id=test-node",
         "node-agent.node-name=test-node",
+        "node-agent.node-version=1.0.0",
+        "node-agent.region=local",
+        "node-agent.capacity-slots=4",
         "node-agent.brain-base-url=http://localhost:8080",
-        "node-agent.cache-dir=./cache"
+        "node-agent.cache-dir=./cache",
+        "node-agent.registration-enabled=false"
 })
 class NodeAgentApplicationTest {
 
@@ -20,10 +23,13 @@ class NodeAgentApplicationTest {
 
     @Test
     void loadsConfiguration() {
-        assertThat(config.getNodeId()).isEqualTo("test-node");
         assertThat(config.getNodeName()).isEqualTo("test-node");
+        assertThat(config.getNodeVersion()).isEqualTo("1.0.0");
+        assertThat(config.getRegion()).isEqualTo("local");
+        assertThat(config.getCapacitySlots()).isEqualTo(4);
         assertThat(config.getBrainBaseUrl()).isEqualTo("http://localhost:8080");
         assertThat(config.getCacheDir()).isEqualTo("./cache");
         assertThat(config.getWorkspaceDir()).isEqualTo("./data");
+        assertThat(config.isRegistrationEnabled()).isFalse();
     }
 }
