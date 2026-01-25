@@ -7,11 +7,19 @@ spring:
 node-agent:
   node-id: ${NODE_AGENT_ID:}
   node-name: ${NODE_AGENT_NAME:}
+  node-version: ${NODE_AGENT_NODE_VERSION:}
+  region: ${NODE_AGENT_REGION:}
+  capacity-slots: ${NODE_AGENT_CAPACITY_SLOTS:}
+  dev-mode: ${NODE_AGENT_DEV_MODE:false}
+  tags: ${NODE_AGENT_TAGS:}
+  base-url: ${NODE_AGENT_BASE_URL:}
   brain-base-url: ${NODE_AGENT_BRAIN_BASE_URL:}
+  registration-enabled: ${NODE_AGENT_REGISTRATION_ENABLED:true}
   docker-host: ${NODE_AGENT_DOCKER_HOST:}
   workspace-dir: ${NODE_AGENT_WORKSPACE_DIR:./data}
   cache-dir: ${NODE_AGENT_CACHE_DIR:}
   auth:
+    header-name: ${NODE_AGENT_AUTH_HEADER_NAME:X-Node-Token}
     token-path: ${NODE_AGENT_AUTH_TOKEN_PATH:}
     cert-path: ${NODE_AGENT_AUTH_CERT_PATH:}
   s3:

@@ -10,19 +10,30 @@ public class NodeConfig {
 
     private String nodeId;
     private String nodeName;
+    private String nodeVersion;
+    private String region;
+    private int capacitySlots;
+    private boolean devMode;
+    private String tags;
+    private String baseUrl;
     private String brainBaseUrl;
     private String dockerHost;
     private String workspaceDir = "./data";
     private String cacheDir;
+    private boolean registrationEnabled = true;
     private Auth auth = new Auth();
     private S3 s3 = new S3();
 
     public void validate() {
         List<String> errors = new ArrayList<>();
-        addIfBlank(errors, nodeId, "node-agent.node-id is required");
         addIfBlank(errors, nodeName, "node-agent.node-name is required");
+        addIfBlank(errors, nodeVersion, "node-agent.node-version is required");
+        addIfBlank(errors, region, "node-agent.region is required");
         addIfBlank(errors, brainBaseUrl, "node-agent.brain-base-url is required");
         addIfBlank(errors, cacheDir, "node-agent.cache-dir is required");
+        if (capacitySlots < 1) {
+            errors.add("node-agent.capacity-slots must be at least 1");
+        }
         if (!errors.isEmpty()) {
             throw new IllegalStateException("Invalid node-agent configuration:\n- " + String.join("\n- ", errors));
         }
@@ -48,6 +59,54 @@ public class NodeConfig {
 
     public void setNodeName(String nodeName) {
         this.nodeName = nodeName;
+    }
+
+    public String getNodeVersion() {
+        return nodeVersion;
+    }
+
+    public void setNodeVersion(String nodeVersion) {
+        this.nodeVersion = nodeVersion;
+    }
+
+    public String getRegion() {
+        return region;
+    }
+
+    public void setRegion(String region) {
+        this.region = region;
+    }
+
+    public int getCapacitySlots() {
+        return capacitySlots;
+    }
+
+    public void setCapacitySlots(int capacitySlots) {
+        this.capacitySlots = capacitySlots;
+    }
+
+    public boolean isDevMode() {
+        return devMode;
+    }
+
+    public void setDevMode(boolean devMode) {
+        this.devMode = devMode;
+    }
+
+    public String getTags() {
+        return tags;
+    }
+
+    public void setTags(String tags) {
+        this.tags = tags;
+    }
+
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    public void setBaseUrl(String baseUrl) {
+        this.baseUrl = baseUrl;
     }
 
     public String getBrainBaseUrl() {
@@ -82,6 +141,14 @@ public class NodeConfig {
         this.cacheDir = cacheDir;
     }
 
+    public boolean isRegistrationEnabled() {
+        return registrationEnabled;
+    }
+
+    public void setRegistrationEnabled(boolean registrationEnabled) {
+        this.registrationEnabled = registrationEnabled;
+    }
+
     public Auth getAuth() {
         return auth;
     }
@@ -102,6 +169,7 @@ public class NodeConfig {
 
         private String tokenPath;
         private String certPath;
+        private String headerName = "X-Node-Token";
 
         public String getTokenPath() {
             return tokenPath;
@@ -117,6 +185,14 @@ public class NodeConfig {
 
         public void setCertPath(String certPath) {
             this.certPath = certPath;
+        }
+
+        public String getHeaderName() {
+            return headerName;
+        }
+
+        public void setHeaderName(String headerName) {
+            this.headerName = headerName;
         }
     }
 

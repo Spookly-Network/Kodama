@@ -5,9 +5,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 @Component
+@Order(Ordered.LOWEST_PRECEDENCE)
 public class NodeAgentStartupLogger implements ApplicationRunner {
 
     private static final Logger logger = LoggerFactory.getLogger(NodeAgentStartupLogger.class);
@@ -20,15 +23,25 @@ public class NodeAgentStartupLogger implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        config.validate();
         logger.info(
-                "Node agent started with config. nodeId={}, nodeName={}, brainBaseUrl={}, dockerHost={}, workspaceDir={}, cacheDir={}, authTokenPath={}, authCertPath={}, s3Endpoint={}, s3Region={}, s3Bucket={}, s3AccessKey={}, s3SecretKey={}",
-                config.getNodeId(),
+                "Node agent started with config. nodeId={}, nodeName={}, nodeVersion={}, region={}, capacitySlots={}, " +
+                        "devMode={}, tags={}, baseUrl={}, brainBaseUrl={}, registrationEnabled={}, dockerHost={}, " +
+                        "workspaceDir={}, cacheDir={}, authHeaderName={}, authTokenPath={}, authCertPath={}, " +
+                        "s3Endpoint={}, s3Region={}, s3Bucket={}, s3AccessKey={}, s3SecretKey={}",
+                valueOrDash(config.getNodeId()),
                 config.getNodeName(),
+                config.getNodeVersion(),
+                config.getRegion(),
+                config.getCapacitySlots(),
+                config.isDevMode(),
+                valueOrDash(config.getTags()),
+                valueOrDash(config.getBaseUrl()),
                 config.getBrainBaseUrl(),
+                config.isRegistrationEnabled(),
                 valueOrDash(config.getDockerHost()),
                 config.getWorkspaceDir(),
                 config.getCacheDir(),
+                valueOrDash(config.getAuth().getHeaderName()),
                 valueOrDash(config.getAuth().getTokenPath()),
                 valueOrDash(config.getAuth().getCertPath()),
                 valueOrDash(config.getS3().getEndpoint()),
