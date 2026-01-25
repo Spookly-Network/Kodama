@@ -4,22 +4,35 @@
 The Node Agent is a lightweight Java service that runs on each node and executes Brain commands.
 
 ## What changed
-- Added a Node Agent module skeleton with a Spring Boot entrypoint.
-- Added minimal configuration wiring and a startup log line.
+- Added a typed `NodeConfig` model for node-agent settings.
+- Added startup validation for required configuration values.
+- Expanded the startup log to include the effective configuration (sans secrets).
 
 ## How to use / impact
 - Build and run with `./gradlew :node-agent:bootRun` from `backend/`.
-- Configure via environment variables:
-  - `NODE_AGENT_ID`
-  - `NODE_AGENT_NAME`
-  - `NODE_AGENT_WORKSPACE_DIR`
-  - `NODE_AGENT_BRAIN_BASE_URL`
-  - `NODE_AGENT_DOCKER_HOST`
+- Configure via environment variables or CLI args (`--node-agent.<key>=...`).
+  - Required:
+    - `NODE_AGENT_ID`
+    - `NODE_AGENT_NAME`
+    - `NODE_AGENT_BRAIN_BASE_URL`
+    - `NODE_AGENT_CACHE_DIR`
+  - Optional:
+    - `NODE_AGENT_WORKSPACE_DIR`
+    - `NODE_AGENT_DOCKER_HOST`
+    - `NODE_AGENT_AUTH_TOKEN_PATH`
+    - `NODE_AGENT_AUTH_CERT_PATH`
+    - `NODE_AGENT_S3_ENDPOINT`
+    - `NODE_AGENT_S3_REGION`
+    - `NODE_AGENT_S3_BUCKET`
+    - `NODE_AGENT_S3_ACCESS_KEY`
+    - `NODE_AGENT_S3_SECRET_KEY`
+- See `docs/node/operations/configuration.md` for the full mapping.
 
 ## Edge cases / risks
-- `NODE_AGENT_BRAIN_BASE_URL` and `NODE_AGENT_DOCKER_HOST` can be left empty for now; no connections are attempted.
+- If required configuration is missing, the node agent will exit on startup with a clear error.
 - The workspace directory is not created automatically yet.
 
 ## Links
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/NodeAgentApplication.java`
 - `backend/node-agent/src/main/resources/application.yml`
+- `docs/node/operations/configuration.md`
