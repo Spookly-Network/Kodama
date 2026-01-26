@@ -36,5 +36,10 @@ class NodeAgentApplicationTest {
         assertThat(config.getCacheDir()).isEqualTo("./cache");
         assertThat(config.getWorkspaceDir()).isEqualTo("./data");
         assertThat(config.isRegistrationEnabled()).isFalse();
+        assertThat(config.getS3().getRegion()).isEqualTo("local");
+        assertThat(config.getS3().getBucket()).isEqualTo("templates");
+        assertThat(config.getS3().getAccessKey()).isEqualTo("test-access");
+        assertThat(config.getS3().getSecretKey()).isEqualTo("test-secret");
+        assertThat(config.getS3().getEndpoint()).isEqualTo("http://localhost:9000");
     }
 }
