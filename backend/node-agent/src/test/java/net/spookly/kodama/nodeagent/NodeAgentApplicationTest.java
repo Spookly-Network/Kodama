@@ -14,7 +14,12 @@ import org.springframework.boot.test.context.SpringBootTest;
         "node-agent.capacity-slots=4",
         "node-agent.brain-base-url=http://localhost:8080",
         "node-agent.cache-dir=./cache",
-        "node-agent.registration-enabled=false"
+        "node-agent.registration-enabled=false",
+        "node-agent.s3.region=local",
+        "node-agent.s3.bucket=templates",
+        "node-agent.s3.access-key=test-access",
+        "node-agent.s3.secret-key=test-secret",
+        "node-agent.s3.endpoint=http://localhost:9000"
 })
 class NodeAgentApplicationTest {
 
@@ -31,5 +36,10 @@ class NodeAgentApplicationTest {
         assertThat(config.getCacheDir()).isEqualTo("./cache");
         assertThat(config.getWorkspaceDir()).isEqualTo("./data");
         assertThat(config.isRegistrationEnabled()).isFalse();
+        assertThat(config.getS3().getRegion()).isEqualTo("local");
+        assertThat(config.getS3().getBucket()).isEqualTo("templates");
+        assertThat(config.getS3().getAccessKey()).isEqualTo("test-access");
+        assertThat(config.getS3().getSecretKey()).isEqualTo("test-secret");
+        assertThat(config.getS3().getEndpoint()).isEqualTo("http://localhost:9000");
     }
 }
