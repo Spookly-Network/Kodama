@@ -25,7 +25,8 @@ public class NodeAgentStartupLogger implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         logger.info(
                 "Node agent started with config. nodeId={}, nodeName={}, nodeVersion={}, region={}, capacitySlots={}, " +
-                        "devMode={}, tags={}, baseUrl={}, brainBaseUrl={}, registrationEnabled={}, dockerHost={}, " +
+                        "devMode={}, tags={}, baseUrl={}, brainBaseUrl={}, registrationEnabled={}, " +
+                        "heartbeatIntervalSeconds={}, dockerHost={}, " +
                         "workspaceDir={}, cacheDir={}, authHeaderName={}, authTokenPath={}, authCertPath={}, " +
                         "s3Endpoint={}, s3Region={}, s3Bucket={}, s3AccessKey={}, s3SecretKey={}",
                 valueOrDash(config.getNodeId()),
@@ -38,6 +39,7 @@ public class NodeAgentStartupLogger implements ApplicationRunner {
                 valueOrDash(config.getBaseUrl()),
                 config.getBrainBaseUrl(),
                 config.isRegistrationEnabled(),
+                config.getHeartbeatIntervalSeconds(),
                 valueOrDash(config.getDockerHost()),
                 config.getWorkspaceDir(),
                 config.getCacheDir(),

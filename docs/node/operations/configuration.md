@@ -7,6 +7,7 @@ Describe the configuration inputs for the node agent and how they map to environ
 - Introduced a typed `NodeConfig` model that binds to `node-agent.*` settings.
 - Added startup validation and a sanitized configuration log line.
 - Added registration-related configuration for Brain startup registration.
+- Added a heartbeat interval override for node-agent heartbeats.
 
 ## How to use / impact
 - Configure with environment variables or CLI args (`--node-agent.<key>=...`).
@@ -23,6 +24,7 @@ Describe the configuration inputs for the node agent and how they map to environ
   - `node-agent.tags` (`NODE_AGENT_TAGS`)
   - `node-agent.base-url` (`NODE_AGENT_BASE_URL`)
   - `node-agent.registration-enabled` (`NODE_AGENT_REGISTRATION_ENABLED`, default `true`)
+  - `node-agent.heartbeat-interval-seconds` (`NODE_AGENT_HEARTBEAT_INTERVAL_SECONDS`, default `0`)
   - `node-agent.workspace-dir` (`NODE_AGENT_WORKSPACE_DIR`, default `./data`)
   - `node-agent.docker-host` (`NODE_AGENT_DOCKER_HOST`)
   - `node-agent.auth.header-name` (`NODE_AGENT_AUTH_HEADER_NAME`, default `X-Node-Token`)
@@ -35,6 +37,8 @@ Describe the configuration inputs for the node agent and how they map to environ
   - `node-agent.s3.secret-key` (`NODE_AGENT_S3_SECRET_KEY`)
 - When registration is enabled, the node agent reads the token from `node-agent.auth.token-path`
   and sends it to the Brain using `node-agent.auth.header-name`.
+- When `node-agent.heartbeat-interval-seconds` is `0`, the node agent uses the heartbeat interval
+  provided by the Brain during registration.
 
 ## Edge cases / risks
 - Missing required values stops the node agent at startup with a detailed error.
