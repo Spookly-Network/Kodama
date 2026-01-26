@@ -15,6 +15,7 @@ node-agent:
   base-url: ${NODE_AGENT_BASE_URL:}
   brain-base-url: ${NODE_AGENT_BRAIN_BASE_URL:}
   registration-enabled: ${NODE_AGENT_REGISTRATION_ENABLED:true}
+  heartbeat-interval-seconds: ${NODE_AGENT_HEARTBEAT_INTERVAL_SECONDS:0}
   docker-host: ${NODE_AGENT_DOCKER_HOST:}
   workspace-dir: ${NODE_AGENT_WORKSPACE_DIR:./data}
   cache-dir: ${NODE_AGENT_CACHE_DIR:}

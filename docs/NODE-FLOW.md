@@ -17,10 +17,9 @@ On startup:
 Node sends heartbeat:
 - usedSlots
 - status
-- metrics (optional)
-- cache size (optional)
 
 Brain updates node status → ONLINE.
+Heartbeat interval comes from Brain registration unless overridden in node config.
 
 ---
 

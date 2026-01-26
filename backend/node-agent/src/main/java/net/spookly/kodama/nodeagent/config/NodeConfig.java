@@ -21,6 +21,7 @@ public class NodeConfig {
     private String workspaceDir = "./data";
     private String cacheDir;
     private boolean registrationEnabled = true;
+    private int heartbeatIntervalSeconds;
     private Auth auth = new Auth();
     private S3 s3 = new S3();
 
@@ -33,6 +34,9 @@ public class NodeConfig {
         addIfBlank(errors, cacheDir, "node-agent.cache-dir is required");
         if (capacitySlots < 1) {
             errors.add("node-agent.capacity-slots must be at least 1");
+        }
+        if (heartbeatIntervalSeconds < 0) {
+            errors.add("node-agent.heartbeat-interval-seconds must be 0 or greater");
         }
         if (!errors.isEmpty()) {
             throw new IllegalStateException("Invalid node-agent configuration:\n- " + String.join("\n- ", errors));
@@ -147,6 +151,14 @@ public class NodeConfig {
 
     public void setRegistrationEnabled(boolean registrationEnabled) {
         this.registrationEnabled = registrationEnabled;
+    }
+
+    public int getHeartbeatIntervalSeconds() {
+        return heartbeatIntervalSeconds;
+    }
+
+    public void setHeartbeatIntervalSeconds(int heartbeatIntervalSeconds) {
+        this.heartbeatIntervalSeconds = heartbeatIntervalSeconds;
     }
 
     public Auth getAuth() {

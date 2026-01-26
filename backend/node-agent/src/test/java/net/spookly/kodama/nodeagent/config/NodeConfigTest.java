@@ -33,4 +33,20 @@ class NodeConfigTest {
 
         assertThatNoException().isThrownBy(config::validate);
     }
+
+    @Test
+    void validateRejectsNegativeHeartbeatInterval() {
+        NodeConfig config = new NodeConfig();
+        config.setNodeName("Node 1");
+        config.setNodeVersion("1.0.0");
+        config.setRegion("local");
+        config.setCapacitySlots(4);
+        config.setBrainBaseUrl("http://brain:8080");
+        config.setCacheDir("./cache");
+        config.setHeartbeatIntervalSeconds(-1);
+
+        assertThatThrownBy(config::validate)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("node-agent.heartbeat-interval-seconds must be 0 or greater");
+    }
 }

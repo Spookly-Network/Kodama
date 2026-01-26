@@ -8,6 +8,7 @@ The Node Agent is a lightweight Java service that runs on each node and executes
 - Added startup validation for required configuration values.
 - Expanded the startup log to include the effective configuration (sans secrets).
 - Added Brain registration on startup and in-memory caching of the assigned node id.
+- Added a heartbeat scheduler that reports node status and usage to the Brain.
 
 ## How to use / impact
 - Build and run with `./gradlew :node-agent:bootRun` from `backend/`.
@@ -25,6 +26,7 @@ The Node Agent is a lightweight Java service that runs on each node and executes
     - `NODE_AGENT_TAGS`
     - `NODE_AGENT_BASE_URL`
     - `NODE_AGENT_REGISTRATION_ENABLED`
+    - `NODE_AGENT_HEARTBEAT_INTERVAL_SECONDS` (override Brain-provided interval)
     - `NODE_AGENT_WORKSPACE_DIR`
     - `NODE_AGENT_DOCKER_HOST`
     - `NODE_AGENT_AUTH_HEADER_NAME`
@@ -40,6 +42,7 @@ The Node Agent is a lightweight Java service that runs on each node and executes
 ## Edge cases / risks
 - If required configuration is missing, the node agent will exit on startup with a clear error.
 - If Brain registration fails, the node agent will exit on startup and log the error.
+- Heartbeat failures are logged with retries, but do not crash the node agent process.
 - The workspace directory is not created automatically yet.
 
 ## Links
