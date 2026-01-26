@@ -24,33 +24,17 @@ public class NodeAgentStartupLogger implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         logger.info(
-                "Node agent started with config. nodeId={}, nodeName={}, nodeVersion={}, region={}, capacitySlots={}, " +
-                        "devMode={}, tags={}, baseUrl={}, brainBaseUrl={}, registrationEnabled={}, " +
-                        "heartbeatIntervalSeconds={}, dockerHost={}, " +
-                        "workspaceDir={}, cacheDir={}, authHeaderName={}, authTokenPath={}, authCertPath={}, " +
-                        "s3Endpoint={}, s3Region={}, s3Bucket={}, s3AccessKey={}, s3SecretKey={}",
+                "Node agent started. nodeId={}, nodeName={}, nodeVersion={}, region={}, capacitySlots={}, " +
+                        "brainBaseUrl={}, registrationEnabled={}, heartbeatIntervalSeconds={}, dockerHost={}",
                 valueOrDash(config.getNodeId()),
                 config.getNodeName(),
                 config.getNodeVersion(),
                 config.getRegion(),
                 config.getCapacitySlots(),
-                config.isDevMode(),
-                valueOrDash(config.getTags()),
-                valueOrDash(config.getBaseUrl()),
                 config.getBrainBaseUrl(),
                 config.isRegistrationEnabled(),
                 config.getHeartbeatIntervalSeconds(),
-                valueOrDash(config.getDockerHost()),
-                config.getWorkspaceDir(),
-                config.getCacheDir(),
-                valueOrDash(config.getAuth().getHeaderName()),
-                valueOrDash(config.getAuth().getTokenPath()),
-                valueOrDash(config.getAuth().getCertPath()),
-                valueOrDash(config.getS3().getEndpoint()),
-                valueOrDash(config.getS3().getRegion()),
-                valueOrDash(config.getS3().getBucket()),
-                redactIfPresent(config.getS3().getAccessKey()),
-                redactIfPresent(config.getS3().getSecretKey())
+                valueOrDash(config.getDockerHost())
         );
     }
 
@@ -59,12 +43,5 @@ public class NodeAgentStartupLogger implements ApplicationRunner {
             return "-";
         }
         return value;
-    }
-
-    private String redactIfPresent(String value) {
-        if (value == null || value.isBlank()) {
-            return "-";
-        }
-        return "<redacted>";
     }
 }
