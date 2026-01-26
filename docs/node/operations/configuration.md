@@ -40,6 +40,8 @@ Describe the configuration inputs for the node agent and how they map to environ
   and sends it to the Brain using `node-agent.auth.header-name`.
 - When `node-agent.heartbeat-interval-seconds` is `0`, the node agent uses the heartbeat interval
   provided by the Brain during registration.
+- `node-agent.cache-dir` is the root for template cache storage. The node agent creates a
+  `templates/` subdirectory on startup. See `docs/node/operations/template-cache.md` for the layout.
 - S3 configuration is required for template storage. When `node-agent.s3.endpoint` is set, the client
   uses path-style requests for local or custom S3 endpoints.
 
