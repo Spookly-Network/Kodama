@@ -8,6 +8,7 @@ Describe the configuration inputs for the node agent and how they map to environ
 - Added startup validation and a sanitized configuration log line.
 - Added registration-related configuration for Brain startup registration.
 - Added a heartbeat interval override for node-agent heartbeats.
+- Added S3-backed template storage configuration for fetching template tarballs.
 
 ## How to use / impact
 - Configure with environment variables or CLI args (`--node-agent.<key>=...`).
@@ -18,6 +19,10 @@ Describe the configuration inputs for the node agent and how they map to environ
   - `node-agent.capacity-slots` (`NODE_AGENT_CAPACITY_SLOTS`)
   - `node-agent.brain-base-url` (`NODE_AGENT_BRAIN_BASE_URL`)
   - `node-agent.cache-dir` (`NODE_AGENT_CACHE_DIR`)
+  - `node-agent.s3.endpoint` (`NODE_AGENT_S3_ENDPOINT`)
+  - `node-agent.s3.bucket` (`NODE_AGENT_S3_BUCKET`)
+  - `node-agent.s3.access-key` (`NODE_AGENT_S3_ACCESS_KEY`)
+  - `node-agent.s3.secret-key` (`NODE_AGENT_S3_SECRET_KEY`)
 - Optional settings:
   - `node-agent.node-id` (`NODE_AGENT_ID`, assigned on registration)
   - `node-agent.dev-mode` (`NODE_AGENT_DEV_MODE`, default `false`)
@@ -30,21 +35,20 @@ Describe the configuration inputs for the node agent and how they map to environ
   - `node-agent.auth.header-name` (`NODE_AGENT_AUTH_HEADER_NAME`, default `X-Node-Token`)
   - `node-agent.auth.token-path` (`NODE_AGENT_AUTH_TOKEN_PATH`)
   - `node-agent.auth.cert-path` (`NODE_AGENT_AUTH_CERT_PATH`)
-  - `node-agent.s3.endpoint` (`NODE_AGENT_S3_ENDPOINT`)
   - `node-agent.s3.region` (`NODE_AGENT_S3_REGION`)
-  - `node-agent.s3.bucket` (`NODE_AGENT_S3_BUCKET`)
-  - `node-agent.s3.access-key` (`NODE_AGENT_S3_ACCESS_KEY`)
-  - `node-agent.s3.secret-key` (`NODE_AGENT_S3_SECRET_KEY`)
 - When registration is enabled, the node agent reads the token from `node-agent.auth.token-path`
   and sends it to the Brain using `node-agent.auth.header-name`.
 - When `node-agent.heartbeat-interval-seconds` is `0`, the node agent uses the heartbeat interval
   provided by the Brain during registration.
+- S3 configuration is required for template storage. When `node-agent.s3.endpoint` is set, the client
+  uses path-style requests for local or custom S3 endpoints.
 
 ## Edge cases / risks
 - Missing required values stops the node agent at startup with a detailed error.
 - Secrets are redacted in startup logs, but the paths to secrets are not.
 - When `node-agent.registration-enabled=true`, failed Brain registration stops the node agent.
 - If `node-agent.auth.token-path` is set but unreadable, registration fails and the node agent stops.
+- Missing or invalid S3 settings stop the node agent when template storage is initialized.
 
 ## Links
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/config/NodeConfig.java`

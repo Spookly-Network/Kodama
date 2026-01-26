@@ -14,7 +14,12 @@ import org.springframework.boot.test.context.SpringBootTest;
         "node-agent.capacity-slots=4",
         "node-agent.brain-base-url=http://localhost:8080",
         "node-agent.cache-dir=./cache",
-        "node-agent.registration-enabled=false"
+        "node-agent.registration-enabled=false",
+        "node-agent.s3.region=local",
+        "node-agent.s3.bucket=templates",
+        "node-agent.s3.access-key=test-access",
+        "node-agent.s3.secret-key=test-secret",
+        "node-agent.s3.endpoint=http://localhost:9000"
 })
 class NodeAgentApplicationTest {
 
