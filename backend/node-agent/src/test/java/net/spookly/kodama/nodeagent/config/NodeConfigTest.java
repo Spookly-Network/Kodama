@@ -49,4 +49,39 @@ class NodeConfigTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("node-agent.heartbeat-interval-seconds must be 0 or greater");
     }
+
+    @Test
+    void validateRejectsTemplateCacheCheckWhenMissingFields() {
+        NodeConfig config = new NodeConfig();
+        config.setNodeName("Node 1");
+        config.setNodeVersion("1.0.0");
+        config.setRegion("local");
+        config.setCapacitySlots(4);
+        config.setBrainBaseUrl("http://brain:8080");
+        config.setCacheDir("./cache");
+        config.getTemplateCacheCheck().setEnabled(true);
+
+        assertThatThrownBy(config::validate)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("node-agent.template-cache-check.template-id is required")
+                .hasMessageContaining("node-agent.template-cache-check.version is required")
+                .hasMessageContaining("node-agent.template-cache-check.checksum is required");
+    }
+
+    @Test
+    void validateAcceptsTemplateCacheCheckWhenConfigured() {
+        NodeConfig config = new NodeConfig();
+        config.setNodeName("Node 1");
+        config.setNodeVersion("1.0.0");
+        config.setRegion("local");
+        config.setCapacitySlots(4);
+        config.setBrainBaseUrl("http://brain:8080");
+        config.setCacheDir("./cache");
+        config.getTemplateCacheCheck().setEnabled(true);
+        config.getTemplateCacheCheck().setTemplateId("starter");
+        config.getTemplateCacheCheck().setVersion("1.2.3");
+        config.getTemplateCacheCheck().setChecksum("abc123");
+
+        assertThatNoException().isThrownBy(config::validate);
+    }
 }

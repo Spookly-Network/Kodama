@@ -19,6 +19,11 @@ node-agent:
   docker-host: ${NODE_AGENT_DOCKER_HOST:}
   workspace-dir: ${NODE_AGENT_WORKSPACE_DIR:./data}
   cache-dir: ${NODE_AGENT_CACHE_DIR:./cache}
+  template-cache-check:
+    enabled: ${NODE_AGENT_TEMPLATE_CACHE_CHECK_ENABLED:false}
+    template-id: ${NODE_AGENT_TEMPLATE_CACHE_CHECK_TEMPLATE_ID:}
+    version: ${NODE_AGENT_TEMPLATE_CACHE_CHECK_VERSION:}
+    checksum: ${NODE_AGENT_TEMPLATE_CACHE_CHECK_CHECKSUM:}
   auth:
     header-name: ${NODE_AGENT_AUTH_HEADER_NAME:X-Node-Token}
     token-path: ${NODE_AGENT_AUTH_TOKEN_PATH:}

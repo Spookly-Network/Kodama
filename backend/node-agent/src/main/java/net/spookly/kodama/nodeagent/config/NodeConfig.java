@@ -24,6 +24,7 @@ public class NodeConfig {
     private int heartbeatIntervalSeconds;
     private Auth auth = new Auth();
     private S3 s3 = new S3();
+    private TemplateCacheCheck templateCacheCheck = new TemplateCacheCheck();
 
     public void validate() {
         List<String> errors = new ArrayList<>();
@@ -37,6 +38,11 @@ public class NodeConfig {
         }
         if (heartbeatIntervalSeconds < 0) {
             errors.add("node-agent.heartbeat-interval-seconds must be 0 or greater");
+        }
+        if (templateCacheCheck != null && templateCacheCheck.isEnabled()) {
+            addIfBlank(errors, templateCacheCheck.getTemplateId(), "node-agent.template-cache-check.template-id is required");
+            addIfBlank(errors, templateCacheCheck.getVersion(), "node-agent.template-cache-check.version is required");
+            addIfBlank(errors, templateCacheCheck.getChecksum(), "node-agent.template-cache-check.checksum is required");
         }
         if (!errors.isEmpty()) {
             throw new IllegalStateException("Invalid node-agent configuration:\n- " + String.join("\n- ", errors));
@@ -177,6 +183,14 @@ public class NodeConfig {
         this.s3 = s3 == null ? new S3() : s3;
     }
 
+    public TemplateCacheCheck getTemplateCacheCheck() {
+        return templateCacheCheck;
+    }
+
+    public void setTemplateCacheCheck(TemplateCacheCheck templateCacheCheck) {
+        this.templateCacheCheck = templateCacheCheck == null ? new TemplateCacheCheck() : templateCacheCheck;
+    }
+
     public static class Auth {
 
         private String tokenPath;
@@ -254,6 +268,46 @@ public class NodeConfig {
 
         public void setSecretKey(String secretKey) {
             this.secretKey = secretKey;
+        }
+    }
+
+    public static class TemplateCacheCheck {
+
+        private boolean enabled;
+        private String templateId;
+        private String version;
+        private String checksum;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getTemplateId() {
+            return templateId;
+        }
+
+        public void setTemplateId(String templateId) {
+            this.templateId = templateId;
+        }
+
+        public String getVersion() {
+            return version;
+        }
+
+        public void setVersion(String version) {
+            this.version = version;
+        }
+
+        public String getChecksum() {
+            return checksum;
+        }
+
+        public void setChecksum(String checksum) {
+            this.checksum = checksum;
         }
     }
 }
