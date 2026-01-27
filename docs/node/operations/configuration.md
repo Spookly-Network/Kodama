@@ -9,6 +9,7 @@ Describe the configuration inputs for the node agent and how they map to environ
 - Added registration-related configuration for Brain startup registration.
 - Added a heartbeat interval override for node-agent heartbeats.
 - Added S3-backed template storage configuration for fetching template tarballs.
+- Added optional template cache check inputs for manual cache validation at startup.
 
 ## How to use / impact
 - Configure with environment variables or CLI args (`--node-agent.<key>=...`).
@@ -32,6 +33,10 @@ Describe the configuration inputs for the node agent and how they map to environ
   - `node-agent.heartbeat-interval-seconds` (`NODE_AGENT_HEARTBEAT_INTERVAL_SECONDS`, default `0`)
   - `node-agent.workspace-dir` (`NODE_AGENT_WORKSPACE_DIR`, default `./data`)
   - `node-agent.docker-host` (`NODE_AGENT_DOCKER_HOST`)
+  - `node-agent.template-cache-check.enabled` (`NODE_AGENT_TEMPLATE_CACHE_CHECK_ENABLED`, default `false`)
+  - `node-agent.template-cache-check.template-id` (`NODE_AGENT_TEMPLATE_CACHE_CHECK_TEMPLATE_ID`)
+  - `node-agent.template-cache-check.version` (`NODE_AGENT_TEMPLATE_CACHE_CHECK_VERSION`)
+  - `node-agent.template-cache-check.checksum` (`NODE_AGENT_TEMPLATE_CACHE_CHECK_CHECKSUM`)
   - `node-agent.auth.header-name` (`NODE_AGENT_AUTH_HEADER_NAME`, default `X-Node-Token`)
   - `node-agent.auth.token-path` (`NODE_AGENT_AUTH_TOKEN_PATH`)
   - `node-agent.auth.cert-path` (`NODE_AGENT_AUTH_CERT_PATH`)
@@ -42,6 +47,8 @@ Describe the configuration inputs for the node agent and how they map to environ
   provided by the Brain during registration.
 - `node-agent.cache-dir` is the root for template cache storage. The node agent creates a
   `templates/` subdirectory on startup. See `docs/node/operations/template-cache.md` for the layout.
+- When `node-agent.template-cache-check.enabled=true`, the node agent validates a single cached
+  template at startup and logs the cache hit/miss outcome.
 - S3 configuration is required for template storage. When `node-agent.s3.endpoint` is set, the client
   uses path-style requests for local or custom S3 endpoints.
 
@@ -50,6 +57,8 @@ Describe the configuration inputs for the node agent and how they map to environ
 - Secrets are redacted in startup logs, but the paths to secrets are not.
 - When `node-agent.registration-enabled=true`, failed Brain registration stops the node agent.
 - If `node-agent.auth.token-path` is set but unreadable, registration fails and the node agent stops.
+- When `node-agent.template-cache-check.enabled=true`, missing template-id/version/checksum values
+  stop the node agent at startup.
 - Missing or invalid S3 settings stop the node agent when template storage is initialized.
 
 ## Links
