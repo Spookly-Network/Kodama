@@ -25,6 +25,8 @@ Define where the node agent stores cached templates and how cache paths are reso
 - Use `TemplateCachePopulateService.ensureCachedTemplate(templateId, version, checksum, s3Key)` to download and extract a tarball when cache is missing or invalid.
   - Downloads the tarball to a temp file, extracts into a temp directory, then atomically moves into `<templateId>/<version>`.
   - Writes `checksum.sha256` and `metadata.json` before the atomic move.
+  - Validates the downloaded tarball checksum (SHA-256) against the expected checksum before writing cache markers.
+  - If the storage response reports a content length, the download length is verified before extraction.
   - `metadata.json` fields: `templateId`, `version`, `checksum`, `s3Key`, `cachedAt`.
 - For manual validation at startup, set `node-agent.template-cache-check.*` to trigger a single
   cache lookup and log the hit/miss decision.

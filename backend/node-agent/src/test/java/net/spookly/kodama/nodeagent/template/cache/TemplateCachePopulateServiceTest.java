@@ -11,6 +11,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import net.spookly.kodama.nodeagent.config.NodeConfig;
 import net.spookly.kodama.nodeagent.template.storage.TemplateStorageClient;
 import net.spookly.kodama.nodeagent.template.storage.TemplateTarball;
@@ -30,6 +32,7 @@ class TemplateCachePopulateServiceTest {
                 "server.properties", "motd=hello",
                 "config/settings.json", "{\"mode\":\"test\"}"
         ));
+        String checksum = sha256Hex(tarballBytes);
         InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(tarballBytes);
         TemplateCacheLayout layout = createLayout();
         TemplateCachePopulateService service = createService(storageClient, layout);
@@ -37,7 +40,7 @@ class TemplateCachePopulateServiceTest {
         TemplateCacheLookupResult result = service.ensureCachedTemplate(
                 "starter",
                 "1.2.3",
-                "abc123",
+                checksum,
                 "templates/starter/1.2.3.tar"
         );
 
@@ -48,14 +51,14 @@ class TemplateCachePopulateServiceTest {
                 .isEqualTo("{\"mode\":\"test\"}");
 
         TemplateCachePaths paths = layout.resolveTemplateVersion("starter", "1.2.3");
-        assertThat(Files.readString(paths.checksumFile())).isEqualTo("abc123");
+        assertThat(Files.readString(paths.checksumFile())).isEqualTo(checksum);
         assertThat(Files.exists(paths.metadataFile())).isTrue();
         assertThat(storageClient.getFetchCount()).isEqualTo(1);
 
         TemplateCacheLookupResult second = service.ensureCachedTemplate(
                 "starter",
                 "1.2.3",
-                "abc123",
+                checksum,
                 "templates/starter/1.2.3.tar"
         );
         assertThat(second.isCacheHit()).isTrue();
@@ -90,6 +93,21 @@ class TemplateCachePopulateServiceTest {
             tarOutput.finish();
         }
         return outputStream.toByteArray();
+    }
+
+    private String sha256Hex(byte[] data) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(data);
+            StringBuilder builder = new StringBuilder(hash.length * 2);
+            for (byte value : hash) {
+                builder.append(Character.forDigit((value >> 4) & 0xF, 16));
+                builder.append(Character.forDigit(value & 0xF, 16));
+            }
+            return builder.toString();
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 digest is not available", ex);
+        }
     }
 
     private static class InMemoryTemplateStorageClient implements TemplateStorageClient {

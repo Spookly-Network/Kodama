@@ -17,6 +17,9 @@ import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.Locale;
 import java.util.Objects;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.DigestInputStream;
 import net.spookly.kodama.nodeagent.template.storage.TemplateStorageClient;
 import net.spookly.kodama.nodeagent.template.storage.TemplateTarball;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
@@ -90,7 +93,8 @@ public class TemplateCachePopulateService {
             Path tempContentsDir = tempVersionRoot.resolve(TemplateCacheLayout.CONTENTS_DIR_NAME);
             Files.createDirectories(tempContentsDir);
 
-            downloadTarball(paths, s3Key, tarballFile);
+            DownloadResult downloadResult = downloadTarball(paths, s3Key, tarballFile);
+            validateDownload(paths, downloadResult, checksum);
             extractTarball(s3Key, tarballFile, tempContentsDir);
 
             writeChecksum(tempVersionRoot.resolve(TemplateCacheLayout.CHECKSUM_FILENAME), checksum);
@@ -110,12 +114,14 @@ public class TemplateCachePopulateService {
                 );
             }
 
-            logger.info(
-                    "Template cache populated. templateId={}, version={}, checksum={}",
-                    paths.templateId(),
-                    paths.version(),
-                    checksum
-            );
+            if (moved) {
+                logger.info(
+                        "Template cache populated. templateId={}, version={}, checksum={}",
+                        paths.templateId(),
+                        paths.version(),
+                        checksum
+                );
+            }
         } catch (IOException ex) {
             throw new TemplateCacheException(
                     "Failed to populate template cache for templateId=" + paths.templateId() + " version=" + paths.version(),
@@ -129,14 +135,54 @@ public class TemplateCachePopulateService {
         }
     }
 
-    private void downloadTarball(TemplateCachePaths paths, String s3Key, Path tarballFile) throws IOException {
+    private DownloadResult downloadTarball(TemplateCachePaths paths, String s3Key, Path tarballFile) throws IOException {
         try (TemplateTarball tarball = storageClient.getTemplateTarball(paths.templateId(), paths.version(), s3Key);
              InputStream inputStream = tarball.getInputStream();
              OutputStream outputStream = new BufferedOutputStream(
                      Files.newOutputStream(tarballFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
              )) {
-            inputStream.transferTo(outputStream);
+            MessageDigest digest = createSha256Digest();
+            try (DigestInputStream digestInputStream = new DigestInputStream(inputStream, digest)) {
+                long bytesWritten = digestInputStream.transferTo(outputStream);
+                String checksum = toHexLower(digest.digest());
+                return new DownloadResult(checksum, bytesWritten, tarball.getContentLength());
+            }
         }
+    }
+
+    private void validateDownload(TemplateCachePaths paths, DownloadResult downloadResult, String expectedChecksum) {
+        if (downloadResult.contentLength() >= 0 && downloadResult.bytesWritten() != downloadResult.contentLength()) {
+            throw new TemplateCacheException(
+                    "Template tarball length mismatch for templateId=" + paths.templateId()
+                            + " version=" + paths.version()
+                            + " expected=" + downloadResult.contentLength()
+                            + " actual=" + downloadResult.bytesWritten()
+            );
+        }
+        String normalizedExpected = expectedChecksum.trim().toLowerCase(Locale.ROOT);
+        if (!downloadResult.checksum().equals(normalizedExpected)) {
+            throw new TemplateCacheException(
+                    "Template tarball checksum mismatch for templateId=" + paths.templateId()
+                            + " version=" + paths.version()
+            );
+        }
+    }
+
+    private MessageDigest createSha256Digest() {
+        try {
+            return MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException ex) {
+            throw new TemplateCacheException("SHA-256 digest is not available", ex);
+        }
+    }
+
+    private String toHexLower(byte[] bytes) {
+        StringBuilder builder = new StringBuilder(bytes.length * 2);
+        for (byte value : bytes) {
+            builder.append(Character.forDigit((value >> 4) & 0xF, 16));
+            builder.append(Character.forDigit(value & 0xF, 16));
+        }
+        return builder.toString();
     }
 
     private void extractTarball(String s3Key, Path tarballFile, Path destinationDir) throws IOException {
@@ -276,5 +322,8 @@ public class TemplateCachePopulateService {
             String s3Key,
             OffsetDateTime cachedAt
     ) {
+    }
+
+    private record DownloadResult(String checksum, long bytesWritten, long contentLength) {
     }
 }
