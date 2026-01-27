@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -98,8 +99,16 @@ public class TemplateCachePopulateService {
                     new TemplateCacheMetadata(paths.templateId(), paths.version(), checksum, s3Key, OffsetDateTime.now())
             );
 
-            moveToFinalLocation(tempVersionRoot, paths.versionRoot());
-            moved = true;
+            try {
+                moveToFinalLocation(tempVersionRoot, paths.versionRoot());
+                moved = true;
+            } catch (FileAlreadyExistsException ex) {
+                logger.info(
+                        "Template cache already populated by another worker. templateId={}, version={}",
+                        paths.templateId(),
+                        paths.version()
+                );
+            }
 
             logger.info(
                     "Template cache populated. templateId={}, version={}, checksum={}",
