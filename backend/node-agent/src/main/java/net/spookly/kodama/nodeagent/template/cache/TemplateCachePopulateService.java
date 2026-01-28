@@ -16,14 +16,19 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.DigestInputStream;
+import net.spookly.kodama.nodeagent.config.NodeConfig;
 import net.spookly.kodama.nodeagent.template.storage.TemplateStorageClient;
 import net.spookly.kodama.nodeagent.template.storage.TemplateTarball;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
@@ -42,17 +47,20 @@ public class TemplateCachePopulateService {
     private final TemplateCacheLookupService lookupService;
     private final TemplateStorageClient storageClient;
     private final ObjectMapper objectMapper;
+    private final NodeConfig.TemplateCacheLimits cacheLimits;
 
     public TemplateCachePopulateService(
             TemplateCacheLayout layout,
             TemplateCacheLookupService lookupService,
             TemplateStorageClient storageClient,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            NodeConfig config
     ) {
         this.layout = Objects.requireNonNull(layout, "layout");
         this.lookupService = Objects.requireNonNull(lookupService, "lookupService");
         this.storageClient = Objects.requireNonNull(storageClient, "storageClient");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
+        this.cacheLimits = Objects.requireNonNull(config, "config").getTemplateCacheLimits();
     }
 
     public TemplateCacheLookupResult ensureCachedTemplate(
@@ -155,7 +163,7 @@ public class TemplateCachePopulateService {
     }
 
     private void validateDownload(TemplateCachePaths paths, DownloadResult downloadResult, String expectedChecksum) {
-        if (downloadResult.contentLength() >= 0 && downloadResult.bytesWritten() != downloadResult.contentLength()) {
+        if (downloadResult.contentLength() > 0 && downloadResult.bytesWritten() != downloadResult.contentLength()) {
             throw new TemplateCacheException(
                     "Template tarball length mismatch for templateId=" + paths.templateId()
                             + " version=" + paths.version()
@@ -195,12 +203,22 @@ public class TemplateCachePopulateService {
              InputStream archiveStream = wrapIfGzip(s3Key, bufferedInputStream);
              TarArchiveInputStream tarInputStream = new TarArchiveInputStream(archiveStream)) {
 
+            long maxExtractedBytes = cacheLimits.getMaxExtractedBytes();
+            long maxEntries = cacheLimits.getMaxEntries();
+            long extractedBytes = 0;
+            long entryCount = 0;
+            Map<Path, Integer> directoryModes = new HashMap<>();
+
             TarArchiveEntry entry;
             while ((entry = tarInputStream.getNextTarEntry()) != null) {
+                entryCount++;
+                if (entryCount > maxEntries) {
+                    throw new TemplateCacheException("Template tarball exceeds max entry count of " + maxEntries);
+                }
                 if (entry.isDirectory()) {
                     Path dirPath = resolveEntryPath(destinationDir, entry.getName());
                     Files.createDirectories(dirPath);
-                    applyPermissions(dirPath, entry);
+                    directoryModes.put(dirPath, entry.getMode());
                     continue;
                 }
                 if (entry.isSymbolicLink() || entry.isLink()) {
@@ -208,13 +226,28 @@ public class TemplateCachePopulateService {
                 }
                 Path entryPath = resolveEntryPath(destinationDir, entry.getName());
                 Files.createDirectories(entryPath.getParent());
+                long entrySize = entry.getSize();
+                if (entrySize > 0 && extractedBytes + entrySize > maxExtractedBytes) {
+                    throw new TemplateCacheException(
+                            "Template tarball exceeds max extracted bytes of " + maxExtractedBytes
+                                    + " while extracting " + entry.getName()
+                    );
+                }
                 try (OutputStream outputStream = new BufferedOutputStream(
                         Files.newOutputStream(entryPath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
                 )) {
-                    tarInputStream.transferTo(outputStream);
+                    extractedBytes = copyEntryWithLimit(
+                            tarInputStream,
+                            outputStream,
+                            extractedBytes,
+                            maxExtractedBytes,
+                            entry.getName()
+                    );
                 }
-                applyPermissions(entryPath, entry);
+                applyPermissions(entryPath, entry.getMode());
             }
+
+            applyDirectoryPermissions(directoryModes);
         }
     }
 
@@ -251,13 +284,46 @@ public class TemplateCachePopulateService {
         return resolved;
     }
 
-    private void applyPermissions(Path entryPath, TarArchiveEntry entry) throws IOException {
-        PosixFileAttributeView attributeView = Files.getFileAttributeView(entryPath, PosixFileAttributeView.class);
-        if (attributeView != null) {
-            Files.setPosixFilePermissions(entryPath, toPosixPermissions(entry.getMode()));
+    private long copyEntryWithLimit(
+            TarArchiveInputStream tarInputStream,
+            OutputStream outputStream,
+            long extractedBytes,
+            long maxExtractedBytes,
+            String entryName
+    ) throws IOException {
+        byte[] buffer = new byte[8192];
+        int read;
+        while ((read = tarInputStream.read(buffer)) != -1) {
+            outputStream.write(buffer, 0, read);
+            extractedBytes += read;
+            if (extractedBytes > maxExtractedBytes) {
+                throw new TemplateCacheException(
+                        "Template tarball exceeds max extracted bytes of " + maxExtractedBytes
+                                + " while extracting " + entryName
+                );
+            }
+        }
+        return extractedBytes;
+    }
+
+    private void applyDirectoryPermissions(Map<Path, Integer> directoryModes) throws IOException {
+        if (directoryModes.isEmpty()) {
             return;
         }
-        applyExecutableFallback(entryPath, entry.getMode());
+        List<Map.Entry<Path, Integer>> entries = new ArrayList<>(directoryModes.entrySet());
+        entries.sort(Comparator.comparingInt(entry -> entry.getKey().getNameCount()).reversed());
+        for (Map.Entry<Path, Integer> entry : entries) {
+            applyPermissions(entry.getKey(), entry.getValue());
+        }
+    }
+
+    private void applyPermissions(Path entryPath, int mode) throws IOException {
+        PosixFileAttributeView attributeView = Files.getFileAttributeView(entryPath, PosixFileAttributeView.class);
+        if (attributeView != null) {
+            Files.setPosixFilePermissions(entryPath, toPosixPermissions(mode));
+            return;
+        }
+        applyExecutableFallback(entryPath, mode);
     }
 
     private Set<PosixFilePermission> toPosixPermissions(int mode) {

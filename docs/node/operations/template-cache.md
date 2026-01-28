@@ -27,6 +27,7 @@ Define where the node agent stores cached templates and how cache paths are reso
   - Writes `checksum.sha256` and `metadata.json` before the atomic move.
   - Validates the downloaded tarball checksum (SHA-256) against the expected checksum before writing cache markers.
   - If the storage response reports a content length, the download length is verified before extraction.
+  - Enforces extraction limits (`node-agent.template-cache-limits.*`) for total extracted bytes and entry count.
   - Restores POSIX permissions from tar entry modes when supported; non-POSIX filesystems fall back to best-effort executable bits.
   - `metadata.json` fields: `templateId`, `version`, `checksum`, `s3Key`, `cachedAt`.
 - For manual validation at startup, set `node-agent.template-cache-check.*` to trigger a single
@@ -37,6 +38,7 @@ Define where the node agent stores cached templates and how cache paths are reso
 - Invalid cache paths or permission failures stop the node agent at startup.
 - Unreadable checksum files throw `TemplateCacheException` and should be treated as cache errors.
 - Partial downloads or extraction failures are cleaned up before the error is raised.
+- Tarballs that exceed extraction limits are rejected and cleaned up.
 
 ## Links
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/template/cache/TemplateCacheLayout.java`

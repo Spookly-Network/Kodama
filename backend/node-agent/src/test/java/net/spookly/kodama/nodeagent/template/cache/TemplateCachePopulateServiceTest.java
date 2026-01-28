@@ -1,6 +1,7 @@
 package net.spookly.kodama.nodeagent.template.cache;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -39,8 +40,9 @@ class TemplateCachePopulateServiceTest {
         ));
         String checksum = sha256Hex(tarballBytes);
         InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(tarballBytes);
-        TemplateCacheLayout layout = createLayout();
-        TemplateCachePopulateService service = createService(storageClient, layout);
+        NodeConfig config = createConfig();
+        TemplateCacheLayout layout = createLayout(config);
+        TemplateCachePopulateService service = createService(storageClient, layout, config);
 
         TemplateCacheLookupResult result = service.ensureCachedTemplate(
                 "starter",
@@ -78,8 +80,9 @@ class TemplateCachePopulateServiceTest {
         ));
         String checksum = sha256Hex(tarballBytes);
         InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(tarballBytes);
-        TemplateCacheLayout layout = createLayout();
-        TemplateCachePopulateService service = createService(storageClient, layout);
+        NodeConfig config = createConfig();
+        TemplateCacheLayout layout = createLayout(config);
+        TemplateCachePopulateService service = createService(storageClient, layout, config);
 
         TemplateCacheLookupResult result = service.ensureCachedTemplate(
                 "starter",
@@ -97,16 +100,68 @@ class TemplateCachePopulateServiceTest {
         );
     }
 
-    private TemplateCachePopulateService createService(TemplateStorageClient storageClient, TemplateCacheLayout layout) {
+    @Test
+    void rejectsTarballExceedingMaxExtractedBytes() throws Exception {
+        byte[] tarballBytes = createTarball(Map.of(
+                "server.properties", "motd=hello"
+        ));
+        String checksum = sha256Hex(tarballBytes);
+        InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(tarballBytes);
+        NodeConfig config = createConfig();
+        config.getTemplateCacheLimits().setMaxExtractedBytes(4);
+        TemplateCacheLayout layout = createLayout(config);
+        TemplateCachePopulateService service = createService(storageClient, layout, config);
+
+        assertThatThrownBy(() -> service.ensureCachedTemplate(
+                "starter",
+                "1.2.5",
+                checksum,
+                "templates/starter/1.2.5.tar"
+        )).isInstanceOf(TemplateCacheException.class)
+                .hasMessageContaining("max extracted bytes");
+    }
+
+    @Test
+    void rejectsTarballExceedingMaxEntries() throws Exception {
+        byte[] tarballBytes = createTarball(Map.of(
+                "one.txt", "1",
+                "two.txt", "2",
+                "three.txt", "3"
+        ));
+        String checksum = sha256Hex(tarballBytes);
+        InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(tarballBytes);
+        NodeConfig config = createConfig();
+        config.getTemplateCacheLimits().setMaxEntries(2);
+        TemplateCacheLayout layout = createLayout(config);
+        TemplateCachePopulateService service = createService(storageClient, layout, config);
+
+        assertThatThrownBy(() -> service.ensureCachedTemplate(
+                "starter",
+                "1.2.6",
+                checksum,
+                "templates/starter/1.2.6.tar"
+        )).isInstanceOf(TemplateCacheException.class)
+                .hasMessageContaining("max entry count");
+    }
+
+    private TemplateCachePopulateService createService(
+            TemplateStorageClient storageClient,
+            TemplateCacheLayout layout,
+            NodeConfig config
+    ) {
         TemplateCacheLookupService lookupService = new TemplateCacheLookupService(layout);
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
-        return new TemplateCachePopulateService(layout, lookupService, storageClient, mapper);
+        return new TemplateCachePopulateService(layout, lookupService, storageClient, mapper, config);
     }
 
-    private TemplateCacheLayout createLayout() {
+    private NodeConfig createConfig() {
         NodeConfig config = new NodeConfig();
         config.setCacheDir(tempDir.resolve("cache-root").toString());
+        return config;
+    }
+
+    private TemplateCacheLayout createLayout(NodeConfig config) {
         return new TemplateCacheLayout(config);
     }
 
