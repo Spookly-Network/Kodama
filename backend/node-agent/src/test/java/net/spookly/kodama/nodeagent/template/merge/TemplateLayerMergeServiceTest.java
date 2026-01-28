@@ -6,6 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+
+import net.spookly.kodama.nodeagent.instance.workspace.InstanceVariableSubstitutionService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -16,7 +19,7 @@ class TemplateLayerMergeServiceTest {
 
     @Test
     void mergesLayersWithLastLayerWinning() throws Exception {
-        TemplateLayerMergeService service = new TemplateLayerMergeService();
+        TemplateLayerMergeService service = new TemplateLayerMergeService(new InstanceVariableSubstitutionService());
         Path layerOne = createLayer("base", "1.0.0", "config/settings.yml", "from-base");
         Path layerTwo = createLayer("overlay", "1.0.0", "config/settings.yml", "from-overlay");
         Path targetDir = tempDir.resolve("workspace");
@@ -35,7 +38,7 @@ class TemplateLayerMergeServiceTest {
 
     @Test
     void mergesDirectoryTreesWithoutRemovingEarlierFiles() throws Exception {
-        TemplateLayerMergeService service = new TemplateLayerMergeService();
+        TemplateLayerMergeService service = new TemplateLayerMergeService(new InstanceVariableSubstitutionService());
         Path layerOne = createLayer("base", "1.0.0", "maps/base.txt", "base");
         Path layerTwo = createLayer("overlay", "1.0.0", "maps/addon.txt", "addon");
         Path targetDir = tempDir.resolve("workspace");
@@ -55,7 +58,7 @@ class TemplateLayerMergeServiceTest {
 
     @Test
     void sortsLayersByOrderIndexBeforeMerging() throws Exception {
-        TemplateLayerMergeService service = new TemplateLayerMergeService();
+        TemplateLayerMergeService service = new TemplateLayerMergeService(new InstanceVariableSubstitutionService());
         Path layerOne = createLayer("base", "1.0.0", "server.txt", "from-base");
         Path layerTwo = createLayer("overlay", "1.0.0", "server.txt", "from-overlay");
         Path targetDir = tempDir.resolve("workspace");
@@ -74,7 +77,7 @@ class TemplateLayerMergeServiceTest {
 
     @Test
     void rejectsDuplicateOrderIndexes() throws Exception {
-        TemplateLayerMergeService service = new TemplateLayerMergeService();
+        TemplateLayerMergeService service = new TemplateLayerMergeService(new InstanceVariableSubstitutionService());
         Path layerOne = createLayer("base", "1.0.0", "a.txt", "one");
         Path layerTwo = createLayer("overlay", "1.0.0", "b.txt", "two");
 
@@ -92,7 +95,7 @@ class TemplateLayerMergeServiceTest {
 
     @Test
     void replacesDirectoryWithFileWhenLaterLayerOverrides() throws Exception {
-        TemplateLayerMergeService service = new TemplateLayerMergeService();
+        TemplateLayerMergeService service = new TemplateLayerMergeService(new InstanceVariableSubstitutionService());
         Path layerOne = createLayer("base", "1.0.0", "conflict/file.txt", "dir-content");
         Path layerTwo = createLayer("overlay", "1.0.0", "conflict", "file-content");
         Path targetDir = tempDir.resolve("workspace");
@@ -113,7 +116,7 @@ class TemplateLayerMergeServiceTest {
 
     @Test
     void clearsExistingWorkspaceBeforeMerging() throws Exception {
-        TemplateLayerMergeService service = new TemplateLayerMergeService();
+        TemplateLayerMergeService service = new TemplateLayerMergeService(new InstanceVariableSubstitutionService());
         Path layerOne = createLayer("base", "1.0.0", "config/current.yml", "current");
         Path targetDir = tempDir.resolve("workspace");
         Files.createDirectories(targetDir);
@@ -127,6 +130,22 @@ class TemplateLayerMergeServiceTest {
 
         assertThat(Files.exists(targetDir.resolve("stale.txt"))).isFalse();
         assertThat(Files.readString(targetDir.resolve("config/current.yml"))).isEqualTo("current");
+    }
+
+    @Test
+    void substitutesVariablesAfterMerge() throws Exception {
+        TemplateLayerMergeService service = new TemplateLayerMergeService(new InstanceVariableSubstitutionService());
+        Path layerOne = createLayer("base", "1.0.0", "config/server.properties", "name=${SERVER_NAME}");
+        Path targetDir = tempDir.resolve("workspace");
+
+        service.mergeLayers(
+                "instance-7",
+                targetDir,
+                List.of(new TemplateLayerSource("base", "1.0.0", 0, layerOne)),
+                Map.of("SERVER_NAME", "alpha")
+        );
+
+        assertThat(Files.readString(targetDir.resolve("config/server.properties"))).isEqualTo("name=alpha");
     }
 
     private Path createLayer(String templateId, String version, String relativeFile, String contents) throws Exception {
