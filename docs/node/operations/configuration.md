@@ -51,6 +51,9 @@ Describe the configuration inputs for the node agent and how they map to environ
   provided by the Brain during registration.
 - `node-agent.cache-dir` is the root for template cache storage. The node agent creates a
   `templates/` subdirectory on startup. See `docs/node/operations/template-cache.md` for the layout.
+- `node-agent.workspace-dir` is the root for instance workspaces. The node agent creates
+  `instances/<instanceId>/{merged,logs,temp}` on demand when preparing a workspace.
+- See `docs/node/operations/instance-workspaces.md` for the full layout details.
 - Dev-mode defaults to `node-agent.dev-mode` and can be toggled at runtime via `POST /api/node/dev-mode`
   with body `{ "devMode": true|false }`. The runtime value is in-memory only; restarting the node agent
   resets it to the configured default.
@@ -75,3 +78,4 @@ Describe the configuration inputs for the node agent and how they map to environ
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/devmode/controller/DevModeController.java`
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/devmode/service/DevModeService.java`
 - `backend/node-agent/src/main/resources/application.yml`
+- `docs/node/operations/instance-workspaces.md`
