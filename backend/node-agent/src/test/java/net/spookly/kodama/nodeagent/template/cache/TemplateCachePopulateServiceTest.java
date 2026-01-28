@@ -19,6 +19,7 @@ import java.util.Set;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import net.spookly.kodama.nodeagent.config.NodeConfig;
+import net.spookly.kodama.nodeagent.devmode.service.DevModeService;
 import net.spookly.kodama.nodeagent.template.storage.TemplateStorageClient;
 import net.spookly.kodama.nodeagent.template.storage.TemplateTarball;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
@@ -152,7 +153,8 @@ class TemplateCachePopulateServiceTest {
         TemplateCacheLookupService lookupService = new TemplateCacheLookupService(layout);
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
-        return new TemplateCachePopulateService(layout, lookupService, storageClient, mapper, config);
+        DevModeService devModeService = new DevModeService(config);
+        return new TemplateCachePopulateService(layout, lookupService, storageClient, mapper, devModeService, config);
     }
 
     private NodeConfig createConfig() {
