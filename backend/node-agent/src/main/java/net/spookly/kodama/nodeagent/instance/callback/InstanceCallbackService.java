@@ -41,12 +41,12 @@ public class InstanceCallbackService {
         UUID nodeId = resolveNodeId();
         URI endpoint = buildEndpoint(nodeId, instanceId, action);
         String authToken = tokenReader.readToken();
-        if (authToken == null || authToken.isBlank()) {
-            throw new InstancePrepareException("Node auth token is required for instance callbacks");
-        }
         String headerName = config.getAuth().getHeaderName();
-        if (headerName == null || headerName.isBlank()) {
+        if (authToken != null && !authToken.isBlank() && (headerName == null || headerName.isBlank())) {
             throw new InstancePrepareException("node-agent.auth.header-name is required for instance callbacks");
+        }
+        if (authToken == null || authToken.isBlank()) {
+            authToken = null;
         }
         callbackClient.sendCallback(endpoint, headerName, authToken);
     }

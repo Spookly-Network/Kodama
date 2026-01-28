@@ -27,6 +27,7 @@ Body: `NodePrepareInstanceRequest`
   "layers": [
     {
       "templateVersionId": "uuid",
+      "templateId": "uuid",
       "version": "string",
       "checksum": "string",
       "s3Key": "string",

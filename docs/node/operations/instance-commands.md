@@ -13,12 +13,12 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
   - ensures each template layer is cached (downloading if needed),
   - merges layers into the instance `merged` workspace,
   - applies variable substitution,
-  - calls back to the Brain with `/api/nodes/{nodeId}/instances/{instanceId}/prepared` using the node auth token header.
+  - calls back to the Brain with `/api/nodes/{nodeId}/instances/{instanceId}/prepared` (includes the node auth header when configured).
 - `variables` and `variablesJson` are mutually exclusive. When `variablesJson` is provided, the node agent parses it as a JSON map.
-- Template cache lookups use `templateVersionId` from the prepare payload as the cache key (because the payload does not include `templateId`).
+- Template cache lookups use `templateId` from the prepare payload as the cache key.
 
 ## Edge cases / risks
-- Invalid payloads (missing instanceId, empty layers, invalid JSON) return HTTP 400.
+- Invalid payloads (missing instanceId, empty layers, invalid JSON) return HTTP 400 and trigger a `/failed` callback when possible.
 - Cache download/merge failures result in HTTP 500 and a `/failed` callback attempt.
 - Missing node auth token or invalid Brain base URL prevents callbacks and fails the prepare request.
 

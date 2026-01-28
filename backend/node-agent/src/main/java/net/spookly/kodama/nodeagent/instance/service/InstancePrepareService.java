@@ -49,8 +49,8 @@ public class InstancePrepareService {
             throw new InstancePrepareValidationException("prepare request is required");
         }
         UUID instanceId = requireInstanceId(request.instanceId());
-        List<NodePrepareInstanceLayer> layers = requireLayers(request.layers());
         try {
+            List<NodePrepareInstanceLayer> layers = requireLayers(request.layers());
             logger.info("Preparing instance workspace. instanceId={} layers={}", instanceId, layers.size());
             InstanceWorkspacePaths workspace = workspaceManager.prepareWorkspace(instanceId.toString());
             Map<String, String> variables = variablesResolver.resolve(request.variables(), request.variablesJson());
@@ -62,6 +62,12 @@ public class InstancePrepareService {
 
             mergeService.mergeLayers(instanceId.toString(), workspace.mergedDir(), sources, variables);
         } catch (InstancePrepareValidationException ex) {
+            logger.warn("Instance preparation rejected. instanceId={}", instanceId, ex);
+            try {
+                callbackService.sendFailed(instanceId);
+            } catch (RuntimeException callbackEx) {
+                logger.warn("Failed to send prepare failure callback. instanceId={}", instanceId, callbackEx);
+            }
             throw ex;
         } catch (RuntimeException ex) {
             logger.warn("Instance preparation failed. instanceId={}", instanceId, ex);
@@ -86,7 +92,8 @@ public class InstancePrepareService {
         if (layer == null) {
             throw new InstancePrepareValidationException("template layer is required");
         }
-        UUID templateVersionId = requireTemplateVersionId(layer.templateVersionId());
+        requireTemplateVersionId(layer.templateVersionId());
+        UUID templateId = requireTemplateId(layer.templateId());
         String version = requireValue("version", layer.version());
         String checksum = requireValue("checksum", layer.checksum());
         String s3Key = requireValue("s3Key", layer.s3Key());
@@ -94,7 +101,7 @@ public class InstancePrepareService {
         if (orderIndex < 0) {
             throw new InstancePrepareValidationException("layer orderIndex must be >= 0");
         }
-        String templateKey = templateVersionId.toString();
+        String templateKey = templateId.toString();
         TemplateCacheLookupResult cached = cachePopulateService.ensureCachedTemplate(
                 templateKey,
                 version,
@@ -116,6 +123,13 @@ public class InstancePrepareService {
             throw new InstancePrepareValidationException("templateVersionId is required");
         }
         return templateVersionId;
+    }
+
+    private UUID requireTemplateId(UUID templateId) {
+        if (templateId == null) {
+            throw new InstancePrepareValidationException("templateId is required");
+        }
+        return templateId;
     }
 
     private List<NodePrepareInstanceLayer> requireLayers(List<NodePrepareInstanceLayer> layers) {
