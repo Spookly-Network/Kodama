@@ -49,9 +49,11 @@ public class InstancePrepareService {
             throw new InstancePrepareValidationException("prepare request is required");
         }
         UUID instanceId = requireInstanceId(request.instanceId());
+        int layerCount;
         try {
             List<NodePrepareInstanceLayer> layers = requireLayers(request.layers());
-            logger.info("Preparing instance workspace. instanceId={} layers={}", instanceId, layers.size());
+            layerCount = layers.size();
+            logger.info("Preparing instance workspace. instanceId={} layers={}", instanceId, layerCount);
             InstanceWorkspacePaths workspace = workspaceManager.prepareWorkspace(instanceId.toString());
             Map<String, String> variables = variablesResolver.resolve(request.variables(), request.variablesJson());
 
@@ -81,7 +83,7 @@ public class InstancePrepareService {
 
         try {
             callbackService.sendPrepared(instanceId);
-            logger.info("Instance preparation complete. instanceId={} layers={}", instanceId, layers.size());
+            logger.info("Instance preparation complete. instanceId={} layers={}", instanceId, layerCount);
         } catch (RuntimeException ex) {
             logger.warn("Prepared callback failed. instanceId={}", instanceId, ex);
             throw ex;
