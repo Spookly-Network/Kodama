@@ -311,7 +311,7 @@ public class TemplateCachePopulateService {
             return;
         }
         List<Map.Entry<Path, Integer>> entries = new ArrayList<>(directoryModes.entrySet());
-        entries.sort(Comparator.comparingInt(entry -> entry.getKey().getNameCount()).reversed());
+        entries.sort(Comparator.<Map.Entry<Path, Integer>>comparingInt(entry -> entry.getKey().getNameCount()).reversed());
         for (Map.Entry<Path, Integer> entry : entries) {
             applyPermissions(entry.getKey(), entry.getValue());
         }
