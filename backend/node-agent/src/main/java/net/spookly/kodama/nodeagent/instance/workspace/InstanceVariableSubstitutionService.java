@@ -18,6 +18,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import net.spookly.kodama.nodeagent.config.NodeConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -27,6 +28,13 @@ public class InstanceVariableSubstitutionService {
 
     private static final Logger logger = LoggerFactory.getLogger(InstanceVariableSubstitutionService.class);
     private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\$\\{([A-Za-z0-9_]+)}");
+
+    private final long maxFileBytes;
+
+    public InstanceVariableSubstitutionService(NodeConfig config) {
+        NodeConfig.VariableSubstitution settings = Objects.requireNonNull(config, "config").getVariableSubstitution();
+        this.maxFileBytes = settings == null ? 0L : settings.getMaxFileBytes();
+    }
 
     public VariableSubstitutionResult substituteVariables(
             String instanceId,
@@ -46,6 +54,7 @@ public class InstanceVariableSubstitutionService {
         int scanned = 0;
         int updated = 0;
         int skippedBinary = 0;
+        int skippedLarge = 0;
         int unchanged = 0;
 
         try (Stream<Path> paths = Files.walk(root)) {
@@ -59,6 +68,7 @@ public class InstanceVariableSubstitutionService {
                     case UPDATED -> updated++;
                     case UNCHANGED -> unchanged++;
                     case SKIPPED_BINARY -> skippedBinary++;
+                    case SKIPPED_LARGE -> skippedLarge++;
                 }
             }
         } catch (IOException ex) {
@@ -68,19 +78,30 @@ public class InstanceVariableSubstitutionService {
             );
         }
 
-        VariableSubstitutionResult result = new VariableSubstitutionResult(scanned, updated, skippedBinary, unchanged);
+        VariableSubstitutionResult result = new VariableSubstitutionResult(
+                scanned,
+                updated,
+                skippedBinary,
+                skippedLarge,
+                unchanged
+        );
         logger.info(
-                "Variable substitution complete. instanceId={} scanned={} updated={} skippedBinary={} unchanged={}",
+                "Variable substitution complete. instanceId={} scanned={} updated={} skippedBinary={} skippedLarge={} unchanged={}",
                 normalizedInstanceId,
                 result.filesScanned(),
                 result.filesUpdated(),
                 result.filesSkippedBinary(),
+                result.filesSkippedLarge(),
                 result.filesUnchanged()
         );
         return result;
     }
 
     private SubstitutionOutcome substituteFile(Path path, Map<String, String> variables) {
+        long size = readFileSize(path);
+        if (maxFileBytes > 0 && size > maxFileBytes) {
+            return SubstitutionOutcome.SKIPPED_LARGE;
+        }
         byte[] bytes;
         try {
             bytes = Files.readAllBytes(path);
@@ -112,6 +133,14 @@ public class InstanceVariableSubstitutionService {
             throw new InstanceWorkspaceException("Failed to write substituted file: " + path, ex);
         }
         return SubstitutionOutcome.UPDATED;
+    }
+
+    private long readFileSize(Path path) {
+        try {
+            return Files.size(path);
+        } catch (IOException ex) {
+            throw new InstanceWorkspaceException("Failed to read file size for substitution: " + path, ex);
+        }
     }
 
     private boolean looksBinary(byte[] bytes) {
@@ -185,6 +214,7 @@ public class InstanceVariableSubstitutionService {
     private enum SubstitutionOutcome {
         UPDATED,
         UNCHANGED,
-        SKIPPED_BINARY
+        SKIPPED_BINARY,
+        SKIPPED_LARGE
     }
 }

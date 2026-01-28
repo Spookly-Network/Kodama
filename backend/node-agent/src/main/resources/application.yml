@@ -25,6 +25,8 @@ node-agent:
   template-cache-limits:
     max-extracted-bytes: ${NODE_AGENT_TEMPLATE_CACHE_LIMITS_MAX_EXTRACTED_BYTES:10737418240}
     max-entries: ${NODE_AGENT_TEMPLATE_CACHE_LIMITS_MAX_ENTRIES:100000}
+  variable-substitution:
+    max-file-bytes: ${NODE_AGENT_VARIABLE_SUBSTITUTION_MAX_FILE_BYTES:1048576}
   auth:
     header-name: ${NODE_AGENT_AUTH_HEADER_NAME:X-Node-Token}
     token-path: ${NODE_AGENT_AUTH_TOKEN_PATH:}

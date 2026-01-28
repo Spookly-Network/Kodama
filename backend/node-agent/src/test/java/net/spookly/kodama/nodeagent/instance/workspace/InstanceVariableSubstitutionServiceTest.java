@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
+import net.spookly.kodama.nodeagent.config.NodeConfig;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -15,7 +16,7 @@ class InstanceVariableSubstitutionServiceTest {
     @TempDir
     Path tempDir;
 
-    private final InstanceVariableSubstitutionService service = new InstanceVariableSubstitutionService();
+    private final InstanceVariableSubstitutionService service = createService(0L);
 
     @Test
     void substitutesVariablesInTextFiles() throws Exception {
@@ -69,6 +70,32 @@ class InstanceVariableSubstitutionServiceTest {
 
         assertThat(Files.readString(config)).isEqualTo("value=${UNKNOWN}");
         assertThat(result.filesUpdated()).isEqualTo(0);
+        assertThat(result.filesSkippedLarge()).isEqualTo(0);
         assertThat(result.filesUnchanged()).isEqualTo(1);
+    }
+
+    @Test
+    void skipsLargeFiles() throws Exception {
+        InstanceVariableSubstitutionService limitedService = createService(4L);
+        Path workspace = tempDir.resolve("workspace-large");
+        Files.createDirectories(workspace);
+        Path config = workspace.resolve("config.yml");
+        Files.writeString(config, "value=${A}");
+
+        VariableSubstitutionResult result = limitedService.substituteVariables(
+                "instance-4",
+                workspace,
+                Map.of("A", "value")
+        );
+
+        assertThat(Files.readString(config)).isEqualTo("value=${A}");
+        assertThat(result.filesSkippedLarge()).isEqualTo(1);
+        assertThat(result.filesUpdated()).isEqualTo(0);
+    }
+
+    private InstanceVariableSubstitutionService createService(long maxFileBytes) {
+        NodeConfig config = new NodeConfig();
+        config.getVariableSubstitution().setMaxFileBytes(maxFileBytes);
+        return new InstanceVariableSubstitutionService(config);
     }
 }

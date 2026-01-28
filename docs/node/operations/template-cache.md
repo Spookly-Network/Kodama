@@ -51,6 +51,8 @@ Define where the node agent stores cached templates and how cache paths are reso
   deleted directories, and deleted bytes.
 - Purge operations are restricted to the node's template cache root (`<cacheDir>/templates`) and will
   refuse to delete paths outside that directory.
+- During prepare commands, the node agent uses `templateVersionId` from the payload as the cache key
+  (since the payload does not include `templateId`).
 
 ## Edge cases / risks
 - `templateId` and `version` must be single path segments (no slashes or `..`).

@@ -26,6 +26,7 @@ public class NodeConfig {
     private S3 s3 = new S3();
     private TemplateCacheCheck templateCacheCheck = new TemplateCacheCheck();
     private TemplateCacheLimits templateCacheLimits = new TemplateCacheLimits();
+    private VariableSubstitution variableSubstitution = new VariableSubstitution();
 
     public void validate() {
         List<String> errors = new ArrayList<>();
@@ -54,6 +55,11 @@ public class NodeConfig {
             if (templateCacheLimits.getMaxEntries() <= 0) {
                 errors.add("node-agent.template-cache-limits.max-entries must be greater than 0");
             }
+        }
+        if (variableSubstitution == null) {
+            errors.add("node-agent.variable-substitution is required");
+        } else if (variableSubstitution.getMaxFileBytes() < 0) {
+            errors.add("node-agent.variable-substitution.max-file-bytes must be 0 or greater");
         }
         if (!errors.isEmpty()) {
             throw new IllegalStateException("Invalid node-agent configuration:\n- " + String.join("\n- ", errors));
@@ -210,6 +216,14 @@ public class NodeConfig {
         this.templateCacheLimits = templateCacheLimits == null ? new TemplateCacheLimits() : templateCacheLimits;
     }
 
+    public VariableSubstitution getVariableSubstitution() {
+        return variableSubstitution;
+    }
+
+    public void setVariableSubstitution(VariableSubstitution variableSubstitution) {
+        this.variableSubstitution = variableSubstitution == null ? new VariableSubstitution() : variableSubstitution;
+    }
+
     public static class Auth {
 
         private String tokenPath;
@@ -349,6 +363,19 @@ public class NodeConfig {
 
         public void setMaxEntries(int maxEntries) {
             this.maxEntries = maxEntries;
+        }
+    }
+
+    public static class VariableSubstitution {
+
+        private long maxFileBytes = 1024 * 1024;
+
+        public long getMaxFileBytes() {
+            return maxFileBytes;
+        }
+
+        public void setMaxFileBytes(long maxFileBytes) {
+            this.maxFileBytes = maxFileBytes;
         }
     }
 }

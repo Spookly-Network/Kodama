@@ -16,6 +16,7 @@ Describe how cached template layers are merged into an instance workspace.
 - The merged workspace directory is cleared before applying layers to avoid stale files.
 - Output is written into the instance `merged` directory under `node-agent.workspace-dir`.
 - If variables are supplied, placeholders in text files are replaced after merge.
+- Variable substitution respects `node-agent.variable-substitution.max-file-bytes` and skips larger files.
 
 ## Edge cases / risks
 - Duplicate `orderIndex` values are rejected to avoid non-deterministic merges.
