@@ -10,6 +10,7 @@ Describe the configuration inputs for the node agent and how they map to environ
 - Added a heartbeat interval override for node-agent heartbeats.
 - Added S3-backed template storage configuration for fetching template tarballs.
 - Added optional template cache check inputs for manual cache validation at startup.
+- Documented runtime dev-mode toggling for cache bypass.
 
 ## How to use / impact
 - Configure with environment variables or CLI args (`--node-agent.<key>=...`).
@@ -50,6 +51,9 @@ Describe the configuration inputs for the node agent and how they map to environ
   provided by the Brain during registration.
 - `node-agent.cache-dir` is the root for template cache storage. The node agent creates a
   `templates/` subdirectory on startup. See `docs/node/operations/template-cache.md` for the layout.
+- Dev-mode defaults to `node-agent.dev-mode` and can be toggled at runtime via `POST /api/node/dev-mode`
+  with body `{ "devMode": true|false }`. The runtime value is in-memory only; restarting the node agent
+  resets it to the configured default.
 - When `node-agent.template-cache-check.enabled=true`, the node agent validates a single cached
   template at startup and logs the cache hit/miss outcome.
 - `node-agent.template-cache-limits.*` caps extracted tarball size and entry count to protect disk usage.
@@ -68,4 +72,6 @@ Describe the configuration inputs for the node agent and how they map to environ
 
 ## Links
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/config/NodeConfig.java`
+- `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/devmode/controller/DevModeController.java`
+- `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/devmode/service/DevModeService.java`
 - `backend/node-agent/src/main/resources/application.yml`

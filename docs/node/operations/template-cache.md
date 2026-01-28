@@ -11,6 +11,7 @@ Define where the node agent stores cached templates and how cache paths are reso
 - Added cache population that downloads template tarballs from S3, extracts them into a temp directory, and moves them into place atomically.
 - Added metadata written alongside cached templates (including checksum, S3 key, and cache timestamp).
 - Added a cache purge handler that can delete all cached templates or a single template on demand.
+- Added dev-mode cache bypass so templates can always be refreshed from S3 when requested.
 
 ## How to use / impact
 - The node agent creates `<cacheDir>/templates` on startup.
@@ -23,7 +24,10 @@ Define where the node agent stores cached templates and how cache paths are reso
 - Use `TemplateCacheLookupService.findCachedTemplate(templateId, version, expectedChecksum)` to validate a cache entry.
   - Returns `NOT_FOUND` when the contents directory or checksum file is missing.
   - Returns `CHECKSUM_MISMATCH` when the stored checksum differs.
+  - When dev-mode bypass is enabled, use the overload with `bypassCache=true` to force a
+    `DEV_MODE_BYPASS` miss and log the cache bypass.
 - Use `TemplateCachePopulateService.ensureCachedTemplate(templateId, version, checksum, s3Key)` to download and extract a tarball when cache is missing or invalid.
+  - When dev-mode is enabled, the cache lookup is bypassed and the tarball is always re-downloaded from S3 (and still written to cache).
   - Downloads the tarball to a temp file, extracts into a temp directory, then atomically moves into `<templateId>/<version>`.
   - Writes `checksum.sha256` and `metadata.json` before the atomic move.
   - Validates the downloaded tarball checksum (SHA-256) against the expected checksum before writing cache markers.
