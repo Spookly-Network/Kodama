@@ -11,6 +11,7 @@ The Node Agent is a lightweight Java service that runs on each node and executes
 - Added a heartbeat scheduler that reports node status and usage to the Brain.
 - Added a cache purge endpoint so the Brain can instruct nodes to clear cached templates.
 - Added a dev-mode toggle endpoint so the Brain can force cache bypass on template fetches.
+- Added per-instance workspace layout helpers that create merged/config, logs, and temp folders on demand.
 
 ## How to use / impact
 - Build and run with `./gradlew :node-agent:bootRun` from `backend/`.
@@ -45,9 +46,10 @@ The Node Agent is a lightweight Java service that runs on each node and executes
 - If required configuration is missing, the node agent will exit on startup with a clear error.
 - If Brain registration fails, the node agent will exit on startup and log the error.
 - Heartbeat failures are logged with retries, but do not crash the node agent process.
-- The workspace directory is not created automatically yet.
+- Instance workspaces are created when requested; invalid workspace configuration will fail at request time.
 
 ## Links
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/NodeAgentApplication.java`
 - `backend/node-agent/src/main/resources/application.yml`
 - `docs/node/operations/configuration.md`
+- `docs/node/operations/instance-workspaces.md`
