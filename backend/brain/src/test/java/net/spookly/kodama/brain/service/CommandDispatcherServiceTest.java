@@ -56,14 +56,16 @@ class CommandDispatcherServiceTest {
     void sendPrepareInstanceSendsExpectedPayload() throws Exception {
         UUID nodeId = UUID.randomUUID();
         UUID instanceId = UUID.randomUUID();
+        UUID templateId = UUID.randomUUID();
         UUID templateVersionId = UUID.randomUUID();
         Node node = buildNode(nodeId, "http://node-1.internal");
         Instance instance = buildInstance(instanceId, node);
-        InstanceTemplateLayer layer = buildLayer(instance, templateVersionId);
+        InstanceTemplateLayer layer = buildLayer(instance, templateId, templateVersionId);
 
         Map<String, String> variables = Map.of("WORLD_NAME", "test");
         NodePrepareInstanceLayer expectedLayer = new NodePrepareInstanceLayer(
                 templateVersionId,
+                templateId,
                 "1.0.0",
                 "checksum",
                 "s3://templates/template-1-1.0.0.tar.gz",
@@ -207,7 +209,7 @@ class CommandDispatcherServiceTest {
         return instance;
     }
 
-    private InstanceTemplateLayer buildLayer(Instance instance, UUID templateVersionId) {
+    private InstanceTemplateLayer buildLayer(Instance instance, UUID templateId, UUID templateVersionId) {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         Template template = new Template(
                 "template-1",
@@ -216,6 +218,7 @@ class CommandDispatcherServiceTest {
                 now,
                 UUID.randomUUID()
         );
+        ReflectionTestUtils.setField(template, "id", templateId);
         TemplateVersion version = new TemplateVersion(
                 template,
                 "1.0.0",

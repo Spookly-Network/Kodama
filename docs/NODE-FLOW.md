@@ -31,7 +31,7 @@ Steps:
 3. Download missing templates
 4. Extract into workspace
 5. Merge layers
-6. Replace variables
+6. Replace variables (skipping large files via `node-agent.variable-substitution.max-file-bytes`)
 7. Send PREPARED callback
 
 ---
