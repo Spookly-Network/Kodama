@@ -46,10 +46,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/kodama?useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: kodama
       SPRING_DATASOURCE_PASSWORD: kodama
-      # Beispiel-Config für dein Template-S3
-      TEMPLATES_S3_ENDPOINT: http://minio:9000
-      TEMPLATES_S3_ACCESS_KEY: kodama
-      TEMPLATES_S3_SECRET_KEY: kodamasecret
+      BRAIN_SECURITY_ENABLED: "false"
     ports:
       - "8080:8080"
 
@@ -61,12 +58,21 @@ services:
     depends_on:
       - brain
     environment:
-      BRAIN_BASE_URL: http://brain:8080
-      NODE_NAME: node-1
-      # Beispiel: S3 für Templates
-      TEMPLATES_S3_ENDPOINT: http://minio:9000
-      TEMPLATES_S3_ACCESS_KEY: kodama
-      TEMPLATES_S3_SECRET_KEY: kodamasecret
+      NODE_AGENT_NAME: node-1
+      NODE_AGENT_NODE_VERSION: 0.1.0-dev
+      NODE_AGENT_REGION: local
+      NODE_AGENT_CAPACITY_SLOTS: 10
+      NODE_AGENT_BASE_URL: http://node-agent:8080
+      NODE_AGENT_BRAIN_BASE_URL: http://brain:8080
+      NODE_AGENT_WORKSPACE_DIR: /var/lib/kodama/workspace
+      NODE_AGENT_CACHE_DIR: /var/lib/kodama/cache
+      NODE_AGENT_S3_ENDPOINT: http://minio:9000
+      NODE_AGENT_S3_BUCKET: kodama-templates
+      NODE_AGENT_S3_ACCESS_KEY: kodama
+      NODE_AGENT_S3_SECRET_KEY: kodamasecret
+    volumes:
+      - node_agent_workspace:/var/lib/kodama/workspace
+      - node_agent_cache:/var/lib/kodama/cache
 
   webpanel:
     build:
@@ -85,3 +91,5 @@ services:
 volumes:
   mysql_data:
   minio_data:
+  node_agent_workspace:
+  node_agent_cache:
