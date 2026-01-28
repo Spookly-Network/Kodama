@@ -64,6 +64,20 @@ Body: `NodeInstanceCommandRequest`
 
 Body: `NodeInstanceCommandRequest`
 
+### Purge cache
+
+`POST /api/cache/purge`
+
+Body: optional `TemplateCachePurgeRequest`
+
+```json
+{
+  "templateId": "starter"
+}
+```
+
+When the body is omitted or `templateId` is null, the node purges the entire template cache.
+
 ## Configuration
 
 The Brain uses the following configuration properties:

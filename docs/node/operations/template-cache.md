@@ -10,6 +10,7 @@ Define where the node agent stores cached templates and how cache paths are reso
 - Added an optional startup cache check for manually seeded cache entries.
 - Added cache population that downloads template tarballs from S3, extracts them into a temp directory, and moves them into place atomically.
 - Added metadata written alongside cached templates (including checksum, S3 key, and cache timestamp).
+- Added a cache purge handler that can delete all cached templates or a single template on demand.
 
 ## How to use / impact
 - The node agent creates `<cacheDir>/templates` on startup.
@@ -32,9 +33,24 @@ Define where the node agent stores cached templates and how cache paths are reso
   - `metadata.json` fields: `templateId`, `version`, `checksum`, `s3Key`, `cachedAt`.
 - For manual validation at startup, set `node-agent.template-cache-check.*` to trigger a single
   cache lookup and log the hit/miss decision.
+- To purge cached templates, call `POST /api/cache/purge` on the node agent:
+  - No body purges the entire template cache.
+  - Body with `templateId` purges a single template:
+
+```json
+{
+  "templateId": "starter"
+}
+```
+
+- The purge response includes `scope`, `templateId` (when applicable), and counts for deleted files,
+  deleted directories, and deleted bytes.
+- Purge operations are restricted to the node's template cache root (`<cacheDir>/templates`) and will
+  refuse to delete paths outside that directory.
 
 ## Edge cases / risks
 - `templateId` and `version` must be single path segments (no slashes or `..`).
+- Purging a template that is not cached returns zero deleted entries and logs the outcome.
 - Invalid cache paths or permission failures stop the node agent at startup.
 - Unreadable checksum files throw `TemplateCacheException` and should be treated as cache errors.
 - Partial downloads or extraction failures are cleaned up before the error is raised.

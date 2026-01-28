@@ -1,8 +1,6 @@
 spring:
   application:
     name: kodama-node-agent
-  main:
-    web-application-type: none
 
 node-agent:
   node-id: ${NODE_AGENT_ID:}

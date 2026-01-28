@@ -39,6 +39,11 @@ public class TemplateCacheLayout {
         return templatesRoot;
     }
 
+    public Path resolveTemplateRoot(String templateId) {
+        String normalizedTemplateId = requireSegment("templateId", templateId);
+        return templatesRoot.resolve(normalizedTemplateId);
+    }
+
     public TemplateCachePaths resolveTemplateVersion(String templateId, String version) {
         String normalizedTemplateId = requireSegment("templateId", templateId);
         String normalizedVersion = requireSegment("version", version);
