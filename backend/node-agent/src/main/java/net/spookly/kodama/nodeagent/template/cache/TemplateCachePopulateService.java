@@ -29,6 +29,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.DigestInputStream;
 import net.spookly.kodama.nodeagent.config.NodeConfig;
+import net.spookly.kodama.nodeagent.devmode.service.DevModeService;
 import net.spookly.kodama.nodeagent.template.storage.TemplateStorageClient;
 import net.spookly.kodama.nodeagent.template.storage.TemplateTarball;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
@@ -47,6 +48,7 @@ public class TemplateCachePopulateService {
     private final TemplateCacheLookupService lookupService;
     private final TemplateStorageClient storageClient;
     private final ObjectMapper objectMapper;
+    private final DevModeService devModeService;
     private final NodeConfig.TemplateCacheLimits cacheLimits;
 
     public TemplateCachePopulateService(
@@ -54,12 +56,14 @@ public class TemplateCachePopulateService {
             TemplateCacheLookupService lookupService,
             TemplateStorageClient storageClient,
             ObjectMapper objectMapper,
+            DevModeService devModeService,
             NodeConfig config
     ) {
         this.layout = Objects.requireNonNull(layout, "layout");
         this.lookupService = Objects.requireNonNull(lookupService, "lookupService");
         this.storageClient = Objects.requireNonNull(storageClient, "storageClient");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
+        this.devModeService = Objects.requireNonNull(devModeService, "devModeService");
         this.cacheLimits = Objects.requireNonNull(config, "config").getTemplateCacheLimits();
     }
 
@@ -71,7 +75,13 @@ public class TemplateCachePopulateService {
     ) {
         String normalizedChecksum = requireValue("checksum", checksum);
         String normalizedS3Key = requireValue("s3Key", s3Key);
-        TemplateCacheLookupResult existing = lookupService.findCachedTemplate(templateId, version, normalizedChecksum);
+        boolean bypassCache = devModeService.isDevModeEnabled();
+        TemplateCacheLookupResult existing = lookupService.findCachedTemplate(
+                templateId,
+                version,
+                normalizedChecksum,
+                bypassCache
+        );
         if (existing.isCacheHit()) {
             return existing;
         }

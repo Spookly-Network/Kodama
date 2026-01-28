@@ -78,6 +78,20 @@ Body: optional `TemplateCachePurgeRequest`
 
 When the body is omitted or `templateId` is null, the node purges the entire template cache.
 
+### Dev-mode
+
+`POST /api/node/dev-mode`
+
+Body: `DevModeUpdateRequest`
+
+```json
+{
+  "devMode": true
+}
+```
+
+When enabled, the node bypasses template cache reuse and always re-downloads template tarballs.
+
 ## Configuration
 
 The Brain uses the following configuration properties:
