@@ -9,6 +9,7 @@ The Node Agent is a lightweight Java service that runs on each node and executes
 - Expanded the startup log to include the effective configuration (sans secrets).
 - Added Brain registration on startup and in-memory caching of the assigned node id.
 - Added a heartbeat scheduler that reports node status and usage to the Brain.
+- Added a cache purge endpoint so the Brain can instruct nodes to clear cached templates.
 
 ## How to use / impact
 - Build and run with `./gradlew :node-agent:bootRun` from `backend/`.

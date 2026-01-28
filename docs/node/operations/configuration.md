@@ -45,6 +45,7 @@ Describe the configuration inputs for the node agent and how they map to environ
   - `node-agent.s3.region` (`NODE_AGENT_S3_REGION`)
 - When registration is enabled, the node agent reads the token from `node-agent.auth.token-path`
   and sends it to the Brain using `node-agent.auth.header-name`.
+- `node-agent.base-url` is used by the Brain to issue commands to the node (including cache purge).
 - When `node-agent.heartbeat-interval-seconds` is `0`, the node agent uses the heartbeat interval
   provided by the Brain during registration.
 - `node-agent.cache-dir` is the root for template cache storage. The node agent creates a
