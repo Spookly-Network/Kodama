@@ -8,9 +8,13 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.Set;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import net.spookly.kodama.nodeagent.config.NodeConfig;
@@ -18,6 +22,7 @@ import net.spookly.kodama.nodeagent.template.storage.TemplateStorageClient;
 import net.spookly.kodama.nodeagent.template.storage.TemplateTarball;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -65,6 +70,33 @@ class TemplateCachePopulateServiceTest {
         assertThat(storageClient.getFetchCount()).isEqualTo(1);
     }
 
+    @Test
+    void preservesExecutablePermissionsFromTarball() throws Exception {
+        Assumptions.assumeTrue(FileSystems.getDefault().supportedFileAttributeViews().contains("posix"));
+        byte[] tarballBytes = createTarballWithModes(Map.of(
+                "bin/start.sh", new TarEntrySpec("#!/bin/sh\necho ok\n", 0755)
+        ));
+        String checksum = sha256Hex(tarballBytes);
+        InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(tarballBytes);
+        TemplateCacheLayout layout = createLayout();
+        TemplateCachePopulateService service = createService(storageClient, layout);
+
+        TemplateCacheLookupResult result = service.ensureCachedTemplate(
+                "starter",
+                "1.2.4",
+                checksum,
+                "templates/starter/1.2.4.tar"
+        );
+
+        Path scriptPath = result.contentsDir().resolve("bin/start.sh");
+        Set<PosixFilePermission> permissions = Files.getPosixFilePermissions(scriptPath);
+        assertThat(permissions).contains(
+                PosixFilePermission.OWNER_EXECUTE,
+                PosixFilePermission.GROUP_EXECUTE,
+                PosixFilePermission.OTHERS_EXECUTE
+        );
+    }
+
     private TemplateCachePopulateService createService(TemplateStorageClient storageClient, TemplateCacheLayout layout) {
         TemplateCacheLookupService lookupService = new TemplateCacheLookupService(layout);
         ObjectMapper mapper = new ObjectMapper();
@@ -79,12 +111,21 @@ class TemplateCachePopulateServiceTest {
     }
 
     private byte[] createTarball(Map<String, String> files) throws IOException {
+        Map<String, TarEntrySpec> entries = new HashMap<>();
+        for (Map.Entry<String, String> entry : files.entrySet()) {
+            entries.put(entry.getKey(), new TarEntrySpec(entry.getValue(), 0644));
+        }
+        return createTarballWithModes(entries);
+    }
+
+    private byte[] createTarballWithModes(Map<String, TarEntrySpec> files) throws IOException {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try (TarArchiveOutputStream tarOutput = new TarArchiveOutputStream(outputStream)) {
             tarOutput.setLongFileMode(TarArchiveOutputStream.LONGFILE_POSIX);
-            for (Map.Entry<String, String> entry : files.entrySet()) {
-                byte[] content = entry.getValue().getBytes(StandardCharsets.UTF_8);
+            for (Map.Entry<String, TarEntrySpec> entry : files.entrySet()) {
+                byte[] content = entry.getValue().contents().getBytes(StandardCharsets.UTF_8);
                 TarArchiveEntry tarEntry = new TarArchiveEntry(entry.getKey());
+                tarEntry.setMode(entry.getValue().mode());
                 tarEntry.setSize(content.length);
                 tarOutput.putArchiveEntry(tarEntry);
                 tarOutput.write(content);
@@ -93,6 +134,9 @@ class TemplateCachePopulateServiceTest {
             tarOutput.finish();
         }
         return outputStream.toByteArray();
+    }
+
+    private record TarEntrySpec(String contents, int mode) {
     }
 
     private String sha256Hex(byte[] data) {

@@ -13,10 +13,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.PosixFilePermission;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.DigestInputStream;
@@ -196,6 +200,7 @@ public class TemplateCachePopulateService {
                 if (entry.isDirectory()) {
                     Path dirPath = resolveEntryPath(destinationDir, entry.getName());
                     Files.createDirectories(dirPath);
+                    applyPermissions(dirPath, entry);
                     continue;
                 }
                 if (entry.isSymbolicLink() || entry.isLink()) {
@@ -208,9 +213,7 @@ public class TemplateCachePopulateService {
                 )) {
                     tarInputStream.transferTo(outputStream);
                 }
-                if (isOwnerExecutable(entry)) {
-                    entryPath.toFile().setExecutable(true, true);
-                }
+                applyPermissions(entryPath, entry);
             }
         }
     }
@@ -248,8 +251,56 @@ public class TemplateCachePopulateService {
         return resolved;
     }
 
-    private boolean isOwnerExecutable(TarArchiveEntry entry) {
-        return (entry.getMode() & 0100) != 0;
+    private void applyPermissions(Path entryPath, TarArchiveEntry entry) throws IOException {
+        PosixFileAttributeView attributeView = Files.getFileAttributeView(entryPath, PosixFileAttributeView.class);
+        if (attributeView != null) {
+            Files.setPosixFilePermissions(entryPath, toPosixPermissions(entry.getMode()));
+            return;
+        }
+        applyExecutableFallback(entryPath, entry.getMode());
+    }
+
+    private Set<PosixFilePermission> toPosixPermissions(int mode) {
+        int permissionBits = mode & 0777;
+        Set<PosixFilePermission> permissions = EnumSet.noneOf(PosixFilePermission.class);
+        if ((permissionBits & 0400) != 0) {
+            permissions.add(PosixFilePermission.OWNER_READ);
+        }
+        if ((permissionBits & 0200) != 0) {
+            permissions.add(PosixFilePermission.OWNER_WRITE);
+        }
+        if ((permissionBits & 0100) != 0) {
+            permissions.add(PosixFilePermission.OWNER_EXECUTE);
+        }
+        if ((permissionBits & 0040) != 0) {
+            permissions.add(PosixFilePermission.GROUP_READ);
+        }
+        if ((permissionBits & 0020) != 0) {
+            permissions.add(PosixFilePermission.GROUP_WRITE);
+        }
+        if ((permissionBits & 0010) != 0) {
+            permissions.add(PosixFilePermission.GROUP_EXECUTE);
+        }
+        if ((permissionBits & 0004) != 0) {
+            permissions.add(PosixFilePermission.OTHERS_READ);
+        }
+        if ((permissionBits & 0002) != 0) {
+            permissions.add(PosixFilePermission.OTHERS_WRITE);
+        }
+        if ((permissionBits & 0001) != 0) {
+            permissions.add(PosixFilePermission.OTHERS_EXECUTE);
+        }
+        return permissions;
+    }
+
+    private void applyExecutableFallback(Path entryPath, int mode) {
+        boolean ownerExecutable = (mode & 0100) != 0;
+        boolean groupExecutable = (mode & 0010) != 0;
+        boolean otherExecutable = (mode & 0001) != 0;
+        if (ownerExecutable || groupExecutable || otherExecutable) {
+            boolean ownerOnly = !(groupExecutable || otherExecutable);
+            entryPath.toFile().setExecutable(true, ownerOnly);
+        }
     }
 
     private void moveToFinalLocation(Path tempVersionRoot, Path finalVersionRoot) throws IOException {

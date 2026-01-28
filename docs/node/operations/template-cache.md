@@ -27,6 +27,7 @@ Define where the node agent stores cached templates and how cache paths are reso
   - Writes `checksum.sha256` and `metadata.json` before the atomic move.
   - Validates the downloaded tarball checksum (SHA-256) against the expected checksum before writing cache markers.
   - If the storage response reports a content length, the download length is verified before extraction.
+  - Restores POSIX permissions from tar entry modes when supported; non-POSIX filesystems fall back to best-effort executable bits.
   - `metadata.json` fields: `templateId`, `version`, `checksum`, `s3Key`, `cachedAt`.
 - For manual validation at startup, set `node-agent.template-cache-check.*` to trigger a single
   cache lookup and log the hit/miss decision.
