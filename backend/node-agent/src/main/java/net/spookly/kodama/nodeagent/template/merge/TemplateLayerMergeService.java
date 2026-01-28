@@ -31,7 +31,7 @@ public class TemplateLayerMergeService {
         Path targetDir = Objects.requireNonNull(mergedDir, "mergedDir");
         List<TemplateLayerSource> orderedLayers = normalizeLayers(layers);
 
-        ensureDirectory(targetDir, "merged workspace");
+        resetDirectory(targetDir, "merged workspace");
         logger.info(
                 "Merging template layers into workspace. instanceId={} layers={} path={}",
                 normalizedInstanceId,
@@ -94,11 +94,32 @@ public class TemplateLayerMergeService {
         }
     }
 
-    private void ensureDirectory(Path dir, String label) {
+    private void resetDirectory(Path dir, String label) {
         try {
+            if (Files.exists(dir)) {
+                deleteRecursively(dir);
+            }
             Files.createDirectories(dir);
         } catch (IOException ex) {
-            throw new TemplateLayerMergeException("Failed to create " + label + " at " + dir, ex);
+            throw new TemplateLayerMergeException("Failed to reset " + label + " at " + dir, ex);
+        }
+    }
+
+    private void deleteRecursively(Path root) throws IOException {
+        if (root == null || !Files.exists(root)) {
+            return;
+        }
+        try (var stream = Files.walk(root)) {
+            stream.sorted(Comparator.reverseOrder())
+                    .forEach(path -> {
+                        try {
+                            Files.deleteIfExists(path);
+                        } catch (IOException ex) {
+                            throw new UncheckedIOException(ex);
+                        }
+                    });
+        } catch (UncheckedIOException ex) {
+            throw ex.getCause();
         }
     }
 

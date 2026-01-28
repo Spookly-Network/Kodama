@@ -111,6 +111,24 @@ class TemplateLayerMergeServiceTest {
         assertThat(Files.exists(targetDir.resolve("conflict/file.txt"))).isFalse();
     }
 
+    @Test
+    void clearsExistingWorkspaceBeforeMerging() throws Exception {
+        TemplateLayerMergeService service = new TemplateLayerMergeService();
+        Path layerOne = createLayer("base", "1.0.0", "config/current.yml", "current");
+        Path targetDir = tempDir.resolve("workspace");
+        Files.createDirectories(targetDir);
+        Files.writeString(targetDir.resolve("stale.txt"), "stale");
+
+        service.mergeLayers(
+                "instance-6",
+                targetDir,
+                List.of(new TemplateLayerSource("base", "1.0.0", 0, layerOne))
+        );
+
+        assertThat(Files.exists(targetDir.resolve("stale.txt"))).isFalse();
+        assertThat(Files.readString(targetDir.resolve("config/current.yml"))).isEqualTo("current");
+    }
+
     private Path createLayer(String templateId, String version, String relativeFile, String contents) throws Exception {
         Path root = tempDir.resolve(templateId + "-" + version);
         Path filePath = root.resolve(relativeFile);
