@@ -25,6 +25,7 @@ public class NodeConfig {
     private Auth auth = new Auth();
     private S3 s3 = new S3();
     private TemplateCacheCheck templateCacheCheck = new TemplateCacheCheck();
+    private TemplateCacheLimits templateCacheLimits = new TemplateCacheLimits();
 
     public void validate() {
         List<String> errors = new ArrayList<>();
@@ -43,6 +44,16 @@ public class NodeConfig {
             addIfBlank(errors, templateCacheCheck.getTemplateId(), "node-agent.template-cache-check.template-id is required");
             addIfBlank(errors, templateCacheCheck.getVersion(), "node-agent.template-cache-check.version is required");
             addIfBlank(errors, templateCacheCheck.getChecksum(), "node-agent.template-cache-check.checksum is required");
+        }
+        if (templateCacheLimits == null) {
+            errors.add("node-agent.template-cache-limits is required");
+        } else {
+            if (templateCacheLimits.getMaxExtractedBytes() <= 0) {
+                errors.add("node-agent.template-cache-limits.max-extracted-bytes must be greater than 0");
+            }
+            if (templateCacheLimits.getMaxEntries() <= 0) {
+                errors.add("node-agent.template-cache-limits.max-entries must be greater than 0");
+            }
         }
         if (!errors.isEmpty()) {
             throw new IllegalStateException("Invalid node-agent configuration:\n- " + String.join("\n- ", errors));
@@ -191,6 +202,14 @@ public class NodeConfig {
         this.templateCacheCheck = templateCacheCheck == null ? new TemplateCacheCheck() : templateCacheCheck;
     }
 
+    public TemplateCacheLimits getTemplateCacheLimits() {
+        return templateCacheLimits;
+    }
+
+    public void setTemplateCacheLimits(TemplateCacheLimits templateCacheLimits) {
+        this.templateCacheLimits = templateCacheLimits == null ? new TemplateCacheLimits() : templateCacheLimits;
+    }
+
     public static class Auth {
 
         private String tokenPath;
@@ -308,6 +327,28 @@ public class NodeConfig {
 
         public void setChecksum(String checksum) {
             this.checksum = checksum;
+        }
+    }
+
+    public static class TemplateCacheLimits {
+
+        private long maxExtractedBytes = 10L * 1024 * 1024 * 1024;
+        private int maxEntries = 100_000;
+
+        public long getMaxExtractedBytes() {
+            return maxExtractedBytes;
+        }
+
+        public void setMaxExtractedBytes(long maxExtractedBytes) {
+            this.maxExtractedBytes = maxExtractedBytes;
+        }
+
+        public int getMaxEntries() {
+            return maxEntries;
+        }
+
+        public void setMaxEntries(int maxEntries) {
+            this.maxEntries = maxEntries;
         }
     }
 }
