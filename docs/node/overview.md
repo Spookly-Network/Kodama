@@ -15,6 +15,8 @@ The Node Agent is a lightweight Java service that runs on each node and executes
 - Added a template layer merge service that applies cached templates into the merged workspace directory.
 - Added variable substitution over merged workspace text files using Brain-provided values.
 - Added a prepare command handler that assembles templates, applies variable substitution, and calls back to the Brain.
+- Added a health endpoint for basic node-agent diagnostics.
+- Added start/stop/destroy command handlers that send callbacks to the Brain.
 
 ## How to use / impact
 - Build and run with `./gradlew :node-agent:bootRun` from `backend/`.
@@ -33,6 +35,8 @@ The Node Agent is a lightweight Java service that runs on each node and executes
     - `NODE_AGENT_BASE_URL`
     - `NODE_AGENT_REGISTRATION_ENABLED`
     - `NODE_AGENT_HEARTBEAT_INTERVAL_SECONDS` (override Brain-provided interval)
+    - `NODE_AGENT_HTTP_PORT` (defaults to `8080`)
+    - `NODE_AGENT_HTTP_BIND_ADDRESS` (defaults to `0.0.0.0`)
     - `NODE_AGENT_WORKSPACE_DIR`
     - `NODE_AGENT_DOCKER_HOST`
     - `NODE_AGENT_VARIABLE_SUBSTITUTION_MAX_FILE_BYTES`
@@ -45,6 +49,7 @@ The Node Agent is a lightweight Java service that runs on each node and executes
     - `NODE_AGENT_S3_ACCESS_KEY`
     - `NODE_AGENT_S3_SECRET_KEY`
 - See `docs/node/operations/configuration.md` for the full mapping.
+- Health check is available at `GET /health` on the configured node-agent HTTP port.
 
 ## Edge cases / risks
 - If required configuration is missing, the node agent will exit on startup with a clear error.
@@ -55,6 +60,7 @@ The Node Agent is a lightweight Java service that runs on each node and executes
 ## Links
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/NodeAgentApplication.java`
 - `backend/node-agent/src/main/resources/application.yml`
+- `contracts/nodeapi.yml`
 - `docs/node/operations/configuration.md`
 - `docs/node/operations/instance-workspaces.md`
 - `docs/node/operations/template-merge.md`
