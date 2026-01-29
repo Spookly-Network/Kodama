@@ -44,9 +44,9 @@ Describe the configuration inputs for the node agent and how they map to environ
   - `node-agent.template-cache-limits.max-extracted-bytes` (`NODE_AGENT_TEMPLATE_CACHE_LIMITS_MAX_EXTRACTED_BYTES`, default `10737418240`)
   - `node-agent.template-cache-limits.max-entries` (`NODE_AGENT_TEMPLATE_CACHE_LIMITS_MAX_ENTRIES`, default `100000`)
   - `node-agent.variable-substitution.max-file-bytes` (`NODE_AGENT_VARIABLE_SUBSTITUTION_MAX_FILE_BYTES`, default `1048576`)
-- `node-agent.auth.header-name` (`NODE_AGENT_AUTH_HEADER_NAME`, default `X-Node-Token`)
-- `node-agent.auth.token-path` (`NODE_AGENT_AUTH_TOKEN_PATH`)
-- `node-agent.auth.cert-path` (`NODE_AGENT_AUTH_CERT_PATH`)
+  - `node-agent.auth.header-name` (`NODE_AGENT_AUTH_HEADER_NAME`, default `X-Node-Token`)
+  - `node-agent.auth.token-path` (`NODE_AGENT_AUTH_TOKEN_PATH`)
+  - `node-agent.auth.cert-path` (`NODE_AGENT_AUTH_CERT_PATH`)
   - `node-agent.s3.region` (`NODE_AGENT_S3_REGION`)
 - When registration is enabled, the node agent reads the token from `node-agent.auth.token-path`
   and sends it to the Brain using `node-agent.auth.header-name`.
