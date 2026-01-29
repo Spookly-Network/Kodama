@@ -33,6 +33,18 @@ public class InstanceCallbackService {
         sendCallback(instanceId, "prepared");
     }
 
+    public void sendRunning(UUID instanceId) {
+        sendCallback(instanceId, "running");
+    }
+
+    public void sendStopped(UUID instanceId) {
+        sendCallback(instanceId, "stopped");
+    }
+
+    public void sendDestroyed(UUID instanceId) {
+        sendCallback(instanceId, "destroyed");
+    }
+
     public void sendFailed(UUID instanceId) {
         sendCallback(instanceId, "failed");
     }

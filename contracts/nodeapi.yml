@@ -1,0 +1,125 @@
+title: Kodama Brain ↔ Node Agent API
+version: "0.1.0"
+description: Internal HTTP contract between the Brain and node agents. Not part of the public OpenAPI surface.
+
+endpoints:
+  health:
+    method: GET
+    path: /health
+    summary: Node agent health
+    response:
+      status: ok
+      nodeId: uuid|null
+      nodeName: string|null
+      nodeVersion: string|null
+
+  devMode:
+    get:
+      method: GET
+      path: /api/node/dev-mode
+      summary: Get dev-mode status
+      response:
+        devMode: boolean
+        previousDevMode: boolean
+        changed: boolean
+    post:
+      method: POST
+      path: /api/node/dev-mode
+      summary: Update dev-mode
+      request:
+        devMode: boolean
+      response:
+        devMode: boolean
+        previousDevMode: boolean
+        changed: boolean
+
+  templateCachePurge:
+    method: POST
+    path: /api/cache/purge
+    summary: Purge template cache
+    request:
+      templateId: string|optional
+    response:
+      scope: all|template
+      templateId: string|null
+      deletedFiles: int64
+      deletedDirectories: int64
+      deletedBytes: int64
+
+  instancePrepare:
+    method: POST
+    path: /api/instances/{instanceId}/prepare
+    summary: Prepare instance workspace
+    request:
+      instanceId: uuid
+      name: string|null
+      displayName: string|null
+      portsJson: string|null
+      variables: map<string,string>|null
+      variablesJson: string|null
+      layers:
+        - templateVersionId: uuid
+          templateId: uuid
+          version: string
+          checksum: string
+          s3Key: string
+          metadataJson: string|null
+          orderIndex: int32
+    responses:
+      "200": OK
+      "400": Bad Request
+
+  instanceStart:
+    method: POST
+    path: /api/instances/{instanceId}/start
+    summary: Start instance
+    request:
+      instanceId: uuid
+      name: string|null
+    responses:
+      "200": OK
+      "400": Bad Request
+
+  instanceStop:
+    method: POST
+    path: /api/instances/{instanceId}/stop
+    summary: Stop instance
+    request:
+      instanceId: uuid
+      name: string|null
+    responses:
+      "200": OK
+      "400": Bad Request
+
+  instanceDestroy:
+    method: POST
+    path: /api/instances/{instanceId}/destroy
+    summary: Destroy instance
+    request:
+      instanceId: uuid
+      name: string|null
+    responses:
+      "200": OK
+      "400": Bad Request
+
+callbacks:
+  prepared:
+    method: POST
+    path: /api/nodes/{nodeId}/instances/{instanceId}/prepared
+  running:
+    method: POST
+    path: /api/nodes/{nodeId}/instances/{instanceId}/running
+  stopped:
+    method: POST
+    path: /api/nodes/{nodeId}/instances/{instanceId}/stopped
+  destroyed:
+    method: POST
+    path: /api/nodes/{nodeId}/instances/{instanceId}/destroyed
+  failed:
+    method: POST
+    path: /api/nodes/{nodeId}/instances/{instanceId}/failed
+
+notes:
+  - Dev-mode updates are in-memory only; restart resets to configured defaults.
+  - Start/stop/destroy are acknowledgements only; runtime control is not implemented yet.
+  - Validation errors return 400 and stop command processing.

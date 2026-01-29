@@ -32,6 +32,8 @@ Describe the configuration inputs for the node agent and how they map to environ
   - `node-agent.base-url` (`NODE_AGENT_BASE_URL`)
   - `node-agent.registration-enabled` (`NODE_AGENT_REGISTRATION_ENABLED`, default `true`)
   - `node-agent.heartbeat-interval-seconds` (`NODE_AGENT_HEARTBEAT_INTERVAL_SECONDS`, default `0`)
+  - `server.port` (`NODE_AGENT_HTTP_PORT`, default `8080`)
+  - `server.address` (`NODE_AGENT_HTTP_BIND_ADDRESS`, default `0.0.0.0`)
   - `node-agent.workspace-dir` (`NODE_AGENT_WORKSPACE_DIR`, default `./data`)
   - `node-agent.docker-host` (`NODE_AGENT_DOCKER_HOST`)
   - `node-agent.template-cache-check.enabled` (`NODE_AGENT_TEMPLATE_CACHE_CHECK_ENABLED`, default `false`)
@@ -48,6 +50,7 @@ Describe the configuration inputs for the node agent and how they map to environ
 - When registration is enabled, the node agent reads the token from `node-agent.auth.token-path`
   and sends it to the Brain using `node-agent.auth.header-name`.
 - `node-agent.base-url` is used by the Brain to issue commands to the node (including cache purge).
+- `server.port` and `server.address` control the embedded HTTP listener used by the Brain to issue commands.
 - When `node-agent.heartbeat-interval-seconds` is `0`, the node agent uses the heartbeat interval
   provided by the Brain during registration.
 - `node-agent.cache-dir` is the root for template cache storage. The node agent creates a
