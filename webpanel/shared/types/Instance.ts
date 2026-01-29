@@ -6,7 +6,7 @@ export interface Instance {
     displayName: string
     state: InstanceState
     requestedByUserId: string
-    node: Node
+    node?: Node
     region: string
     tags: string
     devModeAllowed: boolean
@@ -16,6 +16,25 @@ export interface Instance {
     updatedAt: Date
     startedAt?: Date
     stoppedAt?: Date
+    failureReason?: string
+}
+
+export interface InstanceDto {
+    id: string
+    name: string
+    displayName: string
+    state: InstanceState
+    requestedByUserId: string
+    nodeId?: string
+    region: string
+    tags: string
+    devModeAllowed: boolean
+    portsJson: string
+    variablesJson: string
+    createdAt: string
+    updatedAt: string
+    startedAt?: string
+    stoppedAt?: string
     failureReason?: string
 }
 

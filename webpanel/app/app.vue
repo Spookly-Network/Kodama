@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import {mockNodes, useNodesStore} from "~/store/nodes";
+
+callOnce(() => {
+  useNodesStore().upsertMany(mockNodes)
+  document.body.classList.add('dark')
+})
 </script>
 <template>
   <div class="dark">

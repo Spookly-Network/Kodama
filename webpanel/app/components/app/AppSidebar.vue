@@ -35,23 +35,9 @@ const data = {
   navMain: [
     {
       title: "Nodes",
-      url: "#",
+      url: "/nodes",
       icon: Server,
       isActive: true,
-      items: [
-        {
-          title: "History",
-          url: "#",
-        },
-        {
-          title: "Starred",
-          url: "#",
-        },
-        {
-          title: "Settings",
-          url: "#",
-        },
-      ],
     },
     {
       title: "Templates",

@@ -1,5 +1,5 @@
 import { h } from 'vue'
-import type {Instance} from "~~/types/Instance";
+import type {Instance} from "#shared/types/Instance";
 import type { ColumnDef } from '@tanstack/vue-table'
 
 export const columns: ColumnDef<Instance>[] = [
