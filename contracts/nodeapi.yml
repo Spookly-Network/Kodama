@@ -2,6 +2,15 @@ title: Kodama Brain ↔ Node Agent API
 version: "0.1.0"
 description: Internal HTTP contract between the Brain and node agents. Not part of the public OpenAPI surface.
 
+auth:
+  commandEndpoints:
+    description: Command endpoints require Brain authentication via token header or client certificate.
+    token:
+      headerName: X-Node-Token
+      source: node-agent.auth.token-path
+    mTls:
+      certificatePath: node-agent.auth.cert-path
+
 endpoints:
   health:
     method: GET

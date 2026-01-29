@@ -11,6 +11,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 
 ## How to use / impact
 - `POST /api/instances/{instanceId}/prepare` with `NodePrepareInstanceRequest`.
+- All instance command endpoints require Brain authentication (shared token header or client certificate, depending on node-agent auth configuration).
 - The node agent:
   - ensures each template layer is cached (downloading if needed),
   - merges layers into the instance `merged` workspace,

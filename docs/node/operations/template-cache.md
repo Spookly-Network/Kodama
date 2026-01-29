@@ -38,6 +38,7 @@ Define where the node agent stores cached templates and how cache paths are reso
 - For manual validation at startup, set `node-agent.template-cache-check.*` to trigger a single
   cache lookup and log the hit/miss decision.
 - To purge cached templates, call `POST /api/cache/purge` on the node agent:
+  - Requires Brain authentication (shared token header or client certificate, depending on node-agent auth configuration).
   - No body purges the entire template cache.
   - Body with `templateId` purges a single template:
 
