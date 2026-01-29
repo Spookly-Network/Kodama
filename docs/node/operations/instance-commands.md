@@ -6,6 +6,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 ## What changed
 - Added an instance prepare command handler that assembles cached template layers into a workspace.
 - Added variable substitution and Brain callbacks as part of the prepare flow.
+- Added a local instance registry record written after successful preparation.
 
 ## How to use / impact
 - `POST /api/instances/{instanceId}/prepare` with `NodePrepareInstanceRequest`.
@@ -13,6 +14,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
   - ensures each template layer is cached (downloading if needed),
   - merges layers into the instance `merged` workspace,
   - applies variable substitution,
+  - writes `instance.json` metadata into the instance workspace,
   - calls back to the Brain with `/api/nodes/{nodeId}/instances/{instanceId}/prepared` (includes the node auth header when configured).
 - `variables` and `variablesJson` are mutually exclusive. When `variablesJson` is provided, the node agent parses it as a JSON map.
 - Template cache lookups use `templateId` from the prepare payload as the cache key.
