@@ -2,8 +2,10 @@ package net.spookly.kodama.nodeagent.instance.controller;
 
 import java.util.UUID;
 
+import net.spookly.kodama.nodeagent.instance.dto.NodeInstanceCommandRequest;
 import net.spookly.kodama.nodeagent.instance.dto.NodePrepareInstanceRequest;
 import net.spookly.kodama.nodeagent.instance.service.InstancePrepareService;
+import net.spookly.kodama.nodeagent.instance.service.InstanceLifecycleService;
 import net.spookly.kodama.nodeagent.instance.service.InstancePrepareValidationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,9 +21,14 @@ import org.springframework.web.server.ResponseStatusException;
 public class InstanceCommandController {
 
     private final InstancePrepareService prepareService;
+    private final InstanceLifecycleService lifecycleService;
 
-    public InstanceCommandController(InstancePrepareService prepareService) {
+    public InstanceCommandController(
+            InstancePrepareService prepareService,
+            InstanceLifecycleService lifecycleService
+    ) {
         this.prepareService = prepareService;
+        this.lifecycleService = lifecycleService;
     }
 
     @PostMapping("/{instanceId}/prepare")
@@ -44,5 +51,63 @@ public class InstanceCommandController {
         } catch (InstancePrepareValidationException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }
+    }
+
+    @PostMapping("/{instanceId}/start")
+    @ResponseStatus(HttpStatus.OK)
+    public void start(
+            @PathVariable UUID instanceId,
+            @RequestBody(required = false) NodeInstanceCommandRequest request
+    ) {
+        NodeInstanceCommandRequest validated = requireCommand(instanceId, request);
+        try {
+            lifecycleService.start(validated);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
+        }
+    }
+
+    @PostMapping("/{instanceId}/stop")
+    @ResponseStatus(HttpStatus.OK)
+    public void stop(
+            @PathVariable UUID instanceId,
+            @RequestBody(required = false) NodeInstanceCommandRequest request
+    ) {
+        NodeInstanceCommandRequest validated = requireCommand(instanceId, request);
+        try {
+            lifecycleService.stop(validated);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
+        }
+    }
+
+    @PostMapping("/{instanceId}/destroy")
+    @ResponseStatus(HttpStatus.OK)
+    public void destroy(
+            @PathVariable UUID instanceId,
+            @RequestBody(required = false) NodeInstanceCommandRequest request
+    ) {
+        NodeInstanceCommandRequest validated = requireCommand(instanceId, request);
+        try {
+            lifecycleService.destroy(validated);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
+        }
+    }
+
+    private NodeInstanceCommandRequest requireCommand(
+            UUID instanceId,
+            NodeInstanceCommandRequest request
+    ) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "request body is required");
+        }
+        if (request.instanceId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "instanceId is required");
+        }
+        if (!instanceId.equals(request.instanceId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "instanceId does not match path");
+        }
+        return request;
     }
 }

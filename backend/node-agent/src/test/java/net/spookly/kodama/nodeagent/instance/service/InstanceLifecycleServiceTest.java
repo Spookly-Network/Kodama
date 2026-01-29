@@ -1,0 +1,53 @@
+package net.spookly.kodama.nodeagent.instance.service;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+
+import java.util.UUID;
+
+import net.spookly.kodama.nodeagent.instance.callback.InstanceCallbackService;
+import net.spookly.kodama.nodeagent.instance.dto.NodeInstanceCommandRequest;
+import org.junit.jupiter.api.Test;
+
+class InstanceLifecycleServiceTest {
+
+    private final InstanceCallbackService callbackService = mock(InstanceCallbackService.class);
+    private final InstanceLifecycleService service = new InstanceLifecycleService(callbackService);
+
+    @Test
+    void startTriggersRunningCallback() {
+        UUID instanceId = UUID.randomUUID();
+
+        service.start(new NodeInstanceCommandRequest(instanceId, "demo"));
+
+        verify(callbackService).sendRunning(instanceId);
+    }
+
+    @Test
+    void stopTriggersStoppedCallback() {
+        UUID instanceId = UUID.randomUUID();
+
+        service.stop(new NodeInstanceCommandRequest(instanceId, "demo"));
+
+        verify(callbackService).sendStopped(instanceId);
+    }
+
+    @Test
+    void destroyTriggersDestroyedCallback() {
+        UUID instanceId = UUID.randomUUID();
+
+        service.destroy(new NodeInstanceCommandRequest(instanceId, "demo"));
+
+        verify(callbackService).sendDestroyed(instanceId);
+    }
+
+    @Test
+    void startRejectsMissingInstanceId() {
+        NodeInstanceCommandRequest request = new NodeInstanceCommandRequest(null, "demo");
+
+        assertThatThrownBy(() -> service.start(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("instanceId is required");
+    }
+}

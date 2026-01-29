@@ -2,6 +2,10 @@ spring:
   application:
     name: kodama-node-agent
 
+server:
+  port: ${NODE_AGENT_HTTP_PORT:8080}
+  address: ${NODE_AGENT_HTTP_BIND_ADDRESS:0.0.0.0}
+
 node-agent:
   node-id: ${NODE_AGENT_ID:}
   node-name: ${NODE_AGENT_NAME:}
