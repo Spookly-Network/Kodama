@@ -11,6 +11,7 @@ Describe the configuration inputs for the node agent and how they map to environ
 - Added S3-backed template storage configuration for fetching template tarballs.
 - Added optional template cache check inputs for manual cache validation at startup.
 - Documented runtime dev-mode toggling for cache bypass.
+- Documented Brain authentication requirements for command endpoints.
 
 ## How to use / impact
 - Configure with environment variables or CLI args (`--node-agent.<key>=...`).
@@ -49,6 +50,9 @@ Describe the configuration inputs for the node agent and how they map to environ
   - `node-agent.s3.region` (`NODE_AGENT_S3_REGION`)
 - When registration is enabled, the node agent reads the token from `node-agent.auth.token-path`
   and sends it to the Brain using `node-agent.auth.header-name`.
+- Command endpoints require Brain authentication:
+  - If `node-agent.auth.cert-path` is set, the Brain must connect with a matching client certificate.
+  - Otherwise, the Brain must send the shared token using `node-agent.auth.header-name`.
 - `node-agent.base-url` is used by the Brain to issue commands to the node (including cache purge).
 - `server.port` and `server.address` control the embedded HTTP listener used by the Brain to issue commands.
 - When `node-agent.heartbeat-interval-seconds` is `0`, the node agent uses the heartbeat interval
@@ -73,6 +77,8 @@ Describe the configuration inputs for the node agent and how they map to environ
 - Secrets are redacted in startup logs, but the paths to secrets are not.
 - When `node-agent.registration-enabled=true`, failed Brain registration stops the node agent.
 - If `node-agent.auth.token-path` is set but unreadable, registration fails and the node agent stops.
+- If neither `node-agent.auth.cert-path` nor `node-agent.auth.token-path` is configured, command endpoints respond with HTTP 500.
+- Missing or invalid Brain credentials on command endpoints return HTTP 401.
 - When `node-agent.template-cache-check.enabled=true`, missing template-id/version/checksum values
   stop the node agent at startup.
 - Invalid template cache limit values stop the node agent at startup.

@@ -17,6 +17,7 @@ The Node Agent is a lightweight Java service that runs on each node and executes
 - Added a prepare command handler that assembles templates, applies variable substitution, and calls back to the Brain.
 - Added a health endpoint for basic node-agent diagnostics.
 - Added start/stop/destroy command handlers that send callbacks to the Brain.
+- Added Brain authentication checks for command endpoints using a shared token or client certificate.
 
 ## How to use / impact
 - Build and run with `./gradlew :node-agent:bootRun` from `backend/`.
