@@ -1,12 +1,12 @@
 package net.spookly.kodama.nodeagent.template.merge;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
-import java.io.UncheckedIOException;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+
+import net.spookly.kodama.nodeagent.instance.workspace.InstanceVariableSubstitutionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -26,7 +28,22 @@ public class TemplateLayerMergeService {
 
     private static final Logger logger = LoggerFactory.getLogger(TemplateLayerMergeService.class);
 
+    private final InstanceVariableSubstitutionService substitutionService;
+
+    public TemplateLayerMergeService(InstanceVariableSubstitutionService substitutionService) {
+        this.substitutionService = Objects.requireNonNull(substitutionService, "substitutionService");
+    }
+
     public void mergeLayers(String instanceId, Path mergedDir, List<TemplateLayerSource> layers) {
+        mergeLayers(instanceId, mergedDir, layers, Map.of());
+    }
+
+    public void mergeLayers(
+            String instanceId,
+            Path mergedDir,
+            List<TemplateLayerSource> layers,
+            Map<String, String> variables
+    ) {
         String normalizedInstanceId = requireValue("instanceId", instanceId);
         Path targetDir = Objects.requireNonNull(mergedDir, "mergedDir");
         List<TemplateLayerSource> orderedLayers = normalizeLayers(layers);
@@ -54,6 +71,8 @@ public class TemplateLayerMergeService {
                 normalizedInstanceId,
                 orderedLayers.size()
         );
+
+        substitutionService.substituteVariables(normalizedInstanceId, targetDir, variables);
     }
 
     private List<TemplateLayerSource> normalizeLayers(List<TemplateLayerSource> layers) {

@@ -40,6 +40,7 @@ Describe the configuration inputs for the node agent and how they map to environ
   - `node-agent.template-cache-check.checksum` (`NODE_AGENT_TEMPLATE_CACHE_CHECK_CHECKSUM`)
   - `node-agent.template-cache-limits.max-extracted-bytes` (`NODE_AGENT_TEMPLATE_CACHE_LIMITS_MAX_EXTRACTED_BYTES`, default `10737418240`)
   - `node-agent.template-cache-limits.max-entries` (`NODE_AGENT_TEMPLATE_CACHE_LIMITS_MAX_ENTRIES`, default `100000`)
+  - `node-agent.variable-substitution.max-file-bytes` (`NODE_AGENT_VARIABLE_SUBSTITUTION_MAX_FILE_BYTES`, default `1048576`)
   - `node-agent.auth.header-name` (`NODE_AGENT_AUTH_HEADER_NAME`, default `X-Node-Token`)
   - `node-agent.auth.token-path` (`NODE_AGENT_AUTH_TOKEN_PATH`)
   - `node-agent.auth.cert-path` (`NODE_AGENT_AUTH_CERT_PATH`)
@@ -60,6 +61,7 @@ Describe the configuration inputs for the node agent and how they map to environ
 - When `node-agent.template-cache-check.enabled=true`, the node agent validates a single cached
   template at startup and logs the cache hit/miss outcome.
 - `node-agent.template-cache-limits.*` caps extracted tarball size and entry count to protect disk usage.
+- `node-agent.variable-substitution.max-file-bytes` skips large files during placeholder substitution to avoid memory spikes (set to `0` to disable).
 - S3 configuration is required for template storage. When `node-agent.s3.endpoint` is set, the client
   uses path-style requests for local or custom S3 endpoints.
 

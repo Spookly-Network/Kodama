@@ -13,6 +13,8 @@ The Node Agent is a lightweight Java service that runs on each node and executes
 - Added a dev-mode toggle endpoint so the Brain can force cache bypass on template fetches.
 - Added per-instance workspace layout helpers that create merged/config, logs, and temp folders on demand.
 - Added a template layer merge service that applies cached templates into the merged workspace directory.
+- Added variable substitution over merged workspace text files using Brain-provided values.
+- Added a prepare command handler that assembles templates, applies variable substitution, and calls back to the Brain.
 
 ## How to use / impact
 - Build and run with `./gradlew :node-agent:bootRun` from `backend/`.
@@ -33,6 +35,7 @@ The Node Agent is a lightweight Java service that runs on each node and executes
     - `NODE_AGENT_HEARTBEAT_INTERVAL_SECONDS` (override Brain-provided interval)
     - `NODE_AGENT_WORKSPACE_DIR`
     - `NODE_AGENT_DOCKER_HOST`
+    - `NODE_AGENT_VARIABLE_SUBSTITUTION_MAX_FILE_BYTES`
     - `NODE_AGENT_AUTH_HEADER_NAME`
     - `NODE_AGENT_AUTH_TOKEN_PATH`
     - `NODE_AGENT_AUTH_CERT_PATH`
@@ -55,3 +58,4 @@ The Node Agent is a lightweight Java service that runs on each node and executes
 - `docs/node/operations/configuration.md`
 - `docs/node/operations/instance-workspaces.md`
 - `docs/node/operations/template-merge.md`
+- `docs/node/operations/instance-commands.md`

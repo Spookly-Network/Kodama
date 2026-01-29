@@ -161,6 +161,7 @@ public class CommandDispatcherService {
         TemplateVersion version = layer.getTemplateVersion();
         return new NodePrepareInstanceLayer(
                 version.getId(),
+                version.getTemplate().getId(),
                 version.getVersion(),
                 version.getChecksum(),
                 version.getS3Key(),
