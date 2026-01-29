@@ -13,6 +13,7 @@ Describe how the node agent maps instance IDs to local workspace directories and
   - `<instanceId>/merged` for merged template/config output.
   - `<instanceId>/logs` for instance logs.
   - `<instanceId>/temp` for transient runtime files.
+  - `<instanceId>/instance.json` for the local instance registry record written after prepare.
 - The node agent creates these directories when `prepareWorkspace(instanceId)` is called.
 - `instanceId` must be a single path segment (no slashes or `..`).
 

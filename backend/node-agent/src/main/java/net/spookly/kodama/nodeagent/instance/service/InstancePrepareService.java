@@ -9,6 +9,7 @@ import java.util.UUID;
 import net.spookly.kodama.nodeagent.instance.callback.InstanceCallbackService;
 import net.spookly.kodama.nodeagent.instance.dto.NodePrepareInstanceLayer;
 import net.spookly.kodama.nodeagent.instance.dto.NodePrepareInstanceRequest;
+import net.spookly.kodama.nodeagent.instance.registry.InstanceRegistryService;
 import net.spookly.kodama.nodeagent.instance.workspace.InstanceWorkspaceManager;
 import net.spookly.kodama.nodeagent.instance.workspace.InstanceWorkspacePaths;
 import net.spookly.kodama.nodeagent.template.cache.TemplateCacheLookupResult;
@@ -29,19 +30,22 @@ public class InstancePrepareService {
     private final InstanceWorkspaceManager workspaceManager;
     private final InstanceVariablesResolver variablesResolver;
     private final InstanceCallbackService callbackService;
+    private final InstanceRegistryService registryService;
 
     public InstancePrepareService(
             TemplateCachePopulateService cachePopulateService,
             TemplateLayerMergeService mergeService,
             InstanceWorkspaceManager workspaceManager,
             InstanceVariablesResolver variablesResolver,
-            InstanceCallbackService callbackService
+            InstanceCallbackService callbackService,
+            InstanceRegistryService registryService
     ) {
         this.cachePopulateService = Objects.requireNonNull(cachePopulateService, "cachePopulateService");
         this.mergeService = Objects.requireNonNull(mergeService, "mergeService");
         this.workspaceManager = Objects.requireNonNull(workspaceManager, "workspaceManager");
         this.variablesResolver = Objects.requireNonNull(variablesResolver, "variablesResolver");
         this.callbackService = Objects.requireNonNull(callbackService, "callbackService");
+        this.registryService = Objects.requireNonNull(registryService, "registryService");
     }
 
     public void prepare(NodePrepareInstanceRequest request) {
@@ -63,6 +67,7 @@ public class InstancePrepareService {
             }
 
             mergeService.mergeLayers(instanceId.toString(), workspace.mergedDir(), sources, variables);
+            registryService.recordPrepared(workspace, request, layers, variables);
         } catch (InstancePrepareValidationException ex) {
             logger.warn("Instance preparation rejected. instanceId={}", instanceId, ex);
             try {

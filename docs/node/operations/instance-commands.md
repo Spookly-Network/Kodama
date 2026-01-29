@@ -6,6 +6,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 ## What changed
 - Added an instance prepare command handler that assembles cached template layers into a workspace.
 - Added variable substitution and Brain callbacks as part of the prepare flow.
+- Added a local instance registry record written after successful preparation.
 - Added start/stop/destroy command handlers that send lifecycle callbacks to the Brain.
 
 ## How to use / impact
@@ -14,6 +15,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
   - ensures each template layer is cached (downloading if needed),
   - merges layers into the instance `merged` workspace,
   - applies variable substitution,
+  - writes `instance.json` metadata into the instance workspace,
   - calls back to the Brain with `/api/nodes/{nodeId}/instances/{instanceId}/prepared` (includes the node auth header when configured).
 - `POST /api/instances/{instanceId}/start` with `NodeInstanceCommandRequest`.
 - `POST /api/instances/{instanceId}/stop` with `NodeInstanceCommandRequest`.
