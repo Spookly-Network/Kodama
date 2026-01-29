@@ -1,6 +1,5 @@
 package net.spookly.kodama.nodeagent.instance.registry;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
@@ -13,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.spookly.kodama.nodeagent.instance.dto.NodePrepareInstanceLayer;
 import net.spookly.kodama.nodeagent.instance.dto.NodePrepareInstanceRequest;
 import net.spookly.kodama.nodeagent.instance.workspace.InstanceWorkspacePaths;
