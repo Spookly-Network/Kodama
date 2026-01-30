@@ -25,7 +25,7 @@ public class NodeAgentStartupLogger implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         logger.info(
                 "Node agent started. nodeId={}, nodeName={}, nodeVersion={}, region={}, capacitySlots={}, " +
-                        "brainBaseUrl={}, registrationEnabled={}, heartbeatIntervalSeconds={}, dockerHost={}",
+                        "brainBaseUrl={}, registrationEnabled={}, heartbeatIntervalSeconds={}, dockerHost={}, dockerTlsVerify={}",
                 valueOrDash(config.getNodeId()),
                 config.getNodeName(),
                 config.getNodeVersion(),
@@ -34,7 +34,8 @@ public class NodeAgentStartupLogger implements ApplicationRunner {
                 config.getBrainBaseUrl(),
                 config.isRegistrationEnabled(),
                 config.getHeartbeatIntervalSeconds(),
-                valueOrDash(config.getDockerHost())
+                valueOrDash(config.getEffectiveDockerHost()),
+                valueOrDash(config.getDocker().getTlsVerify())
         );
     }
 
@@ -43,5 +44,12 @@ public class NodeAgentStartupLogger implements ApplicationRunner {
             return "-";
         }
         return value;
+    }
+
+    private String valueOrDash(Boolean value) {
+        if (value == null) {
+            return "-";
+        }
+        return value.toString();
     }
 }

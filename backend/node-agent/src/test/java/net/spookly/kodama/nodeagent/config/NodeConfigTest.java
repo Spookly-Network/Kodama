@@ -100,4 +100,38 @@ class NodeConfigTest {
 
         assertThatNoException().isThrownBy(config::validate);
     }
+
+    @Test
+    void validateRejectsDockerTimeoutsWhenNonPositive() {
+        NodeConfig config = new NodeConfig();
+        config.setNodeName("Node 1");
+        config.setNodeVersion("1.0.0");
+        config.setRegion("local");
+        config.setCapacitySlots(4);
+        config.setBrainBaseUrl("http://brain:8080");
+        config.setCacheDir("./cache");
+        config.getDocker().setConnectionTimeoutSeconds(0);
+        config.getDocker().setResponseTimeoutSeconds(0);
+
+        assertThatThrownBy(config::validate)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("node-agent.docker.connection-timeout-seconds must be greater than 0")
+                .hasMessageContaining("node-agent.docker.response-timeout-seconds must be greater than 0");
+    }
+
+    @Test
+    void validateAcceptsDockerTlsVerifyWhenCertConfigMissing() {
+        NodeConfig config = new NodeConfig();
+        config.setNodeName("Node 1");
+        config.setNodeVersion("1.0.0");
+        config.setRegion("local");
+        config.setCapacitySlots(4);
+        config.setBrainBaseUrl("http://brain:8080");
+        config.setCacheDir("./cache");
+        config.getDocker().setTlsVerify(true);
+        config.getDocker().setCertPath("");
+        config.getDocker().setConfigDir("");
+
+        assertThatNoException().isThrownBy(config::validate);
+    }
 }
