@@ -19,6 +19,16 @@ node-agent:
   registration-enabled: ${NODE_AGENT_REGISTRATION_ENABLED:true}
   heartbeat-interval-seconds: ${NODE_AGENT_HEARTBEAT_INTERVAL_SECONDS:0}
   docker-host: ${NODE_AGENT_DOCKER_HOST:}
+  docker:
+    host: ${NODE_AGENT_DOCKER_HOST:}
+    tls-verify: ${NODE_AGENT_DOCKER_TLS_VERIFY:}
+    cert-path: ${NODE_AGENT_DOCKER_CERT_PATH:}
+    api-version: ${NODE_AGENT_DOCKER_API_VERSION:}
+    config-dir: ${NODE_AGENT_DOCKER_CONFIG_DIR:}
+    context: ${NODE_AGENT_DOCKER_CONTEXT:}
+    max-connections: ${NODE_AGENT_DOCKER_MAX_CONNECTIONS:}
+    connection-timeout-seconds: ${NODE_AGENT_DOCKER_CONNECTION_TIMEOUT_SECONDS:5}
+    response-timeout-seconds: ${NODE_AGENT_DOCKER_RESPONSE_TIMEOUT_SECONDS:30}
   workspace-dir: ${NODE_AGENT_WORKSPACE_DIR:./data}
   cache-dir: ${NODE_AGENT_CACHE_DIR:./cache}
   template-cache-check:

@@ -12,6 +12,7 @@ Describe the configuration inputs for the node agent and how they map to environ
 - Added optional template cache check inputs for manual cache validation at startup.
 - Documented runtime dev-mode toggling for cache bypass.
 - Documented Brain authentication requirements for command endpoints.
+- Added Docker client connection settings for local or TCP Docker Engine access.
 
 ## How to use / impact
 - Configure with environment variables or CLI args (`--node-agent.<key>=...`).
@@ -37,6 +38,15 @@ Describe the configuration inputs for the node agent and how they map to environ
   - `server.address` (`NODE_AGENT_HTTP_BIND_ADDRESS`, default `0.0.0.0`)
   - `node-agent.workspace-dir` (`NODE_AGENT_WORKSPACE_DIR`, default `./data`)
   - `node-agent.docker-host` (`NODE_AGENT_DOCKER_HOST`)
+  - `node-agent.docker.host` (`NODE_AGENT_DOCKER_HOST`)
+  - `node-agent.docker.tls-verify` (`NODE_AGENT_DOCKER_TLS_VERIFY`)
+  - `node-agent.docker.cert-path` (`NODE_AGENT_DOCKER_CERT_PATH`)
+  - `node-agent.docker.api-version` (`NODE_AGENT_DOCKER_API_VERSION`)
+  - `node-agent.docker.config-dir` (`NODE_AGENT_DOCKER_CONFIG_DIR`)
+  - `node-agent.docker.context` (`NODE_AGENT_DOCKER_CONTEXT`)
+  - `node-agent.docker.max-connections` (`NODE_AGENT_DOCKER_MAX_CONNECTIONS`)
+  - `node-agent.docker.connection-timeout-seconds` (`NODE_AGENT_DOCKER_CONNECTION_TIMEOUT_SECONDS`, default `5`)
+  - `node-agent.docker.response-timeout-seconds` (`NODE_AGENT_DOCKER_RESPONSE_TIMEOUT_SECONDS`, default `30`)
   - `node-agent.template-cache-check.enabled` (`NODE_AGENT_TEMPLATE_CACHE_CHECK_ENABLED`, default `false`)
   - `node-agent.template-cache-check.template-id` (`NODE_AGENT_TEMPLATE_CACHE_CHECK_TEMPLATE_ID`)
   - `node-agent.template-cache-check.version` (`NODE_AGENT_TEMPLATE_CACHE_CHECK_VERSION`)
@@ -57,6 +67,14 @@ Describe the configuration inputs for the node agent and how they map to environ
 - `server.port` and `server.address` control the embedded HTTP listener used by the Brain to issue commands.
 - When `node-agent.heartbeat-interval-seconds` is `0`, the node agent uses the heartbeat interval
   provided by the Brain during registration.
+- `node-agent.docker.host` configures the Docker Engine socket or TCP endpoint. If unset, the Docker
+  client uses the docker-java defaults (including `DOCKER_HOST` or the local Unix socket).
+- `node-agent.docker-host` remains supported for backwards compatibility, but prefer `node-agent.docker.host`.
+- When `node-agent.docker.tls-verify=true`, you can set `node-agent.docker.cert-path` or
+  `node-agent.docker.config-dir` to load TLS certificates. If neither is set, the Docker client
+  falls back to the default Docker config location (including Docker contexts).
+- `node-agent.docker.connection-timeout-seconds` and `node-agent.docker.response-timeout-seconds`
+  control the Docker client HTTP timeouts.
 - `node-agent.cache-dir` is the root for template cache storage. The node agent creates a
   `templates/` subdirectory on startup. See `docs/node/operations/template-cache.md` for the layout.
 - `node-agent.workspace-dir` is the root for instance workspaces. The node agent creates
@@ -83,6 +101,7 @@ Describe the configuration inputs for the node agent and how they map to environ
   stop the node agent at startup.
 - Invalid template cache limit values stop the node agent at startup.
 - Missing or invalid S3 settings stop the node agent when template storage is initialized.
+- Invalid Docker timeout values stop the node agent at startup.
 
 ## Links
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/config/NodeConfig.java`

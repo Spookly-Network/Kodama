@@ -18,6 +18,7 @@ public class NodeConfig {
     private String baseUrl;
     private String brainBaseUrl;
     private String dockerHost;
+    private Docker docker = new Docker();
     private String workspaceDir = "./data";
     private String cacheDir;
     private boolean registrationEnabled = true;
@@ -61,9 +62,27 @@ public class NodeConfig {
         } else if (variableSubstitution.getMaxFileBytes() < 0) {
             errors.add("node-agent.variable-substitution.max-file-bytes must be 0 or greater");
         }
+        if (docker == null) {
+            errors.add("node-agent.docker is required");
+        } else {
+            if (docker.getConnectionTimeoutSeconds() <= 0) {
+                errors.add("node-agent.docker.connection-timeout-seconds must be greater than 0");
+            }
+            if (docker.getResponseTimeoutSeconds() <= 0) {
+                errors.add("node-agent.docker.response-timeout-seconds must be greater than 0");
+            }
+            Integer maxConnections = docker.getMaxConnections();
+            if (maxConnections != null && maxConnections <= 0) {
+                errors.add("node-agent.docker.max-connections must be greater than 0");
+            }
+        }
         if (!errors.isEmpty()) {
             throw new IllegalStateException("Invalid node-agent configuration:\n- " + String.join("\n- ", errors));
         }
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     private void addIfBlank(List<String> errors, String value, String message) {
@@ -150,6 +169,21 @@ public class NodeConfig {
 
     public void setDockerHost(String dockerHost) {
         this.dockerHost = dockerHost;
+    }
+
+    public Docker getDocker() {
+        return docker;
+    }
+
+    public void setDocker(Docker docker) {
+        this.docker = docker == null ? new Docker() : docker;
+    }
+
+    public String getEffectiveDockerHost() {
+        if (docker != null && docker.getHost() != null && !docker.getHost().isBlank()) {
+            return docker.getHost();
+        }
+        return dockerHost;
     }
 
     public String getWorkspaceDir() {
@@ -376,6 +410,91 @@ public class NodeConfig {
 
         public void setMaxFileBytes(long maxFileBytes) {
             this.maxFileBytes = maxFileBytes;
+        }
+    }
+
+    public static class Docker {
+
+        private String host;
+        private Boolean tlsVerify;
+        private String certPath;
+        private String apiVersion;
+        private String configDir;
+        private String context;
+        private Integer maxConnections;
+        private int connectionTimeoutSeconds = 5;
+        private int responseTimeoutSeconds = 30;
+
+        public String getHost() {
+            return host;
+        }
+
+        public void setHost(String host) {
+            this.host = host;
+        }
+
+        public Boolean getTlsVerify() {
+            return tlsVerify;
+        }
+
+        public void setTlsVerify(Boolean tlsVerify) {
+            this.tlsVerify = tlsVerify;
+        }
+
+        public String getCertPath() {
+            return certPath;
+        }
+
+        public void setCertPath(String certPath) {
+            this.certPath = certPath;
+        }
+
+        public String getApiVersion() {
+            return apiVersion;
+        }
+
+        public void setApiVersion(String apiVersion) {
+            this.apiVersion = apiVersion;
+        }
+
+        public String getConfigDir() {
+            return configDir;
+        }
+
+        public void setConfigDir(String configDir) {
+            this.configDir = configDir;
+        }
+
+        public String getContext() {
+            return context;
+        }
+
+        public void setContext(String context) {
+            this.context = context;
+        }
+
+        public Integer getMaxConnections() {
+            return maxConnections;
+        }
+
+        public void setMaxConnections(Integer maxConnections) {
+            this.maxConnections = maxConnections;
+        }
+
+        public int getConnectionTimeoutSeconds() {
+            return connectionTimeoutSeconds;
+        }
+
+        public void setConnectionTimeoutSeconds(int connectionTimeoutSeconds) {
+            this.connectionTimeoutSeconds = connectionTimeoutSeconds;
+        }
+
+        public int getResponseTimeoutSeconds() {
+            return responseTimeoutSeconds;
+        }
+
+        public void setResponseTimeoutSeconds(int responseTimeoutSeconds) {
+            this.responseTimeoutSeconds = responseTimeoutSeconds;
         }
     }
 }

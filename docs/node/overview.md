@@ -15,6 +15,7 @@ The Node Agent is a lightweight Java service that runs on each node and executes
 - Added a template layer merge service that applies cached templates into the merged workspace directory.
 - Added variable substitution over merged workspace text files using Brain-provided values.
 - Added a prepare command handler that assembles templates, applies variable substitution, and calls back to the Brain.
+- Added Docker client configuration and a Docker service for container lifecycle operations.
 - Added a health endpoint for basic node-agent diagnostics.
 - Added start/stop/destroy command handlers that send callbacks to the Brain.
 - Added Brain authentication checks for command endpoints using a shared token or client certificate.
@@ -40,6 +41,7 @@ The Node Agent is a lightweight Java service that runs on each node and executes
     - `NODE_AGENT_HTTP_BIND_ADDRESS` (defaults to `0.0.0.0`)
     - `NODE_AGENT_WORKSPACE_DIR`
     - `NODE_AGENT_DOCKER_HOST`
+    - `NODE_AGENT_DOCKER_*` (Docker client settings; see `docs/node/operations/configuration.md`)
     - `NODE_AGENT_VARIABLE_SUBSTITUTION_MAX_FILE_BYTES`
     - `NODE_AGENT_AUTH_HEADER_NAME`
     - `NODE_AGENT_AUTH_TOKEN_PATH`
