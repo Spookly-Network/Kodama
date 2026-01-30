@@ -15,14 +15,30 @@ public class InstanceLifecycleService {
     private static final Logger logger = LoggerFactory.getLogger(InstanceLifecycleService.class);
 
     private final InstanceCallbackService callbackService;
+    private final InstanceStartService startService;
 
-    public InstanceLifecycleService(InstanceCallbackService callbackService) {
+    public InstanceLifecycleService(
+            InstanceCallbackService callbackService,
+            InstanceStartService startService
+    ) {
         this.callbackService = Objects.requireNonNull(callbackService, "callbackService");
+        this.startService = Objects.requireNonNull(startService, "startService");
     }
 
     public void start(NodeInstanceCommandRequest request) {
         UUID instanceId = requireInstanceId(request);
         logger.info("Start command received. instanceId={} name={}", instanceId, valueOrDash(request.name()));
+        try {
+            startService.startInstance(instanceId, request.name());
+        } catch (RuntimeException ex) {
+            try {
+                callbackService.sendFailed(instanceId);
+            } catch (RuntimeException callbackEx) {
+                logger.warn("Start command failure callback failed. instanceId={}", instanceId, callbackEx);
+            }
+            logger.warn("Start command failed. instanceId={}", instanceId, ex);
+            throw ex;
+        }
         try {
             callbackService.sendRunning(instanceId);
             logger.info("Start command acknowledged. instanceId={}", instanceId);

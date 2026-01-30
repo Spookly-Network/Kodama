@@ -5,6 +5,7 @@ Persist a local record of instance metadata after the node finishes preparing a 
 
 ## What changed
 - The prepare flow now writes an `instance.json` registry entry per instance.
+- The start flow updates the registry with the Docker container id.
 
 ## How to use / impact
 - Location: `${NODE_AGENT_WORKSPACE_DIR:-./data}/instances/<instanceId>/instance.json`.
@@ -14,7 +15,8 @@ Persist a local record of instance metadata after the node finishes preparing a 
   - resolved variables map used for substitution
   - template layer list from the prepare request
   - prepared timestamp
-- The registry is overwritten on each successful prepare.
+  - container id (set after the instance is started)
+- The registry is overwritten on each successful prepare and updated again when the container id is recorded.
 
 ## Edge cases / risks
 - If the registry write fails, the prepare request fails and a `/failed` callback is attempted.

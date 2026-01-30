@@ -61,12 +61,68 @@ public class InstanceRegistryService {
                 request.portsJson(),
                 safeVariables,
                 new ArrayList<>(safeLayers),
-                OffsetDateTime.now()
+                OffsetDateTime.now(),
+                null
         );
 
         Path registryFile = instanceRoot.resolve(REGISTRY_FILENAME);
         writeRegistry(registryFile, entry);
         logger.info("Instance registry updated. instanceId={} path={}", instanceId, registryFile);
+    }
+
+    public InstanceRegistryEntry loadRegistry(InstanceWorkspacePaths workspace) {
+        if (workspace == null) {
+            throw new InstanceRegistryException("instance workspace is required");
+        }
+        Path instanceRoot = Objects.requireNonNull(workspace.instanceRoot(), "instanceRoot");
+        if (!Files.isDirectory(instanceRoot)) {
+            throw new InstanceRegistryException("Instance workspace root is missing at " + instanceRoot);
+        }
+        Path registryFile = instanceRoot.resolve(REGISTRY_FILENAME);
+        if (!Files.isRegularFile(registryFile)) {
+            throw new InstanceRegistryException("Instance registry is missing at " + registryFile);
+        }
+        try {
+            InstanceRegistryEntry entry = objectMapper.readValue(registryFile.toFile(), InstanceRegistryEntry.class);
+            if (entry == null) {
+                throw new InstanceRegistryException("Instance registry is empty at " + registryFile);
+            }
+            return entry;
+        } catch (IOException ex) {
+            throw new InstanceRegistryException("Failed to read instance registry at " + registryFile, ex);
+        }
+    }
+
+    public void recordContainerId(
+            InstanceWorkspacePaths workspace,
+            UUID instanceId,
+            String containerId
+    ) {
+        if (workspace == null) {
+            throw new InstanceRegistryException("instance workspace is required");
+        }
+        requireInstanceId(instanceId);
+        if (containerId == null || containerId.isBlank()) {
+            throw new InstanceRegistryException("containerId is required");
+        }
+        requireMatchingInstanceId(instanceId, workspace.instanceId());
+        InstanceRegistryEntry entry = loadRegistry(workspace);
+        if (!instanceId.equals(entry.instanceId())) {
+            throw new InstanceRegistryException("instanceId does not match registry: " + instanceId + " vs " + entry.instanceId());
+        }
+        InstanceRegistryEntry updated = new InstanceRegistryEntry(
+                entry.instanceId(),
+                entry.name(),
+                entry.displayName(),
+                entry.portsJson(),
+                entry.variables(),
+                entry.layers(),
+                entry.preparedAt(),
+                containerId.trim()
+        );
+        Path registryFile = workspace.instanceRoot().resolve(REGISTRY_FILENAME);
+        writeRegistry(registryFile, updated);
+        logger.info("Instance registry updated with containerId. instanceId={} containerId={}", instanceId, containerId);
     }
 
     private void writeRegistry(Path registryFile, InstanceRegistryEntry entry) {

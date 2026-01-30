@@ -1,7 +1,10 @@
 package net.spookly.kodama.nodeagent.docker.service;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerCmd;
@@ -12,13 +15,21 @@ import com.github.dockerjava.api.exception.ConflictException;
 import com.github.dockerjava.api.exception.DockerException;
 import com.github.dockerjava.api.exception.NotFoundException;
 import com.github.dockerjava.api.exception.NotModifiedException;
+import com.github.dockerjava.api.model.AccessMode;
+import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.Container;
+import com.github.dockerjava.api.model.ExposedPort;
+import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.Image;
+import com.github.dockerjava.api.model.Ports;
+import com.github.dockerjava.api.model.Volume;
 import net.spookly.kodama.nodeagent.docker.dto.DockerContainerCreateRequest;
 import net.spookly.kodama.nodeagent.docker.dto.DockerContainerCreateResult;
 import net.spookly.kodama.nodeagent.docker.dto.DockerContainerStatus;
 import net.spookly.kodama.nodeagent.docker.dto.DockerContainerSummary;
 import net.spookly.kodama.nodeagent.docker.dto.DockerImageSummary;
+import net.spookly.kodama.nodeagent.docker.dto.DockerPortBinding;
+import net.spookly.kodama.nodeagent.docker.dto.DockerVolumeMount;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -53,6 +64,14 @@ public class DockerService {
             }
             if (hasText(request.workingDir())) {
                 createCmd.withWorkingDir(request.workingDir());
+            }
+            HostConfig hostConfig = buildHostConfig(request.volumeMounts(), request.portBindings());
+            if (hostConfig != null) {
+                createCmd.withHostConfig(hostConfig);
+            }
+            List<ExposedPort> exposedPorts = buildExposedPorts(request.portBindings());
+            if (!exposedPorts.isEmpty()) {
+                createCmd.withExposedPorts(exposedPorts);
             }
             CreateContainerResponse response = createCmd.exec();
             List<String> warnings = response.getWarnings() == null
@@ -183,5 +202,106 @@ public class DockerService {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private HostConfig buildHostConfig(List<DockerVolumeMount> volumeMounts, List<DockerPortBinding> portBindings) {
+        List<Bind> binds = buildBinds(volumeMounts);
+        Ports ports = buildPorts(portBindings);
+        if (binds.isEmpty() && ports == null) {
+            return null;
+        }
+        HostConfig hostConfig = HostConfig.newHostConfig();
+        if (!binds.isEmpty()) {
+            hostConfig.withBinds(binds);
+        }
+        if (ports != null) {
+            hostConfig.withPortBindings(ports);
+        }
+        return hostConfig;
+    }
+
+    private List<Bind> buildBinds(List<DockerVolumeMount> volumeMounts) {
+        if (volumeMounts == null || volumeMounts.isEmpty()) {
+            return List.of();
+        }
+        List<Bind> binds = new ArrayList<>();
+        for (DockerVolumeMount mount : volumeMounts) {
+            if (mount == null) {
+                continue;
+            }
+            String hostPath = requirePath("hostPath", mount.hostPath());
+            String containerPath = requirePath("containerPath", mount.containerPath());
+            AccessMode mode = mount.readOnly() ? AccessMode.ro : AccessMode.rw;
+            binds.add(new Bind(hostPath, new Volume(containerPath), mode));
+        }
+        return binds;
+    }
+
+    private Ports buildPorts(List<DockerPortBinding> portBindings) {
+        if (portBindings == null || portBindings.isEmpty()) {
+            return null;
+        }
+        Ports ports = new Ports();
+        Map<String, Ports.Binding> seen = new LinkedHashMap<>();
+        for (DockerPortBinding binding : portBindings) {
+            if (binding == null) {
+                continue;
+            }
+            ExposedPort exposedPort = toExposedPort(binding);
+            Ports.Binding hostBinding = Ports.Binding.bindPort(requirePort(binding.hostPort(), "hostPort"));
+            String key = exposedPort.toString();
+            Ports.Binding existing = seen.putIfAbsent(key, hostBinding);
+            if (existing != null) {
+                throw new DockerOperationException("Duplicate port binding for " + key);
+            }
+            ports.bind(exposedPort, hostBinding);
+        }
+        return ports;
+    }
+
+    private List<ExposedPort> buildExposedPorts(List<DockerPortBinding> portBindings) {
+        if (portBindings == null || portBindings.isEmpty()) {
+            return List.of();
+        }
+        Map<String, ExposedPort> exposed = new LinkedHashMap<>();
+        for (DockerPortBinding binding : portBindings) {
+            if (binding == null) {
+                continue;
+            }
+            ExposedPort exposedPort = toExposedPort(binding);
+            exposed.putIfAbsent(exposedPort.toString(), exposedPort);
+        }
+        return new ArrayList<>(exposed.values());
+    }
+
+    private ExposedPort toExposedPort(DockerPortBinding binding) {
+        int containerPort = requirePort(binding.containerPort(), "containerPort");
+        String protocol = normalizeProtocol(binding.protocol());
+        return "udp".equals(protocol) ? ExposedPort.udp(containerPort) : ExposedPort.tcp(containerPort);
+    }
+
+    private String normalizeProtocol(String protocol) {
+        if (protocol == null || protocol.isBlank()) {
+            return "tcp";
+        }
+        String normalized = protocol.trim().toLowerCase();
+        if (!"tcp".equals(normalized) && !"udp".equals(normalized)) {
+            throw new DockerOperationException("Unsupported port protocol: " + protocol);
+        }
+        return normalized;
+    }
+
+    private int requirePort(int port, String label) {
+        if (port <= 0 || port > 65535) {
+            throw new DockerOperationException(label + " must be between 1 and 65535");
+        }
+        return port;
+    }
+
+    private String requirePath(String label, String value) {
+        if (value == null || value.isBlank()) {
+            throw new DockerOperationException(label + " is required");
+        }
+        return value.trim();
     }
 }
