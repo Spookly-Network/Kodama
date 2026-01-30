@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.inOrder;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -97,7 +98,8 @@ class InstanceStartServiceTest {
         assertThat(mount.containerPath()).isEqualTo("/workspace");
         assertThat(request.portBindings()).hasSize(1);
 
-        verify(registryService).recordContainerId(workspace, instanceId, "container-1");
-        verify(dockerService).startContainer("container-1");
+        var order = inOrder(dockerService, registryService);
+        order.verify(dockerService).startContainer("container-1");
+        order.verify(registryService).recordContainerId(workspace, instanceId, "container-1");
     }
 }

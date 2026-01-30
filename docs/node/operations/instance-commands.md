@@ -47,6 +47,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - Start fails if the prepared workspace or `instance.json` registry record is missing.
 - Missing `portsJson` is allowed; port bindings fall back to `PORT`/`PORT_*` variables.
 - Invalid or missing port mappings result in a failed start and a `/failed` callback attempt.
+- If the `/running` callback fails after the container starts, the node logs the error but does not send `/failed`.
 
 ## Links
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/instance/controller/InstanceCommandController.java`

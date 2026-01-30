@@ -1,5 +1,6 @@
 package net.spookly.kodama.nodeagent.instance.service;
 
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -76,10 +77,10 @@ class InstanceLifecycleServiceTest {
                 .when(callbackService)
                 .sendRunning(instanceId);
 
-        assertThatThrownBy(() -> service.start(new NodeInstanceCommandRequest(instanceId, "demo")))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("callback boom");
+        assertThatNoException().isThrownBy(() -> service.start(new NodeInstanceCommandRequest(instanceId, "demo")));
 
+        verify(startService).startInstance(instanceId, "demo");
+        verify(callbackService).sendRunning(instanceId);
         verify(callbackService, never()).sendFailed(instanceId);
     }
 }

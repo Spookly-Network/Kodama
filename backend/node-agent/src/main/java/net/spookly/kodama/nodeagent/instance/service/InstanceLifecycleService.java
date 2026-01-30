@@ -44,7 +44,6 @@ public class InstanceLifecycleService {
             logger.info("Start command acknowledged. instanceId={}", instanceId);
         } catch (RuntimeException ex) {
             logger.warn("Start command callback failed. instanceId={}", instanceId, ex);
-            throw ex;
         }
     }
 

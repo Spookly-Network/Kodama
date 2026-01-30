@@ -78,10 +78,21 @@ public class InstanceStartService {
                 volumeMounts
         );
         DockerContainerCreateResult result = dockerService.createContainer(request);
-        registryService.recordContainerId(workspace, instanceId, result.containerId());
-        dockerService.startContainer(result.containerId());
-        logger.info("Instance container started. instanceId={} containerId={}", instanceId, result.containerId());
-        return result.containerId();
+        String containerId = result.containerId();
+        try {
+            dockerService.startContainer(containerId);
+        } catch (RuntimeException ex) {
+            removeContainerSafely(containerId, instanceId, "start failure");
+            throw ex;
+        }
+        try {
+            registryService.recordContainerId(workspace, instanceId, containerId);
+        } catch (RuntimeException ex) {
+            removeContainerSafely(containerId, instanceId, "registry update failure");
+            throw ex;
+        }
+        logger.info("Instance container started. instanceId={} containerId={}", instanceId, containerId);
+        return containerId;
     }
 
     private void requirePreparedWorkspace(InstanceWorkspacePaths workspace) {
@@ -160,6 +171,26 @@ public class InstanceStartService {
             labels.put("kodama.node-name", config.getNodeName().trim());
         }
         return labels;
+    }
+
+    private void removeContainerSafely(String containerId, UUID instanceId, String reason) {
+        try {
+            dockerService.removeContainer(containerId, true, false);
+            logger.warn(
+                    "Removed container after {}. instanceId={} containerId={}",
+                    reason,
+                    instanceId,
+                    containerId
+            );
+        } catch (RuntimeException ex) {
+            logger.warn(
+                    "Failed to remove container after {}. instanceId={} containerId={}",
+                    reason,
+                    instanceId,
+                    containerId,
+                    ex
+            );
+        }
     }
 
     private boolean hasText(String value) {
