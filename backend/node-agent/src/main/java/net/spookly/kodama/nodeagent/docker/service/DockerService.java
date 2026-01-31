@@ -113,6 +113,17 @@ public class DockerService {
         }
     }
 
+    public void killContainer(String containerId) {
+        String normalizedId = requireContainerId(containerId);
+        try {
+            dockerClient.killContainerCmd(normalizedId).exec();
+        } catch (NotFoundException ex) {
+            throw new DockerOperationException("Docker container not found: " + normalizedId, ex);
+        } catch (DockerException ex) {
+            throw new DockerOperationException("Docker kill container failed: " + normalizedId, ex);
+        }
+    }
+
     public void removeContainer(String containerId, boolean force, boolean removeVolumes) {
         String normalizedId = requireContainerId(containerId);
         try {
@@ -149,6 +160,33 @@ public class DockerService {
             );
         } catch (NotFoundException ex) {
             throw new DockerOperationException("Docker container not found: " + normalizedId, ex);
+        } catch (DockerException ex) {
+            throw new DockerOperationException("Docker inspect container failed: " + normalizedId, ex);
+        }
+    }
+
+    public DockerContainerStatus inspectContainerIfExists(String containerId) {
+        String normalizedId = requireContainerId(containerId);
+        try {
+            InspectContainerResponse response = dockerClient.inspectContainerCmd(normalizedId).exec();
+            InspectContainerResponse.ContainerState state = response.getState();
+            return new DockerContainerStatus(
+                    response.getId(),
+                    response.getName(),
+                    response.getConfig() == null ? null : response.getConfig().getImage(),
+                    state == null ? null : state.getStatus(),
+                    state == null ? null : state.getRunning(),
+                    state == null ? null : state.getPaused(),
+                    state == null ? null : state.getRestarting(),
+                    state == null ? null : state.getOOMKilled(),
+                    state == null ? null : state.getDead(),
+                    state == null ? null : state.getExitCode(),
+                    state == null ? null : state.getError(),
+                    state == null ? null : state.getStartedAt(),
+                    state == null ? null : state.getFinishedAt()
+            );
+        } catch (NotFoundException ex) {
+            return null;
         } catch (DockerException ex) {
             throw new DockerOperationException("Docker inspect container failed: " + normalizedId, ex);
         }

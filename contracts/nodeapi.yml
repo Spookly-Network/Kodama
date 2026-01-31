@@ -131,5 +131,6 @@ callbacks:
 notes:
   - Dev-mode updates are in-memory only; restart resets to configured defaults.
   - Start now creates and starts a Docker container for the prepared workspace and records the container id locally.
-  - Stop/destroy are acknowledgements only; runtime control is not implemented yet.
+  - Stop now resolves the container id from the local registry, stops the container, and updates the registry state to stopped.
+  - `node-agent.instance-runtime.stop-timeout-seconds` controls the graceful stop timeout before force-kill (unset uses Docker defaults).
   - Validation errors return 400 and stop command processing.

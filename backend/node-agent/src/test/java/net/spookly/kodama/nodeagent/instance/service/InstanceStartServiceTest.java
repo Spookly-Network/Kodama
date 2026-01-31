@@ -55,6 +55,8 @@ class InstanceStartServiceTest {
                 Map.of("ENV", "prod"),
                 List.of(),
                 OffsetDateTime.now(),
+                null,
+                null,
                 null
         );
 

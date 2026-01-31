@@ -26,6 +26,8 @@ class InstancePortBindingsResolverTest {
                 Map.of("PORT_GAME", "30000"),
                 List.of(),
                 OffsetDateTime.now(),
+                null,
+                null,
                 null
         );
 
@@ -47,6 +49,8 @@ class InstancePortBindingsResolverTest {
                 Map.of("PORT", "25565"),
                 List.of(),
                 OffsetDateTime.now(),
+                null,
+                null,
                 null
         );
 
@@ -72,6 +76,8 @@ class InstancePortBindingsResolverTest {
                 variables,
                 List.of(),
                 OffsetDateTime.now(),
+                null,
+                null,
                 null
         );
 

@@ -14,6 +14,7 @@ Describe the configuration inputs for the node agent and how they map to environ
 - Documented Brain authentication requirements for command endpoints.
 - Added Docker client connection settings for local or TCP Docker Engine access.
 - Added instance runtime settings for container image and workspace mount paths.
+- Added an optional instance stop timeout for graceful shutdowns.
 
 ## How to use / impact
 - Configure with environment variables or CLI args (`--node-agent.<key>=...`).
@@ -58,6 +59,7 @@ Describe the configuration inputs for the node agent and how they map to environ
   - `node-agent.instance-runtime.image` (`NODE_AGENT_INSTANCE_RUNTIME_IMAGE`)
   - `node-agent.instance-runtime.workspace-mount-path` (`NODE_AGENT_INSTANCE_RUNTIME_WORKSPACE_MOUNT_PATH`, default `/workspace`)
   - `node-agent.instance-runtime.working-dir` (`NODE_AGENT_INSTANCE_RUNTIME_WORKING_DIR`, defaults to workspace mount path)
+  - `node-agent.instance-runtime.stop-timeout-seconds` (`NODE_AGENT_INSTANCE_RUNTIME_STOP_TIMEOUT_SECONDS`, unset uses Docker defaults)
   - `node-agent.auth.header-name` (`NODE_AGENT_AUTH_HEADER_NAME`, default `X-Node-Token`)
   - `node-agent.auth.token-path` (`NODE_AGENT_AUTH_TOKEN_PATH`)
   - `node-agent.auth.cert-path` (`NODE_AGENT_AUTH_CERT_PATH`)
@@ -94,6 +96,7 @@ Describe the configuration inputs for the node agent and how they map to environ
 - `node-agent.instance-runtime.image` provides the default Docker image when the prepare payload does not supply `DOCKER_IMAGE`.
 - `node-agent.instance-runtime.workspace-mount-path` controls where the merged workspace is mounted inside the container.
 - `node-agent.instance-runtime.working-dir` overrides the container working directory (defaults to the workspace mount path).
+- `node-agent.instance-runtime.stop-timeout-seconds` controls the graceful stop timeout before the node agent force-kills a container (unset uses Docker defaults).
 - S3 configuration is required for template storage. When `node-agent.s3.endpoint` is set, the client
   uses path-style requests for local or custom S3 endpoints.
 

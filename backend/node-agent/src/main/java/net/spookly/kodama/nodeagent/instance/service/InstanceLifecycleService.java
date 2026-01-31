@@ -16,13 +16,16 @@ public class InstanceLifecycleService {
 
     private final InstanceCallbackService callbackService;
     private final InstanceStartService startService;
+    private final InstanceStopService stopService;
 
     public InstanceLifecycleService(
-            InstanceCallbackService callbackService,
-            InstanceStartService startService
+           InstanceCallbackService callbackService,
+           InstanceStartService startService,
+           InstanceStopService stopService
     ) {
         this.callbackService = Objects.requireNonNull(callbackService, "callbackService");
         this.startService = Objects.requireNonNull(startService, "startService");
+        this.stopService = Objects.requireNonNull(stopService, "stopService");
     }
 
     public void start(NodeInstanceCommandRequest request) {
@@ -50,6 +53,17 @@ public class InstanceLifecycleService {
     public void stop(NodeInstanceCommandRequest request) {
         UUID instanceId = requireInstanceId(request);
         logger.info("Stop command received. instanceId={} name={}", instanceId, valueOrDash(request.name()));
+        try {
+            stopService.stopInstance(instanceId);
+        } catch (RuntimeException ex) {
+            try {
+                callbackService.sendFailed(instanceId);
+            } catch (RuntimeException callbackEx) {
+                logger.warn("Stop command failure callback failed. instanceId={}", instanceId, callbackEx);
+            }
+            logger.warn("Stop command failed. instanceId={}", instanceId, ex);
+            throw ex;
+        }
         try {
             callbackService.sendStopped(instanceId);
             logger.info("Stop command acknowledged. instanceId={}", instanceId);

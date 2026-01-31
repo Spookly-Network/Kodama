@@ -63,6 +63,14 @@ public class NodeConfig {
         } else if (variableSubstitution.getMaxFileBytes() < 0) {
             errors.add("node-agent.variable-substitution.max-file-bytes must be 0 or greater");
         }
+        if (instanceRuntime == null) {
+            errors.add("node-agent.instance-runtime is required");
+        } else {
+            Integer stopTimeoutSeconds = instanceRuntime.getStopTimeoutSeconds();
+            if (stopTimeoutSeconds != null && stopTimeoutSeconds < 0) {
+                errors.add("node-agent.instance-runtime.stop-timeout-seconds must be 0 or greater");
+            }
+        }
         if (docker == null) {
             errors.add("node-agent.docker is required");
         } else {
@@ -427,6 +435,7 @@ public class NodeConfig {
         private String image;
         private String workspaceMountPath = "/workspace";
         private String workingDir;
+        private Integer stopTimeoutSeconds;
 
         public String getImage() {
             return image;
@@ -450,6 +459,14 @@ public class NodeConfig {
 
         public void setWorkingDir(String workingDir) {
             this.workingDir = workingDir;
+        }
+
+        public Integer getStopTimeoutSeconds() {
+            return stopTimeoutSeconds;
+        }
+
+        public void setStopTimeoutSeconds(Integer stopTimeoutSeconds) {
+            this.stopTimeoutSeconds = stopTimeoutSeconds;
         }
     }
 
