@@ -47,7 +47,7 @@ class InstanceDestroyServiceTest {
         InstanceWorkspacePaths workspace = workspaceManager.prepareWorkspace(instanceId.toString());
 
         ObjectMapper objectMapper = objectMapper();
-        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper);
+        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper, layout);
         InstanceRegistryEntry entry = new InstanceRegistryEntry(
                 instanceId,
                 "instance-name",
@@ -58,7 +58,8 @@ class InstanceDestroyServiceTest {
                 OffsetDateTime.now(),
                 containerId,
                 "running",
-                OffsetDateTime.now()
+                OffsetDateTime.now(),
+                workspace.instanceRoot().toAbsolutePath().normalize().toString()
         );
         objectMapper.writeValue(workspace.instanceRoot().resolve("instance.json").toFile(), entry);
 
@@ -90,7 +91,7 @@ class InstanceDestroyServiceTest {
 
         InstanceWorkspaceLayout layout = new InstanceWorkspaceLayout(config);
         InstanceWorkspaceManager workspaceManager = new InstanceWorkspaceManager(layout);
-        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper());
+        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), layout);
 
         DockerService dockerService = mock(DockerService.class);
         when(dockerService.inspectContainerIfExists(containerName)).thenReturn(null);

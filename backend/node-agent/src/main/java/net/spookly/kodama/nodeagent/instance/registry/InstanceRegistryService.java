@@ -7,15 +7,18 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.spookly.kodama.nodeagent.instance.dto.NodePrepareInstanceLayer;
 import net.spookly.kodama.nodeagent.instance.dto.NodePrepareInstanceRequest;
+import net.spookly.kodama.nodeagent.instance.workspace.InstanceWorkspaceLayout;
 import net.spookly.kodama.nodeagent.instance.workspace.InstanceWorkspacePaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,9 +31,11 @@ public class InstanceRegistryService {
     private static final String REGISTRY_FILENAME = "instance.json";
 
     private final ObjectMapper objectMapper;
+    private final InstanceWorkspaceLayout workspaceLayout;
 
-    public InstanceRegistryService(ObjectMapper objectMapper) {
+    public InstanceRegistryService(ObjectMapper objectMapper, InstanceWorkspaceLayout workspaceLayout) {
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
+        this.workspaceLayout = Objects.requireNonNull(workspaceLayout, "workspaceLayout");
     }
 
     public void recordPrepared(
@@ -64,7 +69,8 @@ public class InstanceRegistryService {
                 OffsetDateTime.now(),
                 null,
                 null,
-                null
+                null,
+                resolveWorkspacePath(null, instanceRoot)
         );
 
         Path registryFile = instanceRoot.resolve(REGISTRY_FILENAME);
@@ -89,7 +95,11 @@ public class InstanceRegistryService {
             if (entry == null) {
                 throw new InstanceRegistryException("Instance registry is empty at " + registryFile);
             }
-            return entry;
+            InstanceRegistryEntry normalized = ensureWorkspacePath(entry, instanceRoot, registryFile, true);
+            if (normalized.instanceId() == null) {
+                throw new InstanceRegistryException("Instance registry has no instanceId at " + registryFile);
+            }
+            return normalized;
         } catch (IOException ex) {
             throw new InstanceRegistryException("Failed to read instance registry at " + registryFile, ex);
         }
@@ -122,7 +132,8 @@ public class InstanceRegistryService {
                 entry.preparedAt(),
                 containerId.trim(),
                 "running",
-                OffsetDateTime.now()
+                OffsetDateTime.now(),
+                resolveWorkspacePath(entry.workspacePath(), workspace.instanceRoot())
         );
         Path registryFile = workspace.instanceRoot().resolve(REGISTRY_FILENAME);
         writeRegistry(registryFile, updated);
@@ -159,7 +170,8 @@ public class InstanceRegistryService {
                 entry.preparedAt(),
                 entry.containerId().trim(),
                 containerStatus.trim(),
-                OffsetDateTime.now()
+                OffsetDateTime.now(),
+                resolveWorkspacePath(entry.workspacePath(), workspace.instanceRoot())
         );
         Path registryFile = workspace.instanceRoot().resolve(REGISTRY_FILENAME);
         writeRegistry(registryFile, updated);
@@ -187,6 +199,27 @@ public class InstanceRegistryService {
         } catch (IOException ex) {
             throw new InstanceRegistryException("Failed to delete instance registry at " + registryFile, ex);
         }
+    }
+
+    public List<InstanceRegistryEntry> listRegistries() {
+        Path instancesRoot = workspaceLayout.getInstancesRoot();
+        if (!Files.isDirectory(instancesRoot)) {
+            return List.of();
+        }
+        List<InstanceRegistryEntry> entries = new ArrayList<>();
+        try (Stream<Path> stream = Files.list(instancesRoot)) {
+            stream.filter(Files::isDirectory)
+                    .forEach(instanceRoot -> {
+                        InstanceRegistryEntry entry = loadRegistryForListing(instanceRoot);
+                        if (entry != null) {
+                            entries.add(entry);
+                        }
+                    });
+        } catch (IOException ex) {
+            throw new InstanceRegistryException("Failed to list instance registries at " + instancesRoot, ex);
+        }
+        entries.sort(Comparator.comparing(entry -> entry.instanceId().toString()));
+        return entries;
     }
 
     private void writeRegistry(Path registryFile, InstanceRegistryEntry entry) {
@@ -259,5 +292,109 @@ public class InstanceRegistryService {
             }
         }
         return layers;
+    }
+
+    private InstanceRegistryEntry loadRegistryForListing(Path instanceRoot) {
+        if (instanceRoot == null || !Files.isDirectory(instanceRoot)) {
+            return null;
+        }
+        Path registryFile = instanceRoot.resolve(REGISTRY_FILENAME);
+        if (!Files.isRegularFile(registryFile)) {
+            return null;
+        }
+        try {
+            InstanceRegistryEntry entry = objectMapper.readValue(registryFile.toFile(), InstanceRegistryEntry.class);
+            if (entry == null) {
+                logger.warn("Instance registry is empty at {}", registryFile);
+                return null;
+            }
+            if (entry.instanceId() == null) {
+                logger.warn("Instance registry has no instanceId at {}", registryFile);
+                return null;
+            }
+            return sanitizeForListing(entry, instanceRoot);
+        } catch (IOException ex) {
+            logger.warn("Failed to read instance registry at {}", registryFile, ex);
+            return null;
+        }
+    }
+
+    private InstanceRegistryEntry sanitizeForListing(InstanceRegistryEntry entry, Path instanceRoot) {
+        String relativeWorkspacePath = toRelativeWorkspacePath(instanceRoot);
+        return new InstanceRegistryEntry(
+                entry.instanceId(),
+                entry.name(),
+                entry.displayName(),
+                entry.portsJson(),
+                null,
+                entry.layers(),
+                entry.preparedAt(),
+                entry.containerId(),
+                entry.containerStatus(),
+                entry.containerStatusUpdatedAt(),
+                relativeWorkspacePath
+        );
+    }
+
+    private String toRelativeWorkspacePath(Path instanceRoot) {
+        if (instanceRoot == null) {
+            return null;
+        }
+        Path normalizedInstanceRoot = instanceRoot.toAbsolutePath().normalize();
+        Path workspaceRoot = workspaceLayout.getWorkspaceRoot();
+        if (workspaceRoot != null) {
+            Path normalizedWorkspaceRoot = workspaceRoot.toAbsolutePath().normalize();
+            if (normalizedInstanceRoot.startsWith(normalizedWorkspaceRoot)) {
+                return normalizedWorkspaceRoot.relativize(normalizedInstanceRoot).toString();
+            }
+        }
+        Path instancesRoot = workspaceLayout.getInstancesRoot();
+        if (instancesRoot != null) {
+            Path normalizedInstancesRoot = instancesRoot.toAbsolutePath().normalize();
+            if (normalizedInstanceRoot.startsWith(normalizedInstancesRoot)) {
+                Path relative = normalizedInstancesRoot.relativize(normalizedInstanceRoot);
+                return normalizedInstancesRoot.getFileName().resolve(relative).toString();
+            }
+        }
+        return null;
+    }
+
+    private InstanceRegistryEntry ensureWorkspacePath(
+            InstanceRegistryEntry entry,
+            Path instanceRoot,
+            Path registryFile,
+            boolean persistIfUpdated
+    ) {
+        String resolvedPath = resolveWorkspacePath(entry.workspacePath(), instanceRoot);
+        if (Objects.equals(resolvedPath, entry.workspacePath())) {
+            return entry;
+        }
+        InstanceRegistryEntry updated = new InstanceRegistryEntry(
+                entry.instanceId(),
+                entry.name(),
+                entry.displayName(),
+                entry.portsJson(),
+                entry.variables(),
+                entry.layers(),
+                entry.preparedAt(),
+                entry.containerId(),
+                entry.containerStatus(),
+                entry.containerStatusUpdatedAt(),
+                resolvedPath
+        );
+        if (persistIfUpdated && registryFile != null) {
+            writeRegistry(registryFile, updated);
+        }
+        return updated;
+    }
+
+    private String resolveWorkspacePath(String existing, Path instanceRoot) {
+        if (instanceRoot != null) {
+            return instanceRoot.toAbsolutePath().normalize().toString();
+        }
+        if (existing != null && !existing.isBlank()) {
+            return existing.trim();
+        }
+        return null;
     }
 }

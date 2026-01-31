@@ -1,13 +1,17 @@
 package net.spookly.kodama.nodeagent.instance.controller;
 
+import java.util.List;
 import java.util.UUID;
 
 import net.spookly.kodama.nodeagent.instance.dto.NodeInstanceCommandRequest;
 import net.spookly.kodama.nodeagent.instance.dto.NodePrepareInstanceRequest;
+import net.spookly.kodama.nodeagent.instance.registry.InstanceRegistryEntry;
+import net.spookly.kodama.nodeagent.instance.registry.InstanceRegistryService;
 import net.spookly.kodama.nodeagent.instance.service.InstanceLifecycleService;
 import net.spookly.kodama.nodeagent.instance.service.InstancePrepareService;
 import net.spookly.kodama.nodeagent.instance.service.InstancePrepareValidationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,13 +26,21 @@ public class InstanceCommandController {
 
     private final InstancePrepareService prepareService;
     private final InstanceLifecycleService lifecycleService;
+    private final InstanceRegistryService registryService;
 
     public InstanceCommandController(
             InstancePrepareService prepareService,
-            InstanceLifecycleService lifecycleService
+            InstanceLifecycleService lifecycleService,
+            InstanceRegistryService registryService
     ) {
         this.prepareService = prepareService;
         this.lifecycleService = lifecycleService;
+        this.registryService = registryService;
+    }
+
+    @GetMapping("/registry")
+    public List<InstanceRegistryEntry> listRegistries() {
+        return registryService.listRegistries();
     }
 
     @PostMapping("/{instanceId}/prepare")

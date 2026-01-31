@@ -20,6 +20,7 @@ The Node Agent is a lightweight Java service that runs on each node and executes
 - Added start/stop/destroy command handlers that send callbacks to the Brain.
 - Start now launches a Docker container using the prepared workspace and records the container id in the local registry.
 - Stop now resolves the container id from the local registry, stops the container, and records the stopped state.
+- Added a local registry listing endpoint and recorded workspace paths in instance registry entries.
 - Added Brain authentication checks for command endpoints using a shared token or client certificate.
 
 ## How to use / impact
@@ -59,6 +60,7 @@ The Node Agent is a lightweight Java service that runs on each node and executes
     - `NODE_AGENT_S3_SECRET_KEY`
 - See `docs/node/operations/configuration.md` for the full mapping.
 - Health check is available at `GET /health` on the configured node-agent HTTP port.
+- Local instance registry listing is available at `GET /api/instances/registry` (Brain auth required) and returns workspace paths relative to `node-agent.workspace-dir`.
 
 ## Edge cases / risks
 - If required configuration is missing, the node agent will exit on startup with a clear error.

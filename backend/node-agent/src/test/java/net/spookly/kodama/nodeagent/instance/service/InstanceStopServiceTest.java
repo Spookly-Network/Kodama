@@ -47,7 +47,8 @@ class InstanceStopServiceTest {
                 OffsetDateTime.now(),
                 containerId,
                 "running",
-                OffsetDateTime.now()
+                OffsetDateTime.now(),
+                null
         );
 
         DockerService dockerService = mock(DockerService.class);
@@ -91,7 +92,8 @@ class InstanceStopServiceTest {
                 OffsetDateTime.now(),
                 containerId,
                 "running",
-                OffsetDateTime.now()
+                OffsetDateTime.now(),
+                null
         );
 
         DockerService dockerService = mock(DockerService.class);
@@ -138,7 +140,8 @@ class InstanceStopServiceTest {
                 OffsetDateTime.now(),
                 containerId,
                 "running",
-                OffsetDateTime.now()
+                OffsetDateTime.now(),
+                null
         );
 
         DockerService dockerService = mock(DockerService.class);
@@ -181,7 +184,8 @@ class InstanceStopServiceTest {
                 OffsetDateTime.now(),
                 containerId,
                 "running",
-                OffsetDateTime.now()
+                OffsetDateTime.now(),
+                null
         );
 
         DockerService dockerService = mock(DockerService.class);
