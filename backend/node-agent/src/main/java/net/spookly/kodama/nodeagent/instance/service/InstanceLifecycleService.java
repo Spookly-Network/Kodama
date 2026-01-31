@@ -17,15 +17,18 @@ public class InstanceLifecycleService {
     private final InstanceCallbackService callbackService;
     private final InstanceStartService startService;
     private final InstanceStopService stopService;
+    private final InstanceDestroyService destroyService;
 
     public InstanceLifecycleService(
            InstanceCallbackService callbackService,
            InstanceStartService startService,
-           InstanceStopService stopService
+           InstanceStopService stopService,
+           InstanceDestroyService destroyService
     ) {
         this.callbackService = Objects.requireNonNull(callbackService, "callbackService");
         this.startService = Objects.requireNonNull(startService, "startService");
         this.stopService = Objects.requireNonNull(stopService, "stopService");
+        this.destroyService = Objects.requireNonNull(destroyService, "destroyService");
     }
 
     public void start(NodeInstanceCommandRequest request) {
@@ -76,6 +79,17 @@ public class InstanceLifecycleService {
     public void destroy(NodeInstanceCommandRequest request) {
         UUID instanceId = requireInstanceId(request);
         logger.info("Destroy command received. instanceId={} name={}", instanceId, valueOrDash(request.name()));
+        try {
+            destroyService.destroyInstance(instanceId);
+        } catch (RuntimeException ex) {
+            try {
+                callbackService.sendFailed(instanceId);
+            } catch (RuntimeException callbackEx) {
+                logger.warn("Destroy command failure callback failed. instanceId={}", instanceId, callbackEx);
+            }
+            logger.warn("Destroy command failed. instanceId={}", instanceId, ex);
+            throw ex;
+        }
         try {
             callbackService.sendDestroyed(instanceId);
             logger.info("Destroy command acknowledged. instanceId={}", instanceId);

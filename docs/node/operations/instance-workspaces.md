@@ -6,6 +6,7 @@ Describe how the node agent maps instance IDs to local workspace directories and
 ## What changed
 - Defined a deterministic on-disk layout for instance workspaces under `node-agent.workspace-dir`.
 - Added a helper that resolves and creates workspace folders for a given instance id.
+- Added a workspace delete helper used during instance destroy cleanup.
 
 ## How to use / impact
 - Workspace root: `${NODE_AGENT_WORKSPACE_DIR:-./data}/instances`.
@@ -15,6 +16,7 @@ Describe how the node agent maps instance IDs to local workspace directories and
   - `<instanceId>/temp` for transient runtime files.
   - `<instanceId>/instance.json` for the local instance registry record written after prepare.
 - The node agent creates these directories when `prepareWorkspace(instanceId)` is called.
+- The node agent deletes the entire instance workspace when `destroy` completes successfully.
 - `instanceId` must be a single path segment (no slashes or `..`).
 
 ## Edge cases / risks

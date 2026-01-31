@@ -18,7 +18,13 @@ class InstanceLifecycleServiceTest {
     private final InstanceCallbackService callbackService = mock(InstanceCallbackService.class);
     private final InstanceStartService startService = mock(InstanceStartService.class);
     private final InstanceStopService stopService = mock(InstanceStopService.class);
-    private final InstanceLifecycleService service = new InstanceLifecycleService(callbackService, startService, stopService);
+    private final InstanceDestroyService destroyService = mock(InstanceDestroyService.class);
+    private final InstanceLifecycleService service = new InstanceLifecycleService(
+            callbackService,
+            startService,
+            stopService,
+            destroyService
+    );
 
     @Test
     void startTriggersRunningCallback() {
@@ -46,6 +52,7 @@ class InstanceLifecycleServiceTest {
 
         service.destroy(new NodeInstanceCommandRequest(instanceId, "demo"));
 
+        verify(destroyService).destroyInstance(instanceId);
         verify(callbackService).sendDestroyed(instanceId);
     }
 
@@ -80,6 +87,20 @@ class InstanceLifecycleServiceTest {
                 .stopInstance(instanceId);
 
         assertThatThrownBy(() -> service.stop(new NodeInstanceCommandRequest(instanceId, "demo")))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("boom");
+
+        verify(callbackService).sendFailed(instanceId);
+    }
+
+    @Test
+    void destroyFailureSendsFailedCallback() {
+        UUID instanceId = UUID.randomUUID();
+        doThrow(new RuntimeException("boom"))
+                .when(destroyService)
+                .destroyInstance(instanceId);
+
+        assertThatThrownBy(() -> service.destroy(new NodeInstanceCommandRequest(instanceId, "demo")))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("boom");
 
