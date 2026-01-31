@@ -62,6 +62,8 @@ public class InstanceRegistryService {
                 safeVariables,
                 new ArrayList<>(safeLayers),
                 OffsetDateTime.now(),
+                null,
+                null,
                 null
         );
 
@@ -118,11 +120,55 @@ public class InstanceRegistryService {
                 entry.variables(),
                 entry.layers(),
                 entry.preparedAt(),
-                containerId.trim()
+                containerId.trim(),
+                "running",
+                OffsetDateTime.now()
         );
         Path registryFile = workspace.instanceRoot().resolve(REGISTRY_FILENAME);
         writeRegistry(registryFile, updated);
         logger.info("Instance registry updated with containerId. instanceId={} containerId={}", instanceId, containerId);
+    }
+
+    public void recordContainerStatus(
+            InstanceWorkspacePaths workspace,
+            UUID instanceId,
+            String containerStatus
+    ) {
+        if (workspace == null) {
+            throw new InstanceRegistryException("instance workspace is required");
+        }
+        requireInstanceId(instanceId);
+        if (containerStatus == null || containerStatus.isBlank()) {
+            throw new InstanceRegistryException("containerStatus is required");
+        }
+        requireMatchingInstanceId(instanceId, workspace.instanceId());
+        InstanceRegistryEntry entry = loadRegistry(workspace);
+        if (!instanceId.equals(entry.instanceId())) {
+            throw new InstanceRegistryException("instanceId does not match registry: " + instanceId + " vs " + entry.instanceId());
+        }
+        if (entry.containerId() == null || entry.containerId().isBlank()) {
+            throw new InstanceRegistryException("containerId is required");
+        }
+        InstanceRegistryEntry updated = new InstanceRegistryEntry(
+                entry.instanceId(),
+                entry.name(),
+                entry.displayName(),
+                entry.portsJson(),
+                entry.variables(),
+                entry.layers(),
+                entry.preparedAt(),
+                entry.containerId().trim(),
+                containerStatus.trim(),
+                OffsetDateTime.now()
+        );
+        Path registryFile = workspace.instanceRoot().resolve(REGISTRY_FILENAME);
+        writeRegistry(registryFile, updated);
+        logger.info(
+                "Instance registry updated with containerStatus. instanceId={} containerId={} status={}",
+                instanceId,
+                entry.containerId(),
+                containerStatus
+        );
     }
 
     private void writeRegistry(Path registryFile, InstanceRegistryEntry entry) {

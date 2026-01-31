@@ -15,6 +15,8 @@ public record InstanceRegistryEntry(
         Map<String, String> variables,
         List<NodePrepareInstanceLayer> layers,
         OffsetDateTime preparedAt,
-        String containerId
+        String containerId,
+        String containerStatus,
+        OffsetDateTime containerStatusUpdatedAt
 ) {
 }
