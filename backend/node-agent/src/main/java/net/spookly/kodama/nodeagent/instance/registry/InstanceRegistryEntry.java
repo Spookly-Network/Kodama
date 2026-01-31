@@ -14,6 +14,7 @@ public record InstanceRegistryEntry(
         String portsJson,
         Map<String, String> variables,
         List<NodePrepareInstanceLayer> layers,
-        OffsetDateTime preparedAt
+        OffsetDateTime preparedAt,
+        String containerId
 ) {
 }

@@ -9,6 +9,8 @@ public record DockerContainerCreateRequest(
         List<String> command,
         List<String> env,
         Map<String, String> labels,
-        String workingDir
+        String workingDir,
+        List<DockerPortBinding> portBindings,
+        List<DockerVolumeMount> volumeMounts
 ) {
 }

@@ -28,6 +28,7 @@ public class NodeConfig {
     private TemplateCacheCheck templateCacheCheck = new TemplateCacheCheck();
     private TemplateCacheLimits templateCacheLimits = new TemplateCacheLimits();
     private VariableSubstitution variableSubstitution = new VariableSubstitution();
+    private InstanceRuntime instanceRuntime = new InstanceRuntime();
 
     public void validate() {
         List<String> errors = new ArrayList<>();
@@ -258,6 +259,14 @@ public class NodeConfig {
         this.variableSubstitution = variableSubstitution == null ? new VariableSubstitution() : variableSubstitution;
     }
 
+    public InstanceRuntime getInstanceRuntime() {
+        return instanceRuntime;
+    }
+
+    public void setInstanceRuntime(InstanceRuntime instanceRuntime) {
+        this.instanceRuntime = instanceRuntime == null ? new InstanceRuntime() : instanceRuntime;
+    }
+
     public static class Auth {
 
         private String tokenPath;
@@ -410,6 +419,37 @@ public class NodeConfig {
 
         public void setMaxFileBytes(long maxFileBytes) {
             this.maxFileBytes = maxFileBytes;
+        }
+    }
+
+    public static class InstanceRuntime {
+
+        private String image;
+        private String workspaceMountPath = "/workspace";
+        private String workingDir;
+
+        public String getImage() {
+            return image;
+        }
+
+        public void setImage(String image) {
+            this.image = image;
+        }
+
+        public String getWorkspaceMountPath() {
+            return workspaceMountPath;
+        }
+
+        public void setWorkspaceMountPath(String workspaceMountPath) {
+            this.workspaceMountPath = workspaceMountPath;
+        }
+
+        public String getWorkingDir() {
+            return workingDir;
+        }
+
+        public void setWorkingDir(String workingDir) {
+            this.workingDir = workingDir;
         }
     }
 

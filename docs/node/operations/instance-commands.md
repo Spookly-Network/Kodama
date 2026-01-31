@@ -8,6 +8,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - Added variable substitution and Brain callbacks as part of the prepare flow.
 - Added a local instance registry record written after successful preparation.
 - Added start/stop/destroy command handlers that send lifecycle callbacks to the Brain.
+- Start now creates and starts a Docker container from the prepared workspace and records its container id locally.
 
 ## How to use / impact
 - `POST /api/instances/{instanceId}/prepare` with `NodePrepareInstanceRequest`.
@@ -22,8 +23,16 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - `POST /api/instances/{instanceId}/stop` with `NodeInstanceCommandRequest`.
 - `POST /api/instances/{instanceId}/destroy` with `NodeInstanceCommandRequest`.
 - `NodeInstanceCommandRequest` requires `instanceId` and accepts an optional `name` for logging.
-- Start/stop/destroy currently acknowledge commands by calling back to the Brain:
-  - `/api/nodes/{nodeId}/instances/{instanceId}/running`
+- Start now:
+  - reads `instance.json` from the workspace,
+  - creates a Docker container with the merged workspace mounted,
+  - maps ports from the variable map (and `portsJson` when present; uses `PORT_<NAME>` variables or `PORT` when only one port exists),
+  - injects env vars (including `INSTANCE_ID` and `NODE_NAME`),
+  - records the container id to the registry,
+  - then calls back with `/api/nodes/{nodeId}/instances/{instanceId}/running`.
+- The container image defaults to `node-agent.instance-runtime.image` when not provided as `DOCKER_IMAGE`/`CONTAINER_IMAGE`/`IMAGE`.
+- The merged workspace is mounted at `node-agent.instance-runtime.workspace-mount-path` and the working directory defaults to the same path.
+- Stop/destroy currently acknowledge commands by calling back to the Brain:
   - `/api/nodes/{nodeId}/instances/{instanceId}/stopped`
   - `/api/nodes/{nodeId}/instances/{instanceId}/destroyed`
 - `variables` and `variablesJson` are mutually exclusive. When `variablesJson` is provided, the node agent parses it as a JSON map.
@@ -33,11 +42,17 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - Invalid payloads (missing instanceId, empty layers, invalid JSON) return HTTP 400 and trigger a `/failed` callback when possible.
 - Cache download/merge failures result in HTTP 500 and a `/failed` callback attempt.
 - Missing node auth token or invalid Brain base URL prevents callbacks and fails the prepare request.
-- Start/stop/destroy commands are acknowledged via callbacks only; instance runtime control is not implemented yet.
+- Start requires a container image from `variables` (`DOCKER_IMAGE`, `CONTAINER_IMAGE`, or `IMAGE`) or
+  `node-agent.instance-runtime.image`; missing values fail the command.
+- Start fails if the prepared workspace or `instance.json` registry record is missing.
+- Missing `portsJson` is allowed; port bindings fall back to `PORT`/`PORT_*` variables.
+- Invalid or missing port mappings result in a failed start and a `/failed` callback attempt.
+- If the `/running` callback fails after the container starts, the node logs the error but does not send `/failed`.
 
 ## Links
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/instance/controller/InstanceCommandController.java`
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/instance/service/InstanceLifecycleService.java`
+- `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/instance/service/InstanceStartService.java`
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/instance/service/InstancePrepareService.java`
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/instance/service/InstanceVariablesResolver.java`
 - `contracts/nodeapi.yml`

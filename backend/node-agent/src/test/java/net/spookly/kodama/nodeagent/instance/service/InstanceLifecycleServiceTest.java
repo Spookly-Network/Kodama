@@ -1,7 +1,10 @@
 package net.spookly.kodama.nodeagent.instance.service;
 
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import java.util.UUID;
@@ -13,7 +16,8 @@ import org.junit.jupiter.api.Test;
 class InstanceLifecycleServiceTest {
 
     private final InstanceCallbackService callbackService = mock(InstanceCallbackService.class);
-    private final InstanceLifecycleService service = new InstanceLifecycleService(callbackService);
+    private final InstanceStartService startService = mock(InstanceStartService.class);
+    private final InstanceLifecycleService service = new InstanceLifecycleService(callbackService, startService);
 
     @Test
     void startTriggersRunningCallback() {
@@ -21,6 +25,7 @@ class InstanceLifecycleServiceTest {
 
         service.start(new NodeInstanceCommandRequest(instanceId, "demo"));
 
+        verify(startService).startInstance(instanceId, "demo");
         verify(callbackService).sendRunning(instanceId);
     }
 
@@ -49,5 +54,33 @@ class InstanceLifecycleServiceTest {
         assertThatThrownBy(() -> service.start(request))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("instanceId is required");
+    }
+
+    @Test
+    void startFailureSendsFailedCallback() {
+        UUID instanceId = UUID.randomUUID();
+        doThrow(new RuntimeException("boom"))
+                .when(startService)
+                .startInstance(instanceId, "demo");
+
+        assertThatThrownBy(() -> service.start(new NodeInstanceCommandRequest(instanceId, "demo")))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("boom");
+
+        verify(callbackService).sendFailed(instanceId);
+    }
+
+    @Test
+    void startCallbackFailureDoesNotSendFailedCallback() {
+        UUID instanceId = UUID.randomUUID();
+        doThrow(new RuntimeException("callback boom"))
+                .when(callbackService)
+                .sendRunning(instanceId);
+
+        assertThatNoException().isThrownBy(() -> service.start(new NodeInstanceCommandRequest(instanceId, "demo")));
+
+        verify(startService).startInstance(instanceId, "demo");
+        verify(callbackService).sendRunning(instanceId);
+        verify(callbackService, never()).sendFailed(instanceId);
     }
 }

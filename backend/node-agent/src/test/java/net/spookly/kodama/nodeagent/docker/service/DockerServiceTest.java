@@ -20,6 +20,8 @@ class DockerServiceTest {
                 null,
                 null,
                 null,
+                null,
+                null,
                 null
         );
 

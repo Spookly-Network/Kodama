@@ -18,6 +18,7 @@ The Node Agent is a lightweight Java service that runs on each node and executes
 - Added Docker client configuration and a Docker service for container lifecycle operations.
 - Added a health endpoint for basic node-agent diagnostics.
 - Added start/stop/destroy command handlers that send callbacks to the Brain.
+- Start now launches a Docker container using the prepared workspace and records the container id in the local registry.
 - Added Brain authentication checks for command endpoints using a shared token or client certificate.
 
 ## How to use / impact
@@ -42,6 +43,9 @@ The Node Agent is a lightweight Java service that runs on each node and executes
     - `NODE_AGENT_WORKSPACE_DIR`
     - `NODE_AGENT_DOCKER_HOST`
     - `NODE_AGENT_DOCKER_*` (Docker client settings; see `docs/node/operations/configuration.md`)
+    - `NODE_AGENT_INSTANCE_RUNTIME_IMAGE`
+    - `NODE_AGENT_INSTANCE_RUNTIME_WORKSPACE_MOUNT_PATH`
+    - `NODE_AGENT_INSTANCE_RUNTIME_WORKING_DIR`
     - `NODE_AGENT_VARIABLE_SUBSTITUTION_MAX_FILE_BYTES`
     - `NODE_AGENT_AUTH_HEADER_NAME`
     - `NODE_AGENT_AUTH_TOKEN_PATH`

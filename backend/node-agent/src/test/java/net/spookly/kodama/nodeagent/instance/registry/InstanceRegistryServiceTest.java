@@ -65,6 +65,7 @@ class InstanceRegistryServiceTest {
         assertThat(entry.layers()).hasSize(1);
         assertThat(entry.layers().get(0).templateId()).isEqualTo(layer.templateId());
         assertThat(entry.preparedAt()).isNotNull();
+        assertThat(entry.containerId()).isNull();
     }
 
     @Test
@@ -95,6 +96,39 @@ class InstanceRegistryServiceTest {
         assertThatThrownBy(() -> registryService.recordPrepared(workspace, request, layers, Map.of()))
                 .isInstanceOf(InstanceRegistryException.class)
                 .hasMessageContaining("instanceId does not match workspace");
+    }
+
+    @Test
+    void recordContainerIdUpdatesRegistry() throws Exception {
+        UUID instanceId = UUID.randomUUID();
+        NodePrepareInstanceLayer layer = new NodePrepareInstanceLayer(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "1.0.0",
+                "checksum",
+                "s3/key.tgz",
+                null,
+                0
+        );
+        List<NodePrepareInstanceLayer> layers = List.of(layer);
+        NodePrepareInstanceRequest request = new NodePrepareInstanceRequest(
+                instanceId,
+                "instance-name",
+                null,
+                null,
+                Map.of(),
+                null,
+                layers
+        );
+        InstanceWorkspacePaths workspace = prepareWorkspace(instanceId.toString());
+        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper());
+
+        registryService.recordPrepared(workspace, request, layers, Map.of());
+        registryService.recordContainerId(workspace, instanceId, "container-123");
+
+        Path registryFile = workspace.instanceRoot().resolve("instance.json");
+        InstanceRegistryEntry entry = objectMapper().readValue(registryFile.toFile(), InstanceRegistryEntry.class);
+        assertThat(entry.containerId()).isEqualTo("container-123");
     }
 
     private InstanceWorkspacePaths prepareWorkspace(String instanceId) {
