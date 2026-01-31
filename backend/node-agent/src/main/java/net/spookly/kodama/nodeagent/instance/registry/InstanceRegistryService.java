@@ -171,6 +171,24 @@ public class InstanceRegistryService {
         );
     }
 
+    public void deleteRegistryIfExists(InstanceWorkspacePaths workspace) {
+        if (workspace == null) {
+            throw new InstanceRegistryException("instance workspace is required");
+        }
+        Path instanceRoot = Objects.requireNonNull(workspace.instanceRoot(), "instanceRoot");
+        if (!Files.isDirectory(instanceRoot)) {
+            return;
+        }
+        Path registryFile = instanceRoot.resolve(REGISTRY_FILENAME);
+        try {
+            if (Files.deleteIfExists(registryFile)) {
+                logger.info("Instance registry deleted. instanceId={} path={}", workspace.instanceId(), registryFile);
+            }
+        } catch (IOException ex) {
+            throw new InstanceRegistryException("Failed to delete instance registry at " + registryFile, ex);
+        }
+    }
+
     private void writeRegistry(Path registryFile, InstanceRegistryEntry entry) {
         Path parent = Objects.requireNonNull(registryFile, "registryFile").getParent();
         if (parent == null) {

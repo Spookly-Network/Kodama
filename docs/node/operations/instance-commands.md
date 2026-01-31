@@ -10,6 +10,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - Added start/stop/destroy command handlers that send lifecycle callbacks to the Brain.
 - Start now creates and starts a Docker container from the prepared workspace and records its container id locally.
 - Stop now resolves the container id from the local registry, stops the container, and records the stopped state.
+- Destroy now stops (or force-kills) the container, removes it, deletes the instance workspace, and removes the local registry entry.
 
 ## How to use / impact
 - `POST /api/instances/{instanceId}/prepare` with `NodePrepareInstanceRequest`.
@@ -35,8 +36,10 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - The merged workspace is mounted at `node-agent.instance-runtime.workspace-mount-path` and the working directory defaults to the same path.
 - Stop/destroy acknowledge commands by calling back to the Brain:
   - `/api/nodes/{nodeId}/instances/{instanceId}/stopped` (after stopping the container locally)
-  - `/api/nodes/{nodeId}/instances/{instanceId}/destroyed`
+  - `/api/nodes/{nodeId}/instances/{instanceId}/destroyed` (after container removal and workspace cleanup)
 - Stop uses the container id recorded in `instance.json` and calls Docker to stop the container gracefully.
+- Destroy resolves the container id from `instance.json` when available; if missing, it falls back to the container name `kodama-instance-<instanceId>`.
+- Destroy removes `instance.json` before deleting the instance workspace directory.
 - If the container is still running after the stop timeout, the node agent force-kills it.
 - The stop timeout is configured via `node-agent.instance-runtime.stop-timeout-seconds` (defaults to Docker's own timeout when unset).
 - The registry container status is updated to `stopped` after a successful stop.
@@ -52,8 +55,10 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - Start fails if the prepared workspace or `instance.json` registry record is missing.
 - Stop fails if the registry is missing or does not contain a container id.
 - If the container is missing at stop time, the node agent logs a warning, marks the registry as stopped, and still sends the stop callback.
+- If the registry, container, or workspace is missing during destroy, the node agent treats it as already removed and continues cleanup.
 - If the container disappears or stops between inspect and the Docker stop/kill calls, the node treats it as already stopped.
 - Stop errors attempt a `/failed` callback before returning the error.
+- Destroy errors attempt a `/failed` callback before returning the error.
 - Missing `portsJson` is allowed; port bindings fall back to `PORT`/`PORT_*` variables.
 - Invalid or missing port mappings result in a failed start and a `/failed` callback attempt.
 - If the `/running` callback fails after the container starts, the node logs the error but does not send `/failed`.
