@@ -17,6 +17,7 @@ public record InstanceRegistryEntry(
         OffsetDateTime preparedAt,
         String containerId,
         String containerStatus,
-        OffsetDateTime containerStatusUpdatedAt
+        OffsetDateTime containerStatusUpdatedAt,
+        String workspacePath
 ) {
 }

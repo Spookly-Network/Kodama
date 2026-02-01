@@ -48,8 +48,9 @@ class InstanceRegistryServiceTest {
                 layers
         );
 
-        InstanceWorkspacePaths workspace = prepareWorkspace(instanceId.toString());
-        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper());
+        InstanceWorkspaceLayout layout = workspaceLayout();
+        InstanceWorkspacePaths workspace = prepareWorkspace(layout, instanceId.toString());
+        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), layout);
 
         registryService.recordPrepared(workspace, request, layers, variables);
 
@@ -68,6 +69,7 @@ class InstanceRegistryServiceTest {
         assertThat(entry.containerId()).isNull();
         assertThat(entry.containerStatus()).isNull();
         assertThat(entry.containerStatusUpdatedAt()).isNull();
+        assertThat(entry.workspacePath()).isEqualTo(workspace.instanceRoot().toAbsolutePath().normalize().toString());
     }
 
     @Test
@@ -92,8 +94,9 @@ class InstanceRegistryServiceTest {
                 null,
                 layers
         );
-        InstanceWorkspacePaths workspace = prepareWorkspace("different-instance");
-        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper());
+        InstanceWorkspaceLayout layout = workspaceLayout();
+        InstanceWorkspacePaths workspace = prepareWorkspace(layout, "different-instance");
+        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), layout);
 
         assertThatThrownBy(() -> registryService.recordPrepared(workspace, request, layers, Map.of()))
                 .isInstanceOf(InstanceRegistryException.class)
@@ -122,8 +125,9 @@ class InstanceRegistryServiceTest {
                 null,
                 layers
         );
-        InstanceWorkspacePaths workspace = prepareWorkspace(instanceId.toString());
-        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper());
+        InstanceWorkspaceLayout layout = workspaceLayout();
+        InstanceWorkspacePaths workspace = prepareWorkspace(layout, instanceId.toString());
+        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), layout);
 
         registryService.recordPrepared(workspace, request, layers, Map.of());
         registryService.recordContainerId(workspace, instanceId, "container-123");
@@ -133,6 +137,7 @@ class InstanceRegistryServiceTest {
         assertThat(entry.containerId()).isEqualTo("container-123");
         assertThat(entry.containerStatus()).isEqualTo("running");
         assertThat(entry.containerStatusUpdatedAt()).isNotNull();
+        assertThat(entry.workspacePath()).isEqualTo(workspace.instanceRoot().toAbsolutePath().normalize().toString());
     }
 
     @Test
@@ -157,8 +162,9 @@ class InstanceRegistryServiceTest {
                 null,
                 layers
         );
-        InstanceWorkspacePaths workspace = prepareWorkspace(instanceId.toString());
-        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper());
+        InstanceWorkspaceLayout layout = workspaceLayout();
+        InstanceWorkspacePaths workspace = prepareWorkspace(layout, instanceId.toString());
+        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), layout);
 
         registryService.recordPrepared(workspace, request, layers, Map.of());
         registryService.recordContainerId(workspace, instanceId, "container-123");
@@ -169,14 +175,74 @@ class InstanceRegistryServiceTest {
         assertThat(entry.containerId()).isEqualTo("container-123");
         assertThat(entry.containerStatus()).isEqualTo("stopped");
         assertThat(entry.containerStatusUpdatedAt()).isNotNull();
+        assertThat(entry.workspacePath()).isEqualTo(workspace.instanceRoot().toAbsolutePath().normalize().toString());
     }
 
-    private InstanceWorkspacePaths prepareWorkspace(String instanceId) {
-        NodeConfig config = new NodeConfig();
-        config.setWorkspaceDir(tempDir.resolve("workspace-root").toString());
-        InstanceWorkspaceLayout layout = new InstanceWorkspaceLayout(config);
+    @Test
+    void listRegistriesReturnsKnownInstances() {
+        InstanceWorkspaceLayout layout = workspaceLayout();
+        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), layout);
+        NodePrepareInstanceLayer layer = new NodePrepareInstanceLayer(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "1.0.0",
+                "checksum",
+                "s3/key.tgz",
+                null,
+                0
+        );
+        List<NodePrepareInstanceLayer> layers = List.of(layer);
+
+        UUID firstId = UUID.randomUUID();
+        UUID secondId = UUID.randomUUID();
+        InstanceWorkspacePaths firstWorkspace = prepareWorkspace(layout, firstId.toString());
+        InstanceWorkspacePaths secondWorkspace = prepareWorkspace(layout, secondId.toString());
+
+        NodePrepareInstanceRequest firstRequest = new NodePrepareInstanceRequest(
+                firstId,
+                "first",
+                null,
+                null,
+                Map.of(),
+                null,
+                layers
+        );
+        NodePrepareInstanceRequest secondRequest = new NodePrepareInstanceRequest(
+                secondId,
+                "second",
+                null,
+                null,
+                Map.of(),
+                null,
+                layers
+        );
+
+        registryService.recordPrepared(firstWorkspace, firstRequest, layers, Map.of());
+        registryService.recordPrepared(secondWorkspace, secondRequest, layers, Map.of());
+
+        List<InstanceRegistryEntry> entries = registryService.listRegistries();
+
+        assertThat(entries)
+                .extracting(InstanceRegistryEntry::instanceId)
+                .containsExactlyInAnyOrder(firstId, secondId);
+        assertThat(entries)
+                .allMatch(entry -> entry.workspacePath() != null && !entry.workspacePath().isBlank());
+        assertThat(entries)
+                .allMatch(entry -> entry.variables() == null);
+        assertThat(entries)
+                .anyMatch(entry -> entry.workspacePath().equals(Path.of("instances", firstId.toString()).toString()))
+                .anyMatch(entry -> entry.workspacePath().equals(Path.of("instances", secondId.toString()).toString()));
+    }
+
+    private InstanceWorkspacePaths prepareWorkspace(InstanceWorkspaceLayout layout, String instanceId) {
         InstanceWorkspaceManager workspaceManager = new InstanceWorkspaceManager(layout);
         return workspaceManager.prepareWorkspace(instanceId);
+    }
+
+    private InstanceWorkspaceLayout workspaceLayout() {
+        NodeConfig config = new NodeConfig();
+        config.setWorkspaceDir(tempDir.resolve("workspace-root").toString());
+        return new InstanceWorkspaceLayout(config);
     }
 
     private ObjectMapper objectMapper() {

@@ -57,7 +57,8 @@ class InstanceStartServiceTest {
                 OffsetDateTime.now(),
                 null,
                 null,
-                null
+                null,
+                instanceRoot.toAbsolutePath().normalize().toString()
         );
 
         DockerService dockerService = mock(DockerService.class);
