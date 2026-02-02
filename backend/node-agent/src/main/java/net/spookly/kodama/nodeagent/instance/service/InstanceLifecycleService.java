@@ -72,7 +72,6 @@ public class InstanceLifecycleService {
             logger.info("Stop command acknowledged. instanceId={}", instanceId);
         } catch (RuntimeException ex) {
             logger.warn("Stop command callback failed. instanceId={}", instanceId, ex);
-            throw ex;
         }
     }
 
@@ -95,7 +94,6 @@ public class InstanceLifecycleService {
             logger.info("Destroy command acknowledged. instanceId={}", instanceId);
         } catch (RuntimeException ex) {
             logger.warn("Destroy command callback failed. instanceId={}", instanceId, ex);
-            throw ex;
         }
     }
 

@@ -15,6 +15,7 @@ Describe the configuration inputs for the node agent and how they map to environ
 - Added Docker client connection settings for local or TCP Docker Engine access.
 - Added instance runtime settings for container image and workspace mount paths.
 - Added an optional instance stop timeout for graceful shutdowns.
+- Added instance callback retry settings for Brain lifecycle callbacks.
 
 ## How to use / impact
 - Configure with environment variables or CLI args (`--node-agent.<key>=...`).
@@ -60,6 +61,8 @@ Describe the configuration inputs for the node agent and how they map to environ
   - `node-agent.instance-runtime.workspace-mount-path` (`NODE_AGENT_INSTANCE_RUNTIME_WORKSPACE_MOUNT_PATH`, default `/workspace`)
   - `node-agent.instance-runtime.working-dir` (`NODE_AGENT_INSTANCE_RUNTIME_WORKING_DIR`, defaults to workspace mount path)
   - `node-agent.instance-runtime.stop-timeout-seconds` (`NODE_AGENT_INSTANCE_RUNTIME_STOP_TIMEOUT_SECONDS`, unset uses Docker defaults)
+  - `node-agent.instance-callbacks.max-attempts` (`NODE_AGENT_INSTANCE_CALLBACKS_MAX_ATTEMPTS`, default `1`)
+  - `node-agent.instance-callbacks.retry-backoff-millis` (`NODE_AGENT_INSTANCE_CALLBACKS_RETRY_BACKOFF_MILLIS`, default `500`)
   - `node-agent.auth.header-name` (`NODE_AGENT_AUTH_HEADER_NAME`, default `X-Node-Token`)
   - `node-agent.auth.token-path` (`NODE_AGENT_AUTH_TOKEN_PATH`)
   - `node-agent.auth.cert-path` (`NODE_AGENT_AUTH_CERT_PATH`)
@@ -97,6 +100,8 @@ Describe the configuration inputs for the node agent and how they map to environ
 - `node-agent.instance-runtime.workspace-mount-path` controls where the merged workspace is mounted inside the container.
 - `node-agent.instance-runtime.working-dir` overrides the container working directory (defaults to the workspace mount path).
 - `node-agent.instance-runtime.stop-timeout-seconds` controls the graceful stop timeout before the node agent force-kills a container (unset uses Docker defaults).
+- Instance callbacks to the Brain can be retried by increasing `node-agent.instance-callbacks.max-attempts`.
+  `node-agent.instance-callbacks.retry-backoff-millis` controls the backoff between attempts.
 - S3 configuration is required for template storage. When `node-agent.s3.endpoint` is set, the client
   uses path-style requests for local or custom S3 endpoints.
 
@@ -110,6 +115,7 @@ Describe the configuration inputs for the node agent and how they map to environ
 - When `node-agent.template-cache-check.enabled=true`, missing template-id/version/checksum values
   stop the node agent at startup.
 - Invalid template cache limit values stop the node agent at startup.
+- Invalid instance callback retry values stop the node agent at startup.
 - Missing or invalid S3 settings stop the node agent when template storage is initialized.
 - Invalid Docker timeout values stop the node agent at startup.
 

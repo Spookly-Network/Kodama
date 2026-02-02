@@ -88,11 +88,10 @@ public class InstancePrepareService {
 
         try {
             callbackService.sendPrepared(instanceId);
-            logger.info("Instance preparation complete. instanceId={} layers={}", instanceId, layerCount);
         } catch (RuntimeException ex) {
             logger.warn("Prepared callback failed. instanceId={}", instanceId, ex);
-            throw ex;
         }
+        logger.info("Instance preparation complete. instanceId={} layers={}", instanceId, layerCount);
     }
 
     private TemplateLayerSource resolveLayerSource(NodePrepareInstanceLayer layer) {

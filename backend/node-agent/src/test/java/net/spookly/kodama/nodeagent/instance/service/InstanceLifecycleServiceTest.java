@@ -120,4 +120,32 @@ class InstanceLifecycleServiceTest {
         verify(callbackService).sendRunning(instanceId);
         verify(callbackService, never()).sendFailed(instanceId);
     }
+
+    @Test
+    void stopCallbackFailureDoesNotThrow() {
+        UUID instanceId = UUID.randomUUID();
+        doThrow(new RuntimeException("callback boom"))
+                .when(callbackService)
+                .sendStopped(instanceId);
+
+        assertThatNoException().isThrownBy(() -> service.stop(new NodeInstanceCommandRequest(instanceId, "demo")));
+
+        verify(stopService).stopInstance(instanceId);
+        verify(callbackService).sendStopped(instanceId);
+        verify(callbackService, never()).sendFailed(instanceId);
+    }
+
+    @Test
+    void destroyCallbackFailureDoesNotThrow() {
+        UUID instanceId = UUID.randomUUID();
+        doThrow(new RuntimeException("callback boom"))
+                .when(callbackService)
+                .sendDestroyed(instanceId);
+
+        assertThatNoException().isThrownBy(() -> service.destroy(new NodeInstanceCommandRequest(instanceId, "demo")));
+
+        verify(destroyService).destroyInstance(instanceId);
+        verify(callbackService).sendDestroyed(instanceId);
+        verify(callbackService, never()).sendFailed(instanceId);
+    }
 }
