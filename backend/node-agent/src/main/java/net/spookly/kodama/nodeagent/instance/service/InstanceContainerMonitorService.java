@@ -83,9 +83,13 @@ public class InstanceContainerMonitorService {
             return;
         }
         if (status == null) {
-            String exitReason = "missing";
-            if (shouldRecordStopped(entry, null, exitReason)) {
-                recordStopped(workspace, instanceId, null, exitReason);
+            Integer exitCode = entry.containerExitCode();
+            String exitReason = normalizeExitReason(entry.containerExitReason());
+            if (exitCode == null && exitReason == null) {
+                exitReason = "missing";
+            }
+            if (shouldRecordStopped(entry, exitCode, exitReason)) {
+                recordStopped(workspace, instanceId, exitCode, exitReason);
             }
             return;
         }

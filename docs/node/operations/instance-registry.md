@@ -30,7 +30,8 @@ Persist a local record of instance metadata after the node finishes preparing a 
 ## Edge cases / risks
 - If the registry write fails, the prepare request fails and a `/failed` callback is attempted.
 - Missing or invalid workspace paths are treated as preparation failures.
-- When containers disappear outside of the node agent, the monitor records a stopped state with an exit reason of `missing`.
+- When containers disappear outside of the node agent, the monitor records a stopped state with an exit reason of
+  `missing` only when no exit metadata is already present in the registry.
 
 ## Links
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/instance/registry/InstanceRegistryService.java`

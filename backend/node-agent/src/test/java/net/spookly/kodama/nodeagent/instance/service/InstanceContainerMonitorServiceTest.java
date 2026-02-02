@@ -1,6 +1,8 @@
 package net.spookly.kodama.nodeagent.instance.service;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -116,6 +118,56 @@ class InstanceContainerMonitorServiceTest {
         service.monitorOnce();
 
         verify(registryService).recordContainerStatus(workspace, instanceId, "running", null, null);
+    }
+
+    @Test
+    void monitorDoesNotOverwriteExitMetadataWhenContainerMissing() {
+        UUID instanceId = UUID.fromString("33333333-3333-3333-3333-333333333333");
+        OffsetDateTime createdAt = OffsetDateTime.parse("2025-01-03T00:00:00Z");
+        OffsetDateTime updatedAt = OffsetDateTime.parse("2025-01-03T00:05:00Z");
+        String containerId = "container-3";
+        InstanceRegistryEntry entry = new InstanceRegistryEntry(
+                instanceId,
+                "instance-name",
+                null,
+                null,
+                Map.of(),
+                List.of(),
+                createdAt,
+                containerId,
+                "stopped",
+                updatedAt,
+                0,
+                "exited",
+                "instances/" + instanceId
+        );
+        InstanceWorkspacePaths workspace = new InstanceWorkspacePaths(
+                instanceId.toString(),
+                Path.of("instances", instanceId.toString()),
+                Path.of("instances", instanceId.toString(), "merged"),
+                Path.of("instances", instanceId.toString(), "logs"),
+                Path.of("instances", instanceId.toString(), "temp")
+        );
+
+        DockerService dockerService = mock(DockerService.class);
+        InstanceRegistryService registryService = mock(InstanceRegistryService.class);
+        InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
+
+        when(registryService.listRegistries()).thenReturn(List.of(entry));
+        when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
+        when(dockerService.inspectContainerIfExists(containerId)).thenReturn(null);
+
+        InstanceContainerMonitorService service = new InstanceContainerMonitorService(
+                dockerService,
+                registryService,
+                workspaceLayout
+        );
+
+        service.monitorOnce();
+
+        verify(dockerService).inspectContainerIfExists(containerId);
+        verify(registryService, never())
+                .recordContainerStatus(any(), any(), any(), any(), any());
     }
 
     private DockerContainerStatus status(
