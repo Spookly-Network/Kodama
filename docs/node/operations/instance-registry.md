@@ -7,6 +7,7 @@ Persist a local record of instance metadata after the node finishes preparing a 
 - The prepare flow now writes an `instance.json` registry entry per instance.
 - The start flow updates the registry with the Docker container id.
 - The stop flow updates the registry with the latest container status.
+- The node agent monitors container state changes and records exit codes and reasons when containers stop.
 - The destroy flow deletes the `instance.json` registry entry before removing the workspace.
 
 ## How to use / impact
@@ -18,14 +19,17 @@ Persist a local record of instance metadata after the node finishes preparing a 
   - template layer list from the prepare request
   - prepared timestamp
   - container id (set after the instance is started)
-  - container status and status timestamp (updated on start/stop)
+  - container status and status timestamp (updated on start/stop/monitor)
+  - container exit code and exit reason (recorded when containers stop)
 - The registry is overwritten on each successful prepare and updated again when the container id is recorded.
 - Container status updates are recorded when start marks the instance as `running` and stop marks it as `stopped`.
+- The instance monitor updates stopped containers that exit outside of the stop command.
 - Destroy removes the registry entry as part of instance cleanup.
 
 ## Edge cases / risks
 - If the registry write fails, the prepare request fails and a `/failed` callback is attempted.
 - Missing or invalid workspace paths are treated as preparation failures.
+- When containers disappear outside of the node agent, the monitor records a stopped state with an exit reason of `missing`.
 
 ## Links
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/instance/registry/InstanceRegistryService.java`

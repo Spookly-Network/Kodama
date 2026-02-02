@@ -25,7 +25,8 @@ public class NodeAgentStartupLogger implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         logger.info(
                 "Node agent started. nodeId={}, nodeName={}, nodeVersion={}, region={}, capacitySlots={}, " +
-                        "brainBaseUrl={}, registrationEnabled={}, heartbeatIntervalSeconds={}, dockerHost={}, dockerTlsVerify={}",
+                        "brainBaseUrl={}, registrationEnabled={}, heartbeatIntervalSeconds={}, " +
+                        "instanceMonitorEnabled={}, instanceMonitorIntervalSeconds={}, dockerHost={}, dockerTlsVerify={}",
                 valueOrDash(config.getNodeId()),
                 config.getNodeName(),
                 config.getNodeVersion(),
@@ -34,6 +35,8 @@ public class NodeAgentStartupLogger implements ApplicationRunner {
                 config.getBrainBaseUrl(),
                 config.isRegistrationEnabled(),
                 config.getHeartbeatIntervalSeconds(),
+                config.getInstanceMonitor().isEnabled(),
+                config.getInstanceMonitor().getIntervalSeconds(),
                 valueOrDash(config.getEffectiveDockerHost()),
                 valueOrDash(config.getDocker().getTlsVerify())
         );

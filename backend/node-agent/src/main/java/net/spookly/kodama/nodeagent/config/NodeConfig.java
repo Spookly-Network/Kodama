@@ -30,6 +30,7 @@ public class NodeConfig {
     private VariableSubstitution variableSubstitution = new VariableSubstitution();
     private InstanceRuntime instanceRuntime = new InstanceRuntime();
     private InstanceCallbacks instanceCallbacks = new InstanceCallbacks();
+    private InstanceMonitor instanceMonitor = new InstanceMonitor();
 
     public void validate() {
         List<String> errors = new ArrayList<>();
@@ -80,6 +81,13 @@ public class NodeConfig {
             }
             if (instanceCallbacks.getRetryBackoffMillis() < 0) {
                 errors.add("node-agent.instance-callbacks.retry-backoff-millis must be 0 or greater");
+            }
+        }
+        if (instanceMonitor == null) {
+            errors.add("node-agent.instance-monitor is required");
+        } else {
+            if (instanceMonitor.getIntervalSeconds() < 0) {
+                errors.add("node-agent.instance-monitor.interval-seconds must be 0 or greater");
             }
         }
         if (docker == null) {
@@ -292,6 +300,14 @@ public class NodeConfig {
 
     public void setInstanceCallbacks(InstanceCallbacks instanceCallbacks) {
         this.instanceCallbacks = instanceCallbacks == null ? new InstanceCallbacks() : instanceCallbacks;
+    }
+
+    public InstanceMonitor getInstanceMonitor() {
+        return instanceMonitor;
+    }
+
+    public void setInstanceMonitor(InstanceMonitor instanceMonitor) {
+        this.instanceMonitor = instanceMonitor == null ? new InstanceMonitor() : instanceMonitor;
     }
 
     public static class Auth {
@@ -508,6 +524,28 @@ public class NodeConfig {
 
         public void setRetryBackoffMillis(long retryBackoffMillis) {
             this.retryBackoffMillis = retryBackoffMillis;
+        }
+    }
+
+    public static class InstanceMonitor {
+
+        private boolean enabled = true;
+        private int intervalSeconds = 10;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public int getIntervalSeconds() {
+            return intervalSeconds;
+        }
+
+        public void setIntervalSeconds(int intervalSeconds) {
+            this.intervalSeconds = intervalSeconds;
         }
     }
 

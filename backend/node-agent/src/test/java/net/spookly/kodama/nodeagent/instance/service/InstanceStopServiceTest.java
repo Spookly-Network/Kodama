@@ -1,7 +1,9 @@
 package net.spookly.kodama.nodeagent.instance.service;
 
 import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -48,6 +50,8 @@ class InstanceStopServiceTest {
                 containerId,
                 "running",
                 OffsetDateTime.now(),
+                null,
+                null,
                 null
         );
 
@@ -74,7 +78,7 @@ class InstanceStopServiceTest {
 
         verify(dockerService).stopContainer(containerId, 15);
         verify(dockerService, never()).killContainer(containerId);
-        verify(registryService).recordContainerStatus(workspace, instanceId, "stopped");
+        verify(registryService).recordContainerStatus(eq(workspace), eq(instanceId), eq("stopped"), any(), any());
     }
 
     @Test
@@ -93,6 +97,8 @@ class InstanceStopServiceTest {
                 containerId,
                 "running",
                 OffsetDateTime.now(),
+                null,
+                null,
                 null
         );
 
@@ -122,7 +128,7 @@ class InstanceStopServiceTest {
 
         verify(dockerService).stopContainer(containerId, null);
         verify(dockerService).killContainer(containerId);
-        verify(registryService).recordContainerStatus(workspace, instanceId, "stopped");
+        verify(registryService).recordContainerStatus(eq(workspace), eq(instanceId), eq("stopped"), any(), any());
     }
 
     @Test
@@ -141,6 +147,8 @@ class InstanceStopServiceTest {
                 containerId,
                 "running",
                 OffsetDateTime.now(),
+                null,
+                null,
                 null
         );
 
@@ -166,7 +174,7 @@ class InstanceStopServiceTest {
         assertThatNoException().isThrownBy(() -> service.stopInstance(instanceId));
 
         verify(dockerService, never()).killContainer(containerId);
-        verify(registryService).recordContainerStatus(workspace, instanceId, "stopped");
+        verify(registryService).recordContainerStatus(eq(workspace), eq(instanceId), eq("stopped"), any(), any());
     }
 
     @Test
@@ -185,6 +193,8 @@ class InstanceStopServiceTest {
                 containerId,
                 "running",
                 OffsetDateTime.now(),
+                null,
+                null,
                 null
         );
 
@@ -210,7 +220,7 @@ class InstanceStopServiceTest {
         assertThatNoException().isThrownBy(() -> service.stopInstance(instanceId));
 
         verify(dockerService, never()).killContainer(containerId);
-        verify(registryService).recordContainerStatus(workspace, instanceId, "stopped");
+        verify(registryService).recordContainerStatus(eq(workspace), eq(instanceId), eq("stopped"), any(), any());
     }
 
     private InstanceWorkspacePaths createWorkspace(UUID instanceId) throws Exception {

@@ -134,6 +134,8 @@ endpoints:
           containerId: string|null
           containerStatus: string|null
           containerStatusUpdatedAt: datetime|null
+          containerExitCode: int32|null
+          containerExitReason: string|null
           workspacePath: string|null (relative to node-agent.workspace-dir)
 
 callbacks:
@@ -157,6 +159,7 @@ notes:
   - Dev-mode updates are in-memory only; restart resets to configured defaults.
   - Start now creates and starts a Docker container for the prepared workspace and records the container id locally.
   - Stop now resolves the container id from the local registry, stops the container, and updates the registry state to stopped.
+  - The node agent records container exit codes and reasons in the local registry when containers stop.
   - `GET /api/instances/registry` returns registry entries derived from instance workspaces on disk.
   - Registry listings omit variables and return workspacePath relative to `node-agent.workspace-dir`.
   - `node-agent.instance-runtime.stop-timeout-seconds` controls the graceful stop timeout before force-kill (unset uses Docker defaults).

@@ -69,6 +69,8 @@ class InstanceRegistryServiceTest {
         assertThat(entry.containerId()).isNull();
         assertThat(entry.containerStatus()).isNull();
         assertThat(entry.containerStatusUpdatedAt()).isNull();
+        assertThat(entry.containerExitCode()).isNull();
+        assertThat(entry.containerExitReason()).isNull();
         assertThat(entry.workspacePath()).isEqualTo(workspace.instanceRoot().toAbsolutePath().normalize().toString());
     }
 
@@ -137,6 +139,8 @@ class InstanceRegistryServiceTest {
         assertThat(entry.containerId()).isEqualTo("container-123");
         assertThat(entry.containerStatus()).isEqualTo("running");
         assertThat(entry.containerStatusUpdatedAt()).isNotNull();
+        assertThat(entry.containerExitCode()).isNull();
+        assertThat(entry.containerExitReason()).isNull();
         assertThat(entry.workspacePath()).isEqualTo(workspace.instanceRoot().toAbsolutePath().normalize().toString());
     }
 
@@ -168,13 +172,15 @@ class InstanceRegistryServiceTest {
 
         registryService.recordPrepared(workspace, request, layers, Map.of());
         registryService.recordContainerId(workspace, instanceId, "container-123");
-        registryService.recordContainerStatus(workspace, instanceId, "stopped");
+        registryService.recordContainerStatus(workspace, instanceId, "stopped", 0, "exited");
 
         Path registryFile = workspace.instanceRoot().resolve("instance.json");
         InstanceRegistryEntry entry = objectMapper().readValue(registryFile.toFile(), InstanceRegistryEntry.class);
         assertThat(entry.containerId()).isEqualTo("container-123");
         assertThat(entry.containerStatus()).isEqualTo("stopped");
         assertThat(entry.containerStatusUpdatedAt()).isNotNull();
+        assertThat(entry.containerExitCode()).isEqualTo(0);
+        assertThat(entry.containerExitReason()).isEqualTo("exited");
         assertThat(entry.workspacePath()).isEqualTo(workspace.instanceRoot().toAbsolutePath().normalize().toString());
     }
 

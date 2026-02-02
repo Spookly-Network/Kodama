@@ -18,6 +18,8 @@ public record InstanceRegistryEntry(
         String containerId,
         String containerStatus,
         OffsetDateTime containerStatusUpdatedAt,
+        Integer containerExitCode,
+        String containerExitReason,
         String workspacePath
 ) {
 }

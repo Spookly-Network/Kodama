@@ -52,7 +52,7 @@ public class InstanceStopService {
                     instanceId,
                     containerId
             );
-            registryService.recordContainerStatus(workspace, instanceId, "stopped");
+            registryService.recordContainerStatus(workspace, instanceId, "stopped", null, "missing");
             return;
         }
         if (Boolean.FALSE.equals(initialStatus.running())) {
@@ -62,7 +62,13 @@ public class InstanceStopService {
                     containerId,
                     safeStatus(initialStatus)
             );
-            registryService.recordContainerStatus(workspace, instanceId, "stopped");
+            registryService.recordContainerStatus(
+                    workspace,
+                    instanceId,
+                    "stopped",
+                    initialStatus.exitCode(),
+                    InstanceContainerExitReasonResolver.resolveExitReason(initialStatus)
+            );
             return;
         }
         Integer stopTimeoutSeconds = resolveStopTimeoutSeconds();
@@ -75,7 +81,13 @@ public class InstanceStopService {
                         instanceId,
                         containerId
                 );
-                registryService.recordContainerStatus(workspace, instanceId, "stopped");
+                registryService.recordContainerStatus(
+                        workspace,
+                        instanceId,
+                        "stopped",
+                        null,
+                        resolveStopRaceReason(ex)
+                );
                 return;
             }
             throw ex;
@@ -92,11 +104,17 @@ public class InstanceStopService {
             } catch (DockerOperationException ex) {
                 if (isStopRace(ex)) {
                     logger.warn(
-                            "Instance container already stopped during kill. instanceId={} containerId={}",
+                        "Instance container already stopped during kill. instanceId={} containerId={}",
+                        instanceId,
+                        containerId
+                );
+                    registryService.recordContainerStatus(
+                            workspace,
                             instanceId,
-                            containerId
+                            "stopped",
+                            null,
+                            resolveStopRaceReason(ex)
                     );
-                    registryService.recordContainerStatus(workspace, instanceId, "stopped");
                     return;
                 }
                 throw ex;
@@ -106,7 +124,13 @@ public class InstanceStopService {
                 throw new InstanceStopException("Container still running after force kill: " + containerId);
             }
         }
-        registryService.recordContainerStatus(workspace, instanceId, "stopped");
+        registryService.recordContainerStatus(
+                workspace,
+                instanceId,
+                "stopped",
+                stoppedStatus == null ? null : stoppedStatus.exitCode(),
+                stoppedStatus == null ? "stopped" : InstanceContainerExitReasonResolver.resolveExitReason(stoppedStatus)
+        );
         logger.info(
                 "Instance container stopped. instanceId={} containerId={} status={}",
                 instanceId,
@@ -144,6 +168,20 @@ public class InstanceStopService {
         }
         Throwable cause = ex.getCause();
         return cause instanceof NotFoundException || cause instanceof NotModifiedException;
+    }
+
+    private String resolveStopRaceReason(DockerOperationException ex) {
+        if (ex == null) {
+            return "already-stopped";
+        }
+        Throwable cause = ex.getCause();
+        if (cause instanceof NotFoundException) {
+            return "missing";
+        }
+        if (cause instanceof NotModifiedException) {
+            return "already-stopped";
+        }
+        return "already-stopped";
     }
 
     private String safeStatus(DockerContainerStatus status) {
