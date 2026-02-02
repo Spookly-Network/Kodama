@@ -9,6 +9,6 @@ RUN gradle :node-agent:bootJar --no-daemon
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-COPY --from=build /workspace/node-agent/build/libs/*.jar app.jar
+COPY --from=build /workspace/node-agent/build/libs/app.jar app.jar
 
 ENTRYPOINT ["java", "-jar", "app.jar"]

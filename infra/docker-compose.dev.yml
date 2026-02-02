@@ -49,6 +49,12 @@ services:
       BRAIN_SECURITY_ENABLED: "false"
     ports:
       - "8080:8080"
+    healthcheck:
+      test: [ "CMD", "wget", "-qO-", "http://localhost:8080/actuator/health/readiness" ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
 
   node-agent:
     build:
@@ -56,7 +62,8 @@ services:
       dockerfile: infra/node-agent.Dockerfile
     container_name: kodama-node-agent
     depends_on:
-      - brain
+      brain:
+        condition: service_healthy
     environment:
       NODE_AGENT_NAME: node-1
       NODE_AGENT_NODE_VERSION: 0.1.0-dev
