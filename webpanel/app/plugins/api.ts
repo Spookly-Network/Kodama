@@ -1,9 +1,12 @@
-import {useAuthStore} from "~/store/auth";
+import { useAuthStore } from "~/store/auth";
 
 export default defineNuxtPlugin(() => {
     const auth = useAuthStore()
+    const config = useRuntimeConfig()
+    const baseURL = config.public.brainBaseUrl?.trim() || undefined
 
     const api = $fetch.create({
+        baseURL,
         onRequest({ options }) {
             const header = auth.authHeader
             if (!header) return

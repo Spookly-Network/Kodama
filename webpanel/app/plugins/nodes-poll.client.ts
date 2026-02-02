@@ -8,9 +8,9 @@ export default defineNuxtPlugin(() => {
     let timer: number | undefined
 
     watch(
-        () => auth.accessToken,
-        (t) => {
-            if (!t) {
+        () => auth.isAuthenticated,
+        (isAuthenticated) => {
+            if (!isAuthenticated) {
                 if (timer) window.clearInterval(timer)
                 timer = undefined
                 return

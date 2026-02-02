@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceEvent;
 import net.spookly.kodama.brain.domain.instance.InstanceEventType;
@@ -28,7 +29,6 @@ import net.spookly.kodama.brain.repository.InstanceTemplateLayerRepository;
 import net.spookly.kodama.brain.repository.NodeRepository;
 import net.spookly.kodama.brain.repository.TemplateRepository;
 import net.spookly.kodama.brain.repository.TemplateVersionRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;

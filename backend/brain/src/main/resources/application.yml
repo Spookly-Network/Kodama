@@ -46,7 +46,7 @@ brain:
       - username: ${BRAIN_ADMIN_USERNAME:admin}
         display-name: ${BRAIN_ADMIN_DISPLAY_NAME:Admin}
         email: ${BRAIN_ADMIN_EMAIL:admin@example.com}
-        password: ${BRAIN_ADMIN_PASSWORD:}
+        password: ${BRAIN_ADMIN_PASSWORD:test123}
         roles: ADMIN
 
 server:

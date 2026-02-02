@@ -28,6 +28,7 @@ function safeParseSession(value: string | null): AuthSession | null {
 }
 
 export const useAuthStore = defineStore('auth', () => {
+    const brainApi = useBrainApi()
     const sessionCookie = useCookie<string | null>('kodama.session', {
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production',
@@ -48,7 +49,7 @@ export const useAuthStore = defineStore('auth', () => {
     const isAuthenticated = computed(() => !!accessToken.value && !isExpired.value)
 
     const authHeader = computed(() => {
-        if (!accessToken.value) return null
+        if (!accessToken.value || isExpired.value) return null
         return `${tokenType.value} ${accessToken.value}`
     })
 
@@ -66,7 +67,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     async function login(username: string, password: string) {
-        const res = await $fetch<LoginResponse>('/api/auth/login', {
+        const res = await brainApi<LoginResponse>('/api/auth/login', {
             method: 'POST',
             body: { username, password } satisfies LoginRequest,
         })

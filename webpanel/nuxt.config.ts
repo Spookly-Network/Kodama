@@ -6,6 +6,11 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   css: ['~/assets/css/tailwind.css'],
+  runtimeConfig: {
+    public: {
+      brainBaseUrl: process.env.NUXT_PUBLIC_BRAIN_BASE_URL || '',
+    },
+  },
   vite: {
     plugins: [
         tailwindcss()

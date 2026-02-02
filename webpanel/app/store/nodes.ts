@@ -108,6 +108,7 @@ export const useNodesStore = defineStore('nodes', () => {
     const byId = reactive<Record<string, NodeDto>>({})
     const lastLoadedAt = ref(0)
     const loading = ref(false)
+    const brainApi = useBrainApi()
 
     function upsertMany(nodes: NodeDto[]) {
         for (const n of nodes) byId[n.id] = n
@@ -117,7 +118,7 @@ export const useNodesStore = defineStore('nodes', () => {
         if (loading.value) return
         loading.value = true
         try {
-            const nodes = await $fetch<NodeDto[]>('/api/nodes')
+            const nodes = await brainApi<NodeDto[]>('/api/nodes')
             upsertMany(nodes)
             lastLoadedAt.value = Date.now()
         } finally {

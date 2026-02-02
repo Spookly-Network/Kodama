@@ -7,19 +7,49 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { useAuthStore } from "~/store/auth"
 
 import pattern from "@/assets/images/patterns/01.svg"
 
 definePageMeta({
-  layout: "authentification"
+  layout: "authentification",
+  auth: false,
 })
+
+const auth = useAuthStore()
+const route = useRoute()
+const username = ref("")
+const password = ref("")
+const errorMessage = ref<string | null>(null)
+const isSubmitting = ref(false)
+
+async function onSubmit() {
+  if (isSubmitting.value) return
+  errorMessage.value = null
+  isSubmitting.value = true
+
+  try {
+    await auth.login(username.value.trim(), password.value)
+    const redirect =
+      typeof route.query.redirect === "string" ? route.query.redirect : "/"
+    await navigateTo(redirect)
+  } catch (error) {
+    const status = (error as { response?: Response }).response?.status
+    errorMessage.value =
+      status === 401
+        ? "Invalid username or password."
+        : "Login failed. Please try again."
+  } finally {
+    isSubmitting.value = false
+  }
+}
 </script>
 
 <template>
   <div class="flex flex-col gap-6">
     <Card class="overflow-hidden p-0">
       <CardContent class="grid p-0 md:grid-cols-2">
-        <form class="px-6 md:px-8 py-24">
+        <form class="px-6 md:px-8 py-24" @submit.prevent="onSubmit">
           <FieldGroup>
             <div class="flex flex-col items-center gap-2 text-center">
               <h1 class="text-2xl font-bold">
@@ -38,17 +68,32 @@ definePageMeta({
                   type="text"
                   placeholder="muster"
                   required
+                  autocomplete="username"
+                  v-model="username"
+                  :disabled="isSubmitting"
               />
             </Field>
             <Field>
               <FieldLabel for="password">
                 Password
               </FieldLabel>
-              <Input id="password" type="password" required />
+              <Input
+                  id="password"
+                  type="password"
+                  required
+                  autocomplete="current-password"
+                  v-model="password"
+                  :disabled="isSubmitting"
+              />
+            </Field>
+            <Field v-if="errorMessage">
+              <p class="text-sm text-destructive">
+                {{ errorMessage }}
+              </p>
             </Field>
             <Field>
-              <Button type="submit">
-                Login
+              <Button type="submit" :disabled="isSubmitting">
+                {{ isSubmitting ? "Signing in..." : "Login" }}
               </Button>
             </Field>
           </FieldGroup>

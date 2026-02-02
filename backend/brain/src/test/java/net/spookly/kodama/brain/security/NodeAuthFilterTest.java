@@ -5,9 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import jakarta.servlet.ServletException;
 import java.io.IOException;
 
+import jakarta.servlet.ServletException;
 import net.spookly.kodama.brain.config.BrainSecurityProperties;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
