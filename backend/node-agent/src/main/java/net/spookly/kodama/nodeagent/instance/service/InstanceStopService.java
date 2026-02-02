@@ -52,7 +52,14 @@ public class InstanceStopService {
                     instanceId,
                     containerId
             );
-            registryService.recordContainerStatus(workspace, instanceId, "stopped", null, "missing");
+            ExitMetadata exitMetadata = resolveExitMetadata(registry, "missing");
+            registryService.recordContainerStatus(
+                    workspace,
+                    instanceId,
+                    "stopped",
+                    exitMetadata.exitCode(),
+                    exitMetadata.exitReason()
+            );
             return;
         }
         if (Boolean.FALSE.equals(initialStatus.running())) {
@@ -81,12 +88,13 @@ public class InstanceStopService {
                         instanceId,
                         containerId
                 );
+                ExitMetadata exitMetadata = resolveExitMetadata(registry, resolveStopRaceReason(ex));
                 registryService.recordContainerStatus(
                         workspace,
                         instanceId,
                         "stopped",
-                        null,
-                        resolveStopRaceReason(ex)
+                        exitMetadata.exitCode(),
+                        exitMetadata.exitReason()
                 );
                 return;
             }
@@ -108,12 +116,13 @@ public class InstanceStopService {
                         instanceId,
                         containerId
                 );
+                    ExitMetadata exitMetadata = resolveExitMetadata(registry, resolveStopRaceReason(ex));
                     registryService.recordContainerStatus(
                             workspace,
                             instanceId,
                             "stopped",
-                            null,
-                            resolveStopRaceReason(ex)
+                            exitMetadata.exitCode(),
+                            exitMetadata.exitReason()
                     );
                     return;
                 }
@@ -124,12 +133,21 @@ public class InstanceStopService {
                 throw new InstanceStopException("Container still running after force kill: " + containerId);
             }
         }
+        ExitMetadata exitMetadata;
+        if (stoppedStatus == null) {
+            exitMetadata = resolveExitMetadata(registry, "stopped");
+        } else {
+            exitMetadata = new ExitMetadata(
+                    stoppedStatus.exitCode(),
+                    InstanceContainerExitReasonResolver.resolveExitReason(stoppedStatus)
+            );
+        }
         registryService.recordContainerStatus(
                 workspace,
                 instanceId,
                 "stopped",
-                stoppedStatus == null ? null : stoppedStatus.exitCode(),
-                stoppedStatus == null ? "stopped" : InstanceContainerExitReasonResolver.resolveExitReason(stoppedStatus)
+                exitMetadata.exitCode(),
+                exitMetadata.exitReason()
         );
         logger.info(
                 "Instance container stopped. instanceId={} containerId={} status={}",
@@ -184,6 +202,22 @@ public class InstanceStopService {
         return "already-stopped";
     }
 
+    private ExitMetadata resolveExitMetadata(InstanceRegistryEntry registry, String fallbackReason) {
+        Integer exitCode = registry == null ? null : registry.containerExitCode();
+        String exitReason = normalizeExitReason(registry == null ? null : registry.containerExitReason());
+        if (exitCode == null && exitReason == null) {
+            exitReason = fallbackReason;
+        }
+        return new ExitMetadata(exitCode, exitReason);
+    }
+
+    private String normalizeExitReason(String exitReason) {
+        if (exitReason == null || exitReason.isBlank()) {
+            return null;
+        }
+        return exitReason.trim();
+    }
+
     private String safeStatus(DockerContainerStatus status) {
         if (status == null) {
             return "unknown";
@@ -193,5 +227,8 @@ public class InstanceStopService {
             return "unknown";
         }
         return state.trim();
+    }
+
+    private record ExitMetadata(Integer exitCode, String exitReason) {
     }
 }

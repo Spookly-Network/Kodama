@@ -223,6 +223,47 @@ class InstanceStopServiceTest {
         verify(registryService).recordContainerStatus(eq(workspace), eq(instanceId), eq("stopped"), any(), any());
     }
 
+    @Test
+    void stopInstancePreservesExitMetadataWhenContainerMissing() throws Exception {
+        UUID instanceId = UUID.randomUUID();
+        String containerId = "container-5";
+        InstanceWorkspacePaths workspace = createWorkspace(instanceId);
+        InstanceRegistryEntry registry = new InstanceRegistryEntry(
+                instanceId,
+                "instance-name",
+                null,
+                null,
+                Map.of(),
+                List.of(),
+                OffsetDateTime.now(),
+                containerId,
+                "stopped",
+                OffsetDateTime.now(),
+                137,
+                "crashed",
+                null
+        );
+
+        DockerService dockerService = mock(DockerService.class);
+        InstanceRegistryService registryService = mock(InstanceRegistryService.class);
+        InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
+
+        when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
+        when(registryService.loadRegistry(workspace)).thenReturn(registry);
+        when(dockerService.inspectContainerIfExists(containerId)).thenReturn(null);
+
+        InstanceStopService service = new InstanceStopService(
+                dockerService,
+                registryService,
+                workspaceLayout,
+                new NodeConfig()
+        );
+
+        assertThatNoException().isThrownBy(() -> service.stopInstance(instanceId));
+
+        verify(registryService).recordContainerStatus(eq(workspace), eq(instanceId), eq("stopped"), eq(137), eq("crashed"));
+    }
+
     private InstanceWorkspacePaths createWorkspace(UUID instanceId) throws Exception {
         Path instanceRoot = tempDir.resolve("instances").resolve(instanceId.toString());
         Files.createDirectories(instanceRoot);

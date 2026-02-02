@@ -64,7 +64,8 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
   `node-agent.instance-runtime.image`; missing values fail the command.
 - Start fails if the prepared workspace or `instance.json` registry record is missing.
 - Stop fails if the registry is missing or does not contain a container id.
-- If the container is missing at stop time, the node agent logs a warning, marks the registry as stopped, and still sends the stop callback.
+- If the container is missing at stop time, the node agent logs a warning, marks the registry as stopped, and preserves any
+  existing exit metadata (otherwise it records an exit reason of `missing`).
 - If the registry, container, or workspace is missing during destroy, the node agent treats it as already removed and continues cleanup.
 - If the container disappears or stops between inspect and the Docker stop/kill calls, the node treats it as already stopped.
 - If a container stops without a stop command (crash, manual stop), the monitor records the exit code/reason in the local registry.
