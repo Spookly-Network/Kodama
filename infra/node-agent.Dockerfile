@@ -3,12 +3,12 @@ FROM gradle:9.2.1-jdk21-alpine AS build
 WORKDIR /workspace
 
 COPY backend/. .
-RUN gradle :node-agent:installDist --no-daemon
+RUN gradle :node-agent:bootJar --no-daemon
 
 # Runtime-Stage
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-COPY --from=build /workspace/node-agent/build/install/node-agent/ ./
+COPY --from=build /workspace/node-agent/build/libs/*.jar app.jar
 
-ENTRYPOINT ["bin/node-agent"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
