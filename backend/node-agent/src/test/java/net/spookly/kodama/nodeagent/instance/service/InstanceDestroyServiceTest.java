@@ -59,6 +59,8 @@ class InstanceDestroyServiceTest {
                 containerId,
                 "running",
                 OffsetDateTime.now(),
+                null,
+                null,
                 workspace.instanceRoot().toAbsolutePath().normalize().toString()
         );
         objectMapper.writeValue(workspace.instanceRoot().resolve("instance.json").toFile(), entry);

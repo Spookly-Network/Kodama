@@ -70,6 +70,8 @@ public class InstanceRegistryService {
                 null,
                 null,
                 null,
+                null,
+                null,
                 resolveWorkspacePath(null, instanceRoot)
         );
 
@@ -133,6 +135,8 @@ public class InstanceRegistryService {
                 containerId.trim(),
                 "running",
                 OffsetDateTime.now(),
+                null,
+                null,
                 resolveWorkspacePath(entry.workspacePath(), workspace.instanceRoot())
         );
         Path registryFile = workspace.instanceRoot().resolve(REGISTRY_FILENAME);
@@ -144,6 +148,16 @@ public class InstanceRegistryService {
             InstanceWorkspacePaths workspace,
             UUID instanceId,
             String containerStatus
+    ) {
+        recordContainerStatus(workspace, instanceId, containerStatus, null, null);
+    }
+
+    public void recordContainerStatus(
+            InstanceWorkspacePaths workspace,
+            UUID instanceId,
+            String containerStatus,
+            Integer exitCode,
+            String exitReason
     ) {
         if (workspace == null) {
             throw new InstanceRegistryException("instance workspace is required");
@@ -160,6 +174,7 @@ public class InstanceRegistryService {
         if (entry.containerId() == null || entry.containerId().isBlank()) {
             throw new InstanceRegistryException("containerId is required");
         }
+        String normalizedReason = normalizeExitReason(exitReason);
         InstanceRegistryEntry updated = new InstanceRegistryEntry(
                 entry.instanceId(),
                 entry.name(),
@@ -171,6 +186,8 @@ public class InstanceRegistryService {
                 entry.containerId().trim(),
                 containerStatus.trim(),
                 OffsetDateTime.now(),
+                exitCode,
+                normalizedReason,
                 resolveWorkspacePath(entry.workspacePath(), workspace.instanceRoot())
         );
         Path registryFile = workspace.instanceRoot().resolve(REGISTRY_FILENAME);
@@ -332,6 +349,8 @@ public class InstanceRegistryService {
                 entry.containerId(),
                 entry.containerStatus(),
                 entry.containerStatusUpdatedAt(),
+                entry.containerExitCode(),
+                entry.containerExitReason(),
                 relativeWorkspacePath
         );
     }
@@ -380,6 +399,8 @@ public class InstanceRegistryService {
                 entry.containerId(),
                 entry.containerStatus(),
                 entry.containerStatusUpdatedAt(),
+                entry.containerExitCode(),
+                entry.containerExitReason(),
                 resolvedPath
         );
         if (persistIfUpdated && registryFile != null) {
@@ -396,5 +417,12 @@ public class InstanceRegistryService {
             return existing.trim();
         }
         return null;
+    }
+
+    private String normalizeExitReason(String reason) {
+        if (reason == null || reason.isBlank()) {
+            return null;
+        }
+        return reason.trim();
     }
 }

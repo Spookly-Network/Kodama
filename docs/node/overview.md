@@ -21,6 +21,7 @@ The Node Agent is a lightweight Java service that runs on each node and executes
 - Start now launches a Docker container using the prepared workspace and records the container id in the local registry.
 - Stop now resolves the container id from the local registry, stops the container, and records the stopped state.
 - Added a local registry listing endpoint and recorded workspace paths in instance registry entries.
+- Added a container monitor to detect stopped containers and record exit codes in the local registry.
 - Added Brain authentication checks for command endpoints using a shared token or client certificate.
 
 ## How to use / impact
@@ -49,6 +50,8 @@ The Node Agent is a lightweight Java service that runs on each node and executes
     - `NODE_AGENT_INSTANCE_RUNTIME_WORKSPACE_MOUNT_PATH`
     - `NODE_AGENT_INSTANCE_RUNTIME_WORKING_DIR`
     - `NODE_AGENT_INSTANCE_RUNTIME_STOP_TIMEOUT_SECONDS`
+    - `NODE_AGENT_INSTANCE_MONITOR_ENABLED`
+    - `NODE_AGENT_INSTANCE_MONITOR_INTERVAL_SECONDS`
     - `NODE_AGENT_VARIABLE_SUBSTITUTION_MAX_FILE_BYTES`
     - `NODE_AGENT_AUTH_HEADER_NAME`
     - `NODE_AGENT_AUTH_TOKEN_PATH`

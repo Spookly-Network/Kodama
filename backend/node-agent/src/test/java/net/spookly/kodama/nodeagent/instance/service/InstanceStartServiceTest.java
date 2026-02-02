@@ -58,6 +58,8 @@ class InstanceStartServiceTest {
                 null,
                 null,
                 null,
+                null,
+                null,
                 instanceRoot.toAbsolutePath().normalize().toString()
         );
 
