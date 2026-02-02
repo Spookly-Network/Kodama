@@ -83,7 +83,10 @@ public class InstanceContainerMonitorService {
             return;
         }
         if (status == null) {
-            recordStopped(workspace, instanceId, null, "missing");
+            String exitReason = "missing";
+            if (shouldRecordStopped(entry, null, exitReason)) {
+                recordStopped(workspace, instanceId, null, exitReason);
+            }
             return;
         }
         if (Boolean.TRUE.equals(status.running())) {
@@ -92,12 +95,10 @@ public class InstanceContainerMonitorService {
             }
             return;
         }
-        recordStopped(
-                workspace,
-                instanceId,
-                status.exitCode(),
-                InstanceContainerExitReasonResolver.resolveExitReason(status)
-        );
+        String exitReason = InstanceContainerExitReasonResolver.resolveExitReason(status);
+        if (shouldRecordStopped(entry, status.exitCode(), exitReason)) {
+            recordStopped(workspace, instanceId, status.exitCode(), exitReason);
+        }
     }
 
     private void recordStopped(
@@ -128,7 +129,7 @@ public class InstanceContainerMonitorService {
 
     private boolean shouldInspect(InstanceRegistryEntry entry) {
         String status = normalizeStatus(entry.containerStatus());
-        if (status == null || "running".equals(status)) {
+        if (status == null || "running".equals(status) || "stopped".equals(status)) {
             return true;
         }
         return isExitMetadataMissing(entry);
@@ -142,12 +143,33 @@ public class InstanceContainerMonitorService {
         return entry.containerExitCode() != null || hasText(entry.containerExitReason());
     }
 
+    private boolean shouldRecordStopped(InstanceRegistryEntry entry, Integer exitCode, String exitReason) {
+        String status = normalizeStatus(entry.containerStatus());
+        if (!"stopped".equals(status)) {
+            return true;
+        }
+        Integer recordedExitCode = entry.containerExitCode();
+        String recordedExitReason = normalizeExitReason(entry.containerExitReason());
+        String normalizedExitReason = normalizeExitReason(exitReason);
+        if (!Objects.equals(recordedExitCode, exitCode)) {
+            return true;
+        }
+        return !Objects.equals(recordedExitReason, normalizedExitReason);
+    }
+
     private boolean isExitMetadataMissing(InstanceRegistryEntry entry) {
         return entry.containerExitCode() == null && !hasText(entry.containerExitReason());
     }
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private String normalizeExitReason(String exitReason) {
+        if (!hasText(exitReason)) {
+            return null;
+        }
+        return exitReason.trim();
     }
 
     private String normalizeStatus(String status) {

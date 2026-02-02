@@ -23,7 +23,8 @@ Persist a local record of instance metadata after the node finishes preparing a 
   - container exit code and exit reason (recorded when containers stop)
 - The registry is overwritten on each successful prepare and updated again when the container id is recorded.
 - Container status updates are recorded when start marks the instance as `running` and stop marks it as `stopped`.
-- The instance monitor updates stopped containers that exit outside of the stop command.
+- The instance monitor polls tracked containers (including stopped ones) and reconciles status changes,
+  so manual restarts are reflected in the registry.
 - Destroy removes the registry entry as part of instance cleanup.
 
 ## Edge cases / risks

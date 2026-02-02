@@ -69,6 +69,55 @@ class InstanceContainerMonitorServiceTest {
         verify(registryService).recordContainerStatus(workspace, instanceId, "stopped", 137, "crashed");
     }
 
+    @Test
+    void monitorUpdatesStoppedEntryWhenContainerRestarts() {
+        UUID instanceId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+        OffsetDateTime createdAt = OffsetDateTime.parse("2025-01-02T00:00:00Z");
+        OffsetDateTime updatedAt = OffsetDateTime.parse("2025-01-02T00:05:00Z");
+        String containerId = "container-2";
+        InstanceRegistryEntry entry = new InstanceRegistryEntry(
+                instanceId,
+                "instance-name",
+                null,
+                null,
+                Map.of(),
+                List.of(),
+                createdAt,
+                containerId,
+                "stopped",
+                updatedAt,
+                137,
+                "crashed",
+                "instances/" + instanceId
+        );
+        InstanceWorkspacePaths workspace = new InstanceWorkspacePaths(
+                instanceId.toString(),
+                Path.of("instances", instanceId.toString()),
+                Path.of("instances", instanceId.toString(), "merged"),
+                Path.of("instances", instanceId.toString(), "logs"),
+                Path.of("instances", instanceId.toString(), "temp")
+        );
+
+        DockerService dockerService = mock(DockerService.class);
+        InstanceRegistryService registryService = mock(InstanceRegistryService.class);
+        InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
+
+        when(registryService.listRegistries()).thenReturn(List.of(entry));
+        when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
+        when(dockerService.inspectContainerIfExists(containerId))
+                .thenReturn(status(containerId, true, "running", null, null));
+
+        InstanceContainerMonitorService service = new InstanceContainerMonitorService(
+                dockerService,
+                registryService,
+                workspaceLayout
+        );
+
+        service.monitorOnce();
+
+        verify(registryService).recordContainerStatus(workspace, instanceId, "running", null, null);
+    }
+
     private DockerContainerStatus status(
             String containerId,
             Boolean running,

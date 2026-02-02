@@ -68,6 +68,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - If the registry, container, or workspace is missing during destroy, the node agent treats it as already removed and continues cleanup.
 - If the container disappears or stops between inspect and the Docker stop/kill calls, the node treats it as already stopped.
 - If a container stops without a stop command (crash, manual stop), the monitor records the exit code/reason in the local registry.
+- If a container is restarted manually, the monitor detects it on the next poll and updates the registry back to `running`.
 - Stop errors attempt a `/failed` callback before returning the error.
 - Destroy errors attempt a `/failed` callback before returning the error.
 - Missing `portsJson` is allowed; port bindings fall back to `PORT`/`PORT_*` variables.
