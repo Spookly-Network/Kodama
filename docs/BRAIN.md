@@ -11,6 +11,7 @@ The Brain is the authoritative source of truth for everything.
 - Tracking instance lifecycle
 - Dispatching commands to nodes
 - Secure API for Webpanel and Node Agents
+- Loading Brain plugins for prepare-time hooks
 
 ---
 
@@ -28,6 +29,12 @@ The Brain is the authoritative source of truth for everything.
 ## State Machine
 
 See `/docs/INSTANCE-LIFECYCLE.md`.
+
+---
+
+## Plugins
+
+See `/docs/brain/plugins.md`.
 
 ---
 

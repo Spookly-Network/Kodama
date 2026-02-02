@@ -65,3 +65,7 @@ node-agent:
     bucket: ${NODE_AGENT_S3_BUCKET:}
     access-key: ${NODE_AGENT_S3_ACCESS_KEY:}
     secret-key: ${NODE_AGENT_S3_SECRET_KEY:}
+
+plugins:
+  dir: ${PLUGINS_DIR:./plugins}
+  enabled: ${PLUGINS_ENABLED:}

@@ -26,6 +26,8 @@ import net.spookly.kodama.brain.domain.template.TemplateVersion;
 import net.spookly.kodama.brain.dto.node.NodeInstanceCommandRequest;
 import net.spookly.kodama.brain.dto.node.NodePrepareInstanceLayer;
 import net.spookly.kodama.brain.dto.node.NodePrepareInstanceRequest;
+import net.spookly.kodama.brain.plugin.BrainPluginRegistry;
+import net.spookly.kodama.brain.config.PluginsProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -49,7 +51,9 @@ class CommandDispatcherServiceTest {
         server = MockRestServiceServer.bindTo(restTemplate).build();
         nodeProperties = new NodeProperties();
         nodeProperties.setCommandRetryBackoffMillis(0);
-        dispatcher = new CommandDispatcherService(restTemplate, nodeProperties);
+        PluginsProperties pluginsProperties = new PluginsProperties();
+        BrainPluginRegistry registry = new BrainPluginRegistry(pluginsProperties, objectMapper);
+        dispatcher = new CommandDispatcherService(restTemplate, nodeProperties, registry);
     }
 
     @Test

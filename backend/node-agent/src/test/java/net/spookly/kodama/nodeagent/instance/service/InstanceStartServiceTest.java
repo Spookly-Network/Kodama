@@ -16,6 +16,7 @@ import java.util.UUID;
 
 import net.spookly.kodama.nodeagent.config.InstanceProperties;
 import net.spookly.kodama.nodeagent.config.NodeConfig;
+import net.spookly.kodama.nodeagent.config.NodePluginsProperties;
 import net.spookly.kodama.nodeagent.docker.dto.DockerContainerCreateRequest;
 import net.spookly.kodama.nodeagent.docker.dto.DockerContainerCreateResult;
 import net.spookly.kodama.nodeagent.docker.dto.DockerPortBinding;
@@ -25,6 +26,7 @@ import net.spookly.kodama.nodeagent.instance.registry.InstanceRegistryEntry;
 import net.spookly.kodama.nodeagent.instance.registry.InstanceRegistryService;
 import net.spookly.kodama.nodeagent.instance.workspace.InstanceWorkspaceLayout;
 import net.spookly.kodama.nodeagent.instance.workspace.InstanceWorkspacePaths;
+import net.spookly.kodama.nodeagent.plugin.NodePluginRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
@@ -81,6 +83,8 @@ class InstanceStartServiceTest {
         InstanceProperties instanceProperties = new InstanceProperties();
         instanceProperties.getInstanceRuntime().setImage("image:test");
         instanceProperties.getInstanceRuntime().setWorkspaceMountPath("/workspace");
+        NodePluginsProperties pluginsProperties = new NodePluginsProperties();
+        NodePluginRegistry pluginRegistry = new NodePluginRegistry(pluginsProperties);
 
         InstanceStartService service = new InstanceStartService(
                 dockerService,
@@ -88,7 +92,8 @@ class InstanceStartServiceTest {
                 workspaceLayout,
                 portBindingsResolver,
                 config,
-                instanceProperties
+                instanceProperties,
+                pluginRegistry
         );
 
         service.startInstance(instanceId, "request-name");

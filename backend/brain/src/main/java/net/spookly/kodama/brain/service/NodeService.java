@@ -5,14 +5,14 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
+import net.spookly.kodama.brain.config.NodeProperties;
 import net.spookly.kodama.brain.domain.node.Node;
 import net.spookly.kodama.brain.domain.node.NodeStatus;
-import net.spookly.kodama.brain.dto.NodeRegistrationResponse;
 import net.spookly.kodama.brain.dto.NodeDto;
 import net.spookly.kodama.brain.dto.NodeHeartbeatRequest;
 import net.spookly.kodama.brain.dto.NodeRegistrationRequest;
+import net.spookly.kodama.brain.dto.NodeRegistrationResponse;
 import net.spookly.kodama.brain.repository.NodeRepository;
-import net.spookly.kodama.brain.config.NodeProperties;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

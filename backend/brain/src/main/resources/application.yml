@@ -49,6 +49,10 @@ brain:
         password: ${BRAIN_ADMIN_PASSWORD:}
         roles: ADMIN
 
+plugins:
+  dir: ${PLUGINS_DIR:./plugins}
+  enabled: ${PLUGINS_ENABLED:}
+
 server:
   port: 8080
 
