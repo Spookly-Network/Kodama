@@ -19,14 +19,14 @@ import org.apache.hc.core5.util.Timeout;
 import org.springframework.stereotype.Component;
 
 @Component
-public class NodeCallbackClient {
+public class BrainCallbackClient {
 
     private static final Timeout CONNECT_TIMEOUT = Timeout.ofSeconds(5);
     private static final Timeout RESPONSE_TIMEOUT = Timeout.ofSeconds(10);
 
     private final CloseableHttpClient httpClient;
 
-    public NodeCallbackClient() {
+    public BrainCallbackClient() {
         this.httpClient = HttpClients.custom()
                 .setDefaultRequestConfig(RequestConfig.custom()
                         .setConnectTimeout(CONNECT_TIMEOUT)

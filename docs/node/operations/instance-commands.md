@@ -12,6 +12,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - Stop now resolves the container id from the local registry, stops the container, and records the stopped state.
 - Destroy now stops (or force-kills) the container, removes it, deletes the instance workspace, and removes the local registry entry.
 - Added a local registry listing endpoint for listing known instance records.
+- Added optional retry settings for instance callbacks to the Brain.
 
 ## How to use / impact
 - `POST /api/instances/{instanceId}/prepare` with `NodePrepareInstanceRequest`.
@@ -45,6 +46,8 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - Destroy removes `instance.json` before deleting the instance workspace directory.
 - Registry entries include the instance workspace path (relative to `node-agent.workspace-dir`) and last known container status.
 - Registry listings omit `variables` to avoid leaking runtime secrets.
+- Instance callback retries are controlled by `node-agent.instance-callbacks.max-attempts` and
+  `node-agent.instance-callbacks.retry-backoff-millis`.
 - If the container is still running after the stop timeout, the node agent force-kills it.
 - The stop timeout is configured via `node-agent.instance-runtime.stop-timeout-seconds` (defaults to Docker's own timeout when unset).
 - The registry container status is updated to `stopped` after a successful stop.
@@ -54,7 +57,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 ## Edge cases / risks
 - Invalid payloads (missing instanceId, empty layers, invalid JSON) return HTTP 400 and trigger a `/failed` callback when possible.
 - Cache download/merge failures result in HTTP 500 and a `/failed` callback attempt.
-- Missing node auth token or invalid Brain base URL prevents callbacks and fails the prepare request.
+- Missing node auth token or invalid Brain base URL prevents callbacks; lifecycle commands still complete locally but the Brain will not receive updates.
 - Start requires a container image from `variables` (`DOCKER_IMAGE`, `CONTAINER_IMAGE`, or `IMAGE`) or
   `node-agent.instance-runtime.image`; missing values fail the command.
 - Start fails if the prepared workspace or `instance.json` registry record is missing.
@@ -66,7 +69,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - Destroy errors attempt a `/failed` callback before returning the error.
 - Missing `portsJson` is allowed; port bindings fall back to `PORT`/`PORT_*` variables.
 - Invalid or missing port mappings result in a failed start and a `/failed` callback attempt.
-- If the `/running` callback fails after the container starts, the node logs the error but does not send `/failed`.
+- If a success callback (`/prepared`, `/running`, `/stopped`, `/destroyed`) fails after the command completes, the node logs the error but does not send `/failed`.
 
 ## Links
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/instance/controller/InstanceCommandController.java`

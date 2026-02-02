@@ -29,6 +29,7 @@ public class NodeConfig {
     private TemplateCacheLimits templateCacheLimits = new TemplateCacheLimits();
     private VariableSubstitution variableSubstitution = new VariableSubstitution();
     private InstanceRuntime instanceRuntime = new InstanceRuntime();
+    private InstanceCallbacks instanceCallbacks = new InstanceCallbacks();
 
     public void validate() {
         List<String> errors = new ArrayList<>();
@@ -69,6 +70,16 @@ public class NodeConfig {
             Integer stopTimeoutSeconds = instanceRuntime.getStopTimeoutSeconds();
             if (stopTimeoutSeconds != null && stopTimeoutSeconds < 0) {
                 errors.add("node-agent.instance-runtime.stop-timeout-seconds must be 0 or greater");
+            }
+        }
+        if (instanceCallbacks == null) {
+            errors.add("node-agent.instance-callbacks is required");
+        } else {
+            if (instanceCallbacks.getMaxAttempts() < 1) {
+                errors.add("node-agent.instance-callbacks.max-attempts must be at least 1");
+            }
+            if (instanceCallbacks.getRetryBackoffMillis() < 0) {
+                errors.add("node-agent.instance-callbacks.retry-backoff-millis must be 0 or greater");
             }
         }
         if (docker == null) {
@@ -275,6 +286,14 @@ public class NodeConfig {
         this.instanceRuntime = instanceRuntime == null ? new InstanceRuntime() : instanceRuntime;
     }
 
+    public InstanceCallbacks getInstanceCallbacks() {
+        return instanceCallbacks;
+    }
+
+    public void setInstanceCallbacks(InstanceCallbacks instanceCallbacks) {
+        this.instanceCallbacks = instanceCallbacks == null ? new InstanceCallbacks() : instanceCallbacks;
+    }
+
     public static class Auth {
 
         private String tokenPath;
@@ -467,6 +486,28 @@ public class NodeConfig {
 
         public void setStopTimeoutSeconds(Integer stopTimeoutSeconds) {
             this.stopTimeoutSeconds = stopTimeoutSeconds;
+        }
+    }
+
+    public static class InstanceCallbacks {
+
+        private int maxAttempts = 1;
+        private long retryBackoffMillis;
+
+        public int getMaxAttempts() {
+            return maxAttempts;
+        }
+
+        public void setMaxAttempts(int maxAttempts) {
+            this.maxAttempts = maxAttempts;
+        }
+
+        public long getRetryBackoffMillis() {
+            return retryBackoffMillis;
+        }
+
+        public void setRetryBackoffMillis(long retryBackoffMillis) {
+            this.retryBackoffMillis = retryBackoffMillis;
         }
     }
 

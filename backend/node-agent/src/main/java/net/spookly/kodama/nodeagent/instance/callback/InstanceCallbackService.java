@@ -7,21 +7,25 @@ import net.spookly.kodama.nodeagent.config.NodeConfig;
 import net.spookly.kodama.nodeagent.instance.service.InstancePrepareException;
 import net.spookly.kodama.nodeagent.registration.NodeAuthTokenReader;
 import net.spookly.kodama.nodeagent.registration.NodeRegistrationState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 @Component
 public class InstanceCallbackService {
 
+    private static final Logger logger = LoggerFactory.getLogger(InstanceCallbackService.class);
+
     private final NodeConfig config;
     private final NodeRegistrationState registrationState;
     private final NodeAuthTokenReader tokenReader;
-    private final NodeCallbackClient callbackClient;
+    private final BrainCallbackClient callbackClient;
 
     public InstanceCallbackService(
             NodeConfig config,
             NodeRegistrationState registrationState,
             NodeAuthTokenReader tokenReader,
-            NodeCallbackClient callbackClient
+            BrainCallbackClient callbackClient
     ) {
         this.config = config;
         this.registrationState = registrationState;
@@ -60,7 +64,88 @@ public class InstanceCallbackService {
         if (authToken == null || authToken.isBlank()) {
             authToken = null;
         }
-        callbackClient.sendCallback(endpoint, headerName, authToken);
+        int maxAttempts = resolveMaxAttempts();
+        long backoffMillis = resolveBackoffMillis();
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                callbackClient.sendCallback(endpoint, headerName, authToken);
+                if (attempt > 1) {
+                    logger.info(
+                            "Instance callback succeeded after retry attempt {} action={} instanceId={}",
+                            attempt,
+                            action,
+                            instanceId
+                    );
+                }
+                return;
+            } catch (RuntimeException ex) {
+                if (attempt >= maxAttempts) {
+                    logger.warn(
+                            "Instance callback failed after {} attempts action={} instanceId={} endpoint={}",
+                            maxAttempts,
+                            action,
+                            instanceId,
+                            endpoint,
+                            ex
+                    );
+                    throw ex;
+                }
+                logger.warn(
+                        "Instance callback attempt {} failed, retrying in {}ms action={} instanceId={} endpoint={}",
+                        attempt,
+                        backoffMillis,
+                        action,
+                        instanceId,
+                        endpoint,
+                        ex
+                );
+                if (!sleep(backoffMillis)) {
+                    throw ex;
+                }
+                backoffMillis = nextBackoffMillis(backoffMillis);
+            }
+        }
+    }
+
+    private int resolveMaxAttempts() {
+        NodeConfig.InstanceCallbacks callbacks = config.getInstanceCallbacks();
+        if (callbacks == null) {
+            return 1;
+        }
+        return Math.max(1, callbacks.getMaxAttempts());
+    }
+
+    private long resolveBackoffMillis() {
+        NodeConfig.InstanceCallbacks callbacks = config.getInstanceCallbacks();
+        if (callbacks == null) {
+            return 0L;
+        }
+        return Math.max(0L, callbacks.getRetryBackoffMillis());
+    }
+
+    private long nextBackoffMillis(long backoffMillis) {
+        if (backoffMillis <= 0) {
+            return 0L;
+        }
+        long next = backoffMillis * 2;
+        if (next < 0) {
+            return backoffMillis;
+        }
+        return next;
+    }
+
+    private boolean sleep(long backoffMillis) {
+        if (backoffMillis <= 0) {
+            return true;
+        }
+        try {
+            Thread.sleep(backoffMillis);
+            return true;
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            logger.warn("Instance callback retry interrupted");
+            return false;
+        }
     }
 
     private UUID resolveNodeId() {
