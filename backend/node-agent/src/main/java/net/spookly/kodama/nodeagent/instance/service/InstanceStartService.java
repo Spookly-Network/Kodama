@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+import net.spookly.kodama.nodeagent.config.InstanceProperties;
 import net.spookly.kodama.nodeagent.config.NodeConfig;
 import net.spookly.kodama.nodeagent.docker.dto.DockerContainerCreateRequest;
 import net.spookly.kodama.nodeagent.docker.dto.DockerContainerCreateResult;
@@ -31,19 +32,22 @@ public class InstanceStartService {
     private final InstanceWorkspaceLayout workspaceLayout;
     private final InstancePortBindingsResolver portBindingsResolver;
     private final NodeConfig config;
+    private final InstanceProperties instanceProperties;
 
     public InstanceStartService(
             DockerService dockerService,
             InstanceRegistryService registryService,
             InstanceWorkspaceLayout workspaceLayout,
             InstancePortBindingsResolver portBindingsResolver,
-            NodeConfig config
+            NodeConfig config,
+            InstanceProperties instanceProperties
     ) {
         this.dockerService = Objects.requireNonNull(dockerService, "dockerService");
         this.registryService = Objects.requireNonNull(registryService, "registryService");
         this.workspaceLayout = Objects.requireNonNull(workspaceLayout, "workspaceLayout");
         this.portBindingsResolver = Objects.requireNonNull(portBindingsResolver, "portBindingsResolver");
         this.config = Objects.requireNonNull(config, "config");
+        this.instanceProperties = Objects.requireNonNull(instanceProperties, "instanceProperties");
     }
 
     public String startInstance(UUID instanceId, String requestedName) {
@@ -115,7 +119,7 @@ public class InstanceStartService {
                 variables.get("IMAGE")
         );
         if (isBlank(image)) {
-            image = config.getInstanceRuntime().getImage();
+            image = instanceProperties.getInstanceRuntime().getImage();
         }
         if (isBlank(image)) {
             throw new InstanceStartException("Container image is required (variables DOCKER_IMAGE or node-agent.instance-runtime.image)");
@@ -124,7 +128,7 @@ public class InstanceStartService {
     }
 
     private String resolveWorkspaceMountPath() {
-        String mountPath = config.getInstanceRuntime().getWorkspaceMountPath();
+        String mountPath = instanceProperties.getInstanceRuntime().getWorkspaceMountPath();
         if (isBlank(mountPath)) {
             throw new InstanceStartException("node-agent.instance-runtime.workspace-mount-path is required");
         }
@@ -132,7 +136,7 @@ public class InstanceStartService {
     }
 
     private String resolveWorkingDir(String mountPath) {
-        String workingDir = config.getInstanceRuntime().getWorkingDir();
+        String workingDir = instanceProperties.getInstanceRuntime().getWorkingDir();
         if (isBlank(workingDir)) {
             return mountPath;
         }

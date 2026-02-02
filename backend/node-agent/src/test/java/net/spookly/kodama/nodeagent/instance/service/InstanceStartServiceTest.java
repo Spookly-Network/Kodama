@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import net.spookly.kodama.nodeagent.config.InstanceProperties;
 import net.spookly.kodama.nodeagent.config.NodeConfig;
 import net.spookly.kodama.nodeagent.docker.dto.DockerContainerCreateRequest;
 import net.spookly.kodama.nodeagent.docker.dto.DockerContainerCreateResult;
@@ -77,15 +78,17 @@ class InstanceStartServiceTest {
 
         NodeConfig config = new NodeConfig();
         config.setNodeName("node-1");
-        config.getInstanceRuntime().setImage("image:test");
-        config.getInstanceRuntime().setWorkspaceMountPath("/workspace");
+        InstanceProperties instanceProperties = new InstanceProperties();
+        instanceProperties.getInstanceRuntime().setImage("image:test");
+        instanceProperties.getInstanceRuntime().setWorkspaceMountPath("/workspace");
 
         InstanceStartService service = new InstanceStartService(
                 dockerService,
                 registryService,
                 workspaceLayout,
                 portBindingsResolver,
-                config
+                config,
+                instanceProperties
         );
 
         service.startInstance(instanceId, "request-name");

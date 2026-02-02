@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 import java.net.URI;
 import java.util.UUID;
 
+import net.spookly.kodama.nodeagent.config.InstanceProperties;
 import net.spookly.kodama.nodeagent.config.NodeConfig;
 import net.spookly.kodama.nodeagent.registration.NodeAuthTokenReader;
 import net.spookly.kodama.nodeagent.registration.NodeRegistrationResponse;
@@ -25,7 +26,8 @@ class InstanceCallbackServiceTest {
 
     @Test
     void sendRunningRetriesUntilSuccess() {
-        NodeConfig config = buildConfig(3, 0);
+        NodeConfig config = buildConfig();
+        InstanceProperties instanceProperties = buildInstanceProperties(3, 0);
         NodeRegistrationState registrationState = buildRegistrationState();
         NodeAuthTokenReader tokenReader = mock(NodeAuthTokenReader.class);
         when(tokenReader.readToken()).thenReturn(null);
@@ -38,6 +40,7 @@ class InstanceCallbackServiceTest {
 
         InstanceCallbackService service = new InstanceCallbackService(
                 config,
+                instanceProperties,
                 registrationState,
                 tokenReader,
                 callbackClient
@@ -56,7 +59,8 @@ class InstanceCallbackServiceTest {
 
     @Test
     void sendRunningStopsAfterMaxAttempts() {
-        NodeConfig config = buildConfig(2, 0);
+        NodeConfig config = buildConfig();
+        InstanceProperties instanceProperties = buildInstanceProperties(2, 0);
         NodeRegistrationState registrationState = buildRegistrationState();
         NodeAuthTokenReader tokenReader = mock(NodeAuthTokenReader.class);
         when(tokenReader.readToken()).thenReturn(null);
@@ -67,6 +71,7 @@ class InstanceCallbackServiceTest {
 
         InstanceCallbackService service = new InstanceCallbackService(
                 config,
+                instanceProperties,
                 registrationState,
                 tokenReader,
                 callbackClient
@@ -80,17 +85,22 @@ class InstanceCallbackServiceTest {
         verify(callbackClient, times(2)).sendCallback(any(), anyString(), any());
     }
 
-    private NodeConfig buildConfig(int maxAttempts, long backoffMillis) {
+    private NodeConfig buildConfig() {
         NodeConfig config = new NodeConfig();
         config.setBrainBaseUrl("http://brain");
         NodeConfig.Auth auth = new NodeConfig.Auth();
         auth.setHeaderName("X-Node-Token");
         config.setAuth(auth);
-        NodeConfig.InstanceCallbacks callbacks = new NodeConfig.InstanceCallbacks();
+        return config;
+    }
+
+    private InstanceProperties buildInstanceProperties(int maxAttempts, long backoffMillis) {
+        InstanceProperties properties = new InstanceProperties();
+        InstanceProperties.InstanceCallbacks callbacks = new InstanceProperties.InstanceCallbacks();
         callbacks.setMaxAttempts(maxAttempts);
         callbacks.setRetryBackoffMillis(backoffMillis);
-        config.setInstanceCallbacks(callbacks);
-        return config;
+        properties.setInstanceCallbacks(callbacks);
+        return properties;
     }
 
     private NodeRegistrationState buildRegistrationState() {

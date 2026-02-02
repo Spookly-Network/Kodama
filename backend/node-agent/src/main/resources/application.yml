@@ -6,6 +6,19 @@ server:
   port: ${NODE_AGENT_HTTP_PORT:8080}
   address: ${NODE_AGENT_HTTP_BIND_ADDRESS:0.0.0.0}
 
+instances:
+  instance-runtime:
+    image: ${NODE_AGENT_INSTANCE_RUNTIME_IMAGE:}
+    workspace-mount-path: ${NODE_AGENT_INSTANCE_RUNTIME_WORKSPACE_MOUNT_PATH:/workspace}
+    working-dir: ${NODE_AGENT_INSTANCE_RUNTIME_WORKING_DIR:}
+    stop-timeout-seconds: ${NODE_AGENT_INSTANCE_RUNTIME_STOP_TIMEOUT_SECONDS:}
+  instance-callbacks:
+    max-attempts: ${NODE_AGENT_INSTANCE_CALLBACKS_MAX_ATTEMPTS:1}
+    retry-backoff-millis: ${NODE_AGENT_INSTANCE_CALLBACKS_RETRY_BACKOFF_MILLIS:500}
+  instance-monitor:
+    enabled: ${NODE_AGENT_INSTANCE_MONITOR_ENABLED:true}
+    interval-seconds: ${NODE_AGENT_INSTANCE_MONITOR_INTERVAL_SECONDS:10}
+
 node-agent:
   node-id: ${NODE_AGENT_ID:}
   node-name: ${NODE_AGENT_NAME:}
@@ -41,17 +54,7 @@ node-agent:
     max-entries: ${NODE_AGENT_TEMPLATE_CACHE_LIMITS_MAX_ENTRIES:100000}
   variable-substitution:
     max-file-bytes: ${NODE_AGENT_VARIABLE_SUBSTITUTION_MAX_FILE_BYTES:1048576}
-  instance-runtime:
-    image: ${NODE_AGENT_INSTANCE_RUNTIME_IMAGE:}
-    workspace-mount-path: ${NODE_AGENT_INSTANCE_RUNTIME_WORKSPACE_MOUNT_PATH:/workspace}
-    working-dir: ${NODE_AGENT_INSTANCE_RUNTIME_WORKING_DIR:}
-    stop-timeout-seconds: ${NODE_AGENT_INSTANCE_RUNTIME_STOP_TIMEOUT_SECONDS:}
-  instance-callbacks:
-    max-attempts: ${NODE_AGENT_INSTANCE_CALLBACKS_MAX_ATTEMPTS:1}
-    retry-backoff-millis: ${NODE_AGENT_INSTANCE_CALLBACKS_RETRY_BACKOFF_MILLIS:500}
-  instance-monitor:
-    enabled: ${NODE_AGENT_INSTANCE_MONITOR_ENABLED:true}
-    interval-seconds: ${NODE_AGENT_INSTANCE_MONITOR_INTERVAL_SECONDS:10}
+
   auth:
     header-name: ${NODE_AGENT_AUTH_HEADER_NAME:X-Node-Token}
     token-path: ${NODE_AGENT_AUTH_TOKEN_PATH:}

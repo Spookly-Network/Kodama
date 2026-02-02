@@ -7,6 +7,7 @@ import com.github.dockerjava.api.exception.NotFoundException;
 import com.github.dockerjava.api.exception.NotModifiedException;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import net.spookly.kodama.nodeagent.config.InstanceProperties;
 import net.spookly.kodama.nodeagent.config.NodeConfig;
 import net.spookly.kodama.nodeagent.docker.dto.DockerContainerStatus;
 import net.spookly.kodama.nodeagent.docker.service.DockerOperationException;
@@ -33,6 +34,8 @@ public class InstanceStopService {
     private final InstanceWorkspaceLayout workspaceLayout;
     @NonNull
     private final NodeConfig config;
+    @NonNull
+    private final InstanceProperties instanceProperties;
 
     public void stopInstance(UUID instanceId) {
         if (instanceId == null) {
@@ -174,10 +177,10 @@ public class InstanceStopService {
     }
 
     private Integer resolveStopTimeoutSeconds() {
-        if (config.getInstanceRuntime() == null) {
+        if (instanceProperties.getInstanceRuntime() == null) {
             return null;
         }
-        return config.getInstanceRuntime().getStopTimeoutSeconds();
+        return instanceProperties.getInstanceRuntime().getStopTimeoutSeconds();
     }
 
     private boolean isStopRace(DockerOperationException ex) {

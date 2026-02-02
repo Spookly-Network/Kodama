@@ -18,6 +18,7 @@ import java.util.UUID;
 
 import com.github.dockerjava.api.exception.NotFoundException;
 import com.github.dockerjava.api.exception.NotModifiedException;
+import net.spookly.kodama.nodeagent.config.InstanceProperties;
 import net.spookly.kodama.nodeagent.config.NodeConfig;
 import net.spookly.kodama.nodeagent.docker.dto.DockerContainerStatus;
 import net.spookly.kodama.nodeagent.docker.service.DockerOperationException;
@@ -65,13 +66,15 @@ class InstanceStopServiceTest {
                 .thenReturn(status(containerId, true, "running"), status(containerId, false, "exited"));
 
         NodeConfig config = new NodeConfig();
-        config.getInstanceRuntime().setStopTimeoutSeconds(15);
+        InstanceProperties instanceProperties = new InstanceProperties();
+        instanceProperties.getInstanceRuntime().setStopTimeoutSeconds(15);
 
         InstanceStopService service = new InstanceStopService(
                 dockerService,
                 registryService,
                 workspaceLayout,
-                config
+                config,
+                instanceProperties
         );
 
         service.stopInstance(instanceId);
@@ -116,12 +119,14 @@ class InstanceStopServiceTest {
                 );
 
         NodeConfig config = new NodeConfig();
+        InstanceProperties instanceProperties = new InstanceProperties();
 
         InstanceStopService service = new InstanceStopService(
                 dockerService,
                 registryService,
                 workspaceLayout,
-                config
+                config,
+                instanceProperties
         );
 
         service.stopInstance(instanceId);
@@ -168,7 +173,8 @@ class InstanceStopServiceTest {
                 dockerService,
                 registryService,
                 workspaceLayout,
-                new NodeConfig()
+                new NodeConfig(),
+                new InstanceProperties()
         );
 
         assertThatNoException().isThrownBy(() -> service.stopInstance(instanceId));
@@ -214,7 +220,8 @@ class InstanceStopServiceTest {
                 dockerService,
                 registryService,
                 workspaceLayout,
-                new NodeConfig()
+                new NodeConfig(),
+                new InstanceProperties()
         );
 
         assertThatNoException().isThrownBy(() -> service.stopInstance(instanceId));
@@ -256,7 +263,8 @@ class InstanceStopServiceTest {
                 dockerService,
                 registryService,
                 workspaceLayout,
-                new NodeConfig()
+                new NodeConfig(),
+                new InstanceProperties()
         );
 
         assertThatNoException().isThrownBy(() -> service.stopInstance(instanceId));

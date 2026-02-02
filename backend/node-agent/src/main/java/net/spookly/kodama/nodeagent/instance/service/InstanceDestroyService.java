@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import com.github.dockerjava.api.exception.NotFoundException;
 import com.github.dockerjava.api.exception.NotModifiedException;
+import net.spookly.kodama.nodeagent.config.InstanceProperties;
 import net.spookly.kodama.nodeagent.config.NodeConfig;
 import net.spookly.kodama.nodeagent.docker.dto.DockerContainerStatus;
 import net.spookly.kodama.nodeagent.docker.service.DockerOperationException;
@@ -33,19 +34,22 @@ public class InstanceDestroyService {
     private final InstanceWorkspaceLayout workspaceLayout;
     private final InstanceWorkspaceManager workspaceManager;
     private final NodeConfig config;
+    private final InstanceProperties instanceProperties;
 
     public InstanceDestroyService(
             DockerService dockerService,
             InstanceRegistryService registryService,
             InstanceWorkspaceLayout workspaceLayout,
             InstanceWorkspaceManager workspaceManager,
-            NodeConfig config
+            NodeConfig config,
+            InstanceProperties instanceProperties
     ) {
         this.dockerService = Objects.requireNonNull(dockerService, "dockerService");
         this.registryService = Objects.requireNonNull(registryService, "registryService");
         this.workspaceLayout = Objects.requireNonNull(workspaceLayout, "workspaceLayout");
         this.workspaceManager = Objects.requireNonNull(workspaceManager, "workspaceManager");
         this.config = Objects.requireNonNull(config, "config");
+        this.instanceProperties = Objects.requireNonNull(instanceProperties, "instanceProperties");
     }
 
     public void destroyInstance(UUID instanceId) {
@@ -194,10 +198,10 @@ public class InstanceDestroyService {
     }
 
     private Integer resolveStopTimeoutSeconds() {
-        if (config.getInstanceRuntime() == null) {
+        if (instanceProperties.getInstanceRuntime() == null) {
             return null;
         }
-        return config.getInstanceRuntime().getStopTimeoutSeconds();
+        return instanceProperties.getInstanceRuntime().getStopTimeoutSeconds();
     }
 
     private boolean isStopRace(DockerOperationException ex) {

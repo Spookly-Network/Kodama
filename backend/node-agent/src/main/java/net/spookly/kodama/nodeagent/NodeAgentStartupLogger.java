@@ -1,5 +1,6 @@
 package net.spookly.kodama.nodeagent;
 
+import net.spookly.kodama.nodeagent.config.InstanceProperties;
 import net.spookly.kodama.nodeagent.config.NodeConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,9 +17,11 @@ public class NodeAgentStartupLogger implements ApplicationRunner {
     private static final Logger logger = LoggerFactory.getLogger(NodeAgentStartupLogger.class);
 
     private final NodeConfig config;
+    private final InstanceProperties instanceProperties;
 
-    public NodeAgentStartupLogger(NodeConfig config) {
+    public NodeAgentStartupLogger(NodeConfig config, InstanceProperties instanceProperties) {
         this.config = config;
+        this.instanceProperties = instanceProperties;
     }
 
     @Override
@@ -35,8 +38,8 @@ public class NodeAgentStartupLogger implements ApplicationRunner {
                 config.getBrainBaseUrl(),
                 config.isRegistrationEnabled(),
                 config.getHeartbeatIntervalSeconds(),
-                config.getInstanceMonitor().isEnabled(),
-                config.getInstanceMonitor().getIntervalSeconds(),
+                valueOrDash(resolveMonitorEnabled()),
+                valueOrDash(resolveMonitorInterval()),
                 valueOrDash(config.getEffectiveDockerHost()),
                 valueOrDash(config.getDocker().getTlsVerify())
         );
@@ -54,5 +57,26 @@ public class NodeAgentStartupLogger implements ApplicationRunner {
             return "-";
         }
         return value.toString();
+    }
+
+    private String valueOrDash(Integer value) {
+        if (value == null) {
+            return "-";
+        }
+        return value.toString();
+    }
+
+    private Boolean resolveMonitorEnabled() {
+        if (instanceProperties == null || instanceProperties.getInstanceMonitor() == null) {
+            return null;
+        }
+        return instanceProperties.getInstanceMonitor().isEnabled();
+    }
+
+    private Integer resolveMonitorInterval() {
+        if (instanceProperties == null || instanceProperties.getInstanceMonitor() == null) {
+            return null;
+        }
+        return instanceProperties.getInstanceMonitor().getIntervalSeconds();
     }
 }

@@ -28,9 +28,6 @@ public class NodeConfig {
     private TemplateCacheCheck templateCacheCheck = new TemplateCacheCheck();
     private TemplateCacheLimits templateCacheLimits = new TemplateCacheLimits();
     private VariableSubstitution variableSubstitution = new VariableSubstitution();
-    private InstanceRuntime instanceRuntime = new InstanceRuntime();
-    private InstanceCallbacks instanceCallbacks = new InstanceCallbacks();
-    private InstanceMonitor instanceMonitor = new InstanceMonitor();
 
     public void validate() {
         List<String> errors = new ArrayList<>();
@@ -64,31 +61,6 @@ public class NodeConfig {
             errors.add("node-agent.variable-substitution is required");
         } else if (variableSubstitution.getMaxFileBytes() < 0) {
             errors.add("node-agent.variable-substitution.max-file-bytes must be 0 or greater");
-        }
-        if (instanceRuntime == null) {
-            errors.add("node-agent.instance-runtime is required");
-        } else {
-            Integer stopTimeoutSeconds = instanceRuntime.getStopTimeoutSeconds();
-            if (stopTimeoutSeconds != null && stopTimeoutSeconds < 0) {
-                errors.add("node-agent.instance-runtime.stop-timeout-seconds must be 0 or greater");
-            }
-        }
-        if (instanceCallbacks == null) {
-            errors.add("node-agent.instance-callbacks is required");
-        } else {
-            if (instanceCallbacks.getMaxAttempts() < 1) {
-                errors.add("node-agent.instance-callbacks.max-attempts must be at least 1");
-            }
-            if (instanceCallbacks.getRetryBackoffMillis() < 0) {
-                errors.add("node-agent.instance-callbacks.retry-backoff-millis must be 0 or greater");
-            }
-        }
-        if (instanceMonitor == null) {
-            errors.add("node-agent.instance-monitor is required");
-        } else {
-            if (instanceMonitor.getIntervalSeconds() < 0) {
-                errors.add("node-agent.instance-monitor.interval-seconds must be 0 or greater");
-            }
         }
         if (docker == null) {
             errors.add("node-agent.docker is required");
@@ -286,30 +258,6 @@ public class NodeConfig {
         this.variableSubstitution = variableSubstitution == null ? new VariableSubstitution() : variableSubstitution;
     }
 
-    public InstanceRuntime getInstanceRuntime() {
-        return instanceRuntime;
-    }
-
-    public void setInstanceRuntime(InstanceRuntime instanceRuntime) {
-        this.instanceRuntime = instanceRuntime == null ? new InstanceRuntime() : instanceRuntime;
-    }
-
-    public InstanceCallbacks getInstanceCallbacks() {
-        return instanceCallbacks;
-    }
-
-    public void setInstanceCallbacks(InstanceCallbacks instanceCallbacks) {
-        this.instanceCallbacks = instanceCallbacks == null ? new InstanceCallbacks() : instanceCallbacks;
-    }
-
-    public InstanceMonitor getInstanceMonitor() {
-        return instanceMonitor;
-    }
-
-    public void setInstanceMonitor(InstanceMonitor instanceMonitor) {
-        this.instanceMonitor = instanceMonitor == null ? new InstanceMonitor() : instanceMonitor;
-    }
-
     public static class Auth {
 
         private String tokenPath;
@@ -462,90 +410,6 @@ public class NodeConfig {
 
         public void setMaxFileBytes(long maxFileBytes) {
             this.maxFileBytes = maxFileBytes;
-        }
-    }
-
-    public static class InstanceRuntime {
-
-        private String image;
-        private String workspaceMountPath = "/workspace";
-        private String workingDir;
-        private Integer stopTimeoutSeconds;
-
-        public String getImage() {
-            return image;
-        }
-
-        public void setImage(String image) {
-            this.image = image;
-        }
-
-        public String getWorkspaceMountPath() {
-            return workspaceMountPath;
-        }
-
-        public void setWorkspaceMountPath(String workspaceMountPath) {
-            this.workspaceMountPath = workspaceMountPath;
-        }
-
-        public String getWorkingDir() {
-            return workingDir;
-        }
-
-        public void setWorkingDir(String workingDir) {
-            this.workingDir = workingDir;
-        }
-
-        public Integer getStopTimeoutSeconds() {
-            return stopTimeoutSeconds;
-        }
-
-        public void setStopTimeoutSeconds(Integer stopTimeoutSeconds) {
-            this.stopTimeoutSeconds = stopTimeoutSeconds;
-        }
-    }
-
-    public static class InstanceCallbacks {
-
-        private int maxAttempts = 1;
-        private long retryBackoffMillis;
-
-        public int getMaxAttempts() {
-            return maxAttempts;
-        }
-
-        public void setMaxAttempts(int maxAttempts) {
-            this.maxAttempts = maxAttempts;
-        }
-
-        public long getRetryBackoffMillis() {
-            return retryBackoffMillis;
-        }
-
-        public void setRetryBackoffMillis(long retryBackoffMillis) {
-            this.retryBackoffMillis = retryBackoffMillis;
-        }
-    }
-
-    public static class InstanceMonitor {
-
-        private boolean enabled = true;
-        private int intervalSeconds = 10;
-
-        public boolean isEnabled() {
-            return enabled;
-        }
-
-        public void setEnabled(boolean enabled) {
-            this.enabled = enabled;
-        }
-
-        public int getIntervalSeconds() {
-            return intervalSeconds;
-        }
-
-        public void setIntervalSeconds(int intervalSeconds) {
-            this.intervalSeconds = intervalSeconds;
         }
     }
 

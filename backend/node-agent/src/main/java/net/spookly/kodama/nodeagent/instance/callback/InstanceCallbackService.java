@@ -3,6 +3,7 @@ package net.spookly.kodama.nodeagent.instance.callback;
 import java.net.URI;
 import java.util.UUID;
 
+import net.spookly.kodama.nodeagent.config.InstanceProperties;
 import net.spookly.kodama.nodeagent.config.NodeConfig;
 import net.spookly.kodama.nodeagent.instance.service.InstancePrepareException;
 import net.spookly.kodama.nodeagent.registration.NodeAuthTokenReader;
@@ -17,17 +18,20 @@ public class InstanceCallbackService {
     private static final Logger logger = LoggerFactory.getLogger(InstanceCallbackService.class);
 
     private final NodeConfig config;
+    private final InstanceProperties instanceProperties;
     private final NodeRegistrationState registrationState;
     private final NodeAuthTokenReader tokenReader;
     private final BrainCallbackClient callbackClient;
 
     public InstanceCallbackService(
             NodeConfig config,
+            InstanceProperties instanceProperties,
             NodeRegistrationState registrationState,
             NodeAuthTokenReader tokenReader,
             BrainCallbackClient callbackClient
     ) {
         this.config = config;
+        this.instanceProperties = instanceProperties;
         this.registrationState = registrationState;
         this.tokenReader = tokenReader;
         this.callbackClient = callbackClient;
@@ -108,7 +112,7 @@ public class InstanceCallbackService {
     }
 
     private int resolveMaxAttempts() {
-        NodeConfig.InstanceCallbacks callbacks = config.getInstanceCallbacks();
+        InstanceProperties.InstanceCallbacks callbacks = instanceProperties.getInstanceCallbacks();
         if (callbacks == null) {
             return 1;
         }
@@ -116,7 +120,7 @@ public class InstanceCallbackService {
     }
 
     private long resolveBackoffMillis() {
-        NodeConfig.InstanceCallbacks callbacks = config.getInstanceCallbacks();
+        InstanceProperties.InstanceCallbacks callbacks = instanceProperties.getInstanceCallbacks();
         if (callbacks == null) {
             return 0L;
         }

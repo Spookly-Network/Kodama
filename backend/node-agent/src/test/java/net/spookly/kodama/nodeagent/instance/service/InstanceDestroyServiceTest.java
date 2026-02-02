@@ -19,6 +19,7 @@ import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import net.spookly.kodama.nodeagent.config.InstanceProperties;
 import net.spookly.kodama.nodeagent.config.NodeConfig;
 import net.spookly.kodama.nodeagent.docker.dto.DockerContainerStatus;
 import net.spookly.kodama.nodeagent.docker.service.DockerService;
@@ -41,6 +42,7 @@ class InstanceDestroyServiceTest {
         String containerId = "container-1";
         NodeConfig config = new NodeConfig();
         config.setWorkspaceDir(tempDir.toString());
+        InstanceProperties instanceProperties = new InstanceProperties();
 
         InstanceWorkspaceLayout layout = new InstanceWorkspaceLayout(config);
         InstanceWorkspaceManager workspaceManager = new InstanceWorkspaceManager(layout);
@@ -74,7 +76,8 @@ class InstanceDestroyServiceTest {
                 registryService,
                 layout,
                 workspaceManager,
-                config
+                config,
+                instanceProperties
         );
 
         service.destroyInstance(instanceId);
@@ -90,6 +93,7 @@ class InstanceDestroyServiceTest {
         String containerName = "kodama-instance-" + instanceId;
         NodeConfig config = new NodeConfig();
         config.setWorkspaceDir(tempDir.toString());
+        InstanceProperties instanceProperties = new InstanceProperties();
 
         InstanceWorkspaceLayout layout = new InstanceWorkspaceLayout(config);
         InstanceWorkspaceManager workspaceManager = new InstanceWorkspaceManager(layout);
@@ -103,7 +107,8 @@ class InstanceDestroyServiceTest {
                 registryService,
                 layout,
                 workspaceManager,
-                config
+                config,
+                instanceProperties
         );
 
         assertThatNoException().isThrownBy(() -> service.destroyInstance(instanceId));

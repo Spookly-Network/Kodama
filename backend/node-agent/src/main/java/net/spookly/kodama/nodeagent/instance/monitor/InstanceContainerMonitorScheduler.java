@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import jakarta.annotation.PreDestroy;
-import net.spookly.kodama.nodeagent.config.NodeConfig;
+import net.spookly.kodama.nodeagent.config.InstanceProperties;
 import net.spookly.kodama.nodeagent.instance.service.InstanceContainerMonitorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,16 +19,16 @@ public class InstanceContainerMonitorScheduler implements ApplicationListener<Ap
 
     private static final Logger logger = LoggerFactory.getLogger(InstanceContainerMonitorScheduler.class);
 
-    private final NodeConfig config;
+    private final InstanceProperties instanceProperties;
     private final InstanceContainerMonitorService monitorService;
     private final ScheduledExecutorService scheduler;
     private final AtomicBoolean started = new AtomicBoolean(false);
 
     public InstanceContainerMonitorScheduler(
-            NodeConfig config,
+            InstanceProperties instanceProperties,
             InstanceContainerMonitorService monitorService
     ) {
-        this.config = config;
+        this.instanceProperties = instanceProperties;
         this.monitorService = monitorService;
         this.scheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
             Thread thread = new Thread(runnable, "instance-container-monitor");
@@ -44,7 +44,7 @@ public class InstanceContainerMonitorScheduler implements ApplicationListener<Ap
     }
 
     private void scheduleNext() {
-        NodeConfig.InstanceMonitor monitor = config.getInstanceMonitor();
+        InstanceProperties.InstanceMonitor monitor = instanceProperties.getInstanceMonitor();
         if (monitor == null || !monitor.isEnabled()) {
             logger.info("Instance container monitor is disabled.");
             return;
