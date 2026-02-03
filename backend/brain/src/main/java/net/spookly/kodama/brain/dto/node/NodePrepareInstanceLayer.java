@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 public class NodePrepareInstanceLayer {
 
     private UUID templateVersionId;
+    private UUID templateId;
     private String version;
     private String checksum;
     private String s3Key;

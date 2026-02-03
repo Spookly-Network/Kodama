@@ -19,7 +19,12 @@ import org.springframework.boot.test.context.SpringBootTest;
         "node-agent.s3.bucket=templates",
         "node-agent.s3.access-key=test-access",
         "node-agent.s3.secret-key=test-secret",
-        "node-agent.s3.endpoint=http://localhost:9000"
+        "node-agent.s3.endpoint=http://localhost:9000",
+        "node-agent.docker.host=unix:///var/run/docker.sock",
+        "node-agent.docker.tls-verify=false",
+        "node-agent.docker.connection-timeout-seconds=10",
+        "node-agent.docker.response-timeout-seconds=20",
+        "node-agent.docker.max-connections=100"
 })
 class NodeAgentApplicationTest {
 
@@ -41,5 +46,10 @@ class NodeAgentApplicationTest {
         assertThat(config.getS3().getAccessKey()).isEqualTo("test-access");
         assertThat(config.getS3().getSecretKey()).isEqualTo("test-secret");
         assertThat(config.getS3().getEndpoint()).isEqualTo("http://localhost:9000");
+        assertThat(config.getDocker().getHost()).isEqualTo("unix:///var/run/docker.sock");
+        assertThat(config.getDocker().getTlsVerify()).isFalse();
+        assertThat(config.getDocker().getConnectionTimeoutSeconds()).isEqualTo(10);
+        assertThat(config.getDocker().getResponseTimeoutSeconds()).isEqualTo(20);
+        assertThat(config.getDocker().getMaxConnections()).isEqualTo(100);
     }
 }

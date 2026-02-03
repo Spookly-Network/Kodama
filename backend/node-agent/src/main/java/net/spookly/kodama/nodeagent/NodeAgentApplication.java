@@ -1,12 +1,16 @@
 package net.spookly.kodama.nodeagent;
 
+import net.spookly.kodama.nodeagent.config.InstanceProperties;
 import net.spookly.kodama.nodeagent.config.NodeConfig;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 @SpringBootApplication
-@EnableConfigurationProperties(NodeConfig.class)
+@EnableConfigurationProperties({
+        NodeConfig.class,
+        InstanceProperties.class
+})
 public class NodeAgentApplication {
 
     public static void main(String[] args) {

@@ -43,7 +43,7 @@ public class InstanceStaleMonitorService {
         this.staleDetectionProperties = staleDetectionProperties;
     }
 
-    @Scheduled(fixedDelayString = "#{@instanceStaleDetectionProperties.monitorIntervalSeconds * 1000}")
+    @Scheduled(fixedDelayString = "${instance.stale-detection.monitor-interval-seconds:60}000")
     @Transactional
     public void monitorStaleInstances() {
         try {

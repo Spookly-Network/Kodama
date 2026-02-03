@@ -21,8 +21,34 @@ public class TemplateCacheLookupService {
     }
 
     public TemplateCacheLookupResult findCachedTemplate(String templateId, String version, String expectedChecksum) {
+        return findCachedTemplate(templateId, version, expectedChecksum, false);
+    }
+
+    public TemplateCacheLookupResult findCachedTemplate(
+            String templateId,
+            String version,
+            String expectedChecksum,
+            boolean bypassCache
+    ) {
         String normalizedExpected = requireChecksum(expectedChecksum);
         TemplateCachePaths paths = layout.resolveTemplateVersion(templateId, version);
+
+        if (bypassCache) {
+            TemplateCacheLookupResult result = TemplateCacheLookupResult.miss(
+                    paths.templateId(),
+                    paths.version(),
+                    normalizedExpected,
+                    TemplateCacheMissReason.DEV_MODE_BYPASS,
+                    paths.contentsDir(),
+                    null
+            );
+            logger.info(
+                    "Template cache bypassed due to dev-mode. templateId={}, version={}",
+                    paths.templateId(),
+                    paths.version()
+            );
+            return result;
+        }
 
         if (!Files.isDirectory(paths.contentsDir()) || !Files.isRegularFile(paths.checksumFile())) {
             TemplateCacheLookupResult result = TemplateCacheLookupResult.miss(

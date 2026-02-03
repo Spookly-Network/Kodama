@@ -88,6 +88,21 @@ class TemplateCacheLookupServiceTest {
     }
 
     @Test
+    void bypassesCacheWhenDevModeIsEnabled() throws Exception {
+        TemplateCacheLookupService service = createService();
+        TemplateCacheLayout layout = createLayout();
+        TemplateCachePaths paths = layout.resolveTemplateVersion("starter", "1.2.3");
+
+        Files.createDirectories(paths.contentsDir());
+        Files.writeString(paths.checksumFile(), "abc123");
+
+        TemplateCacheLookupResult result = service.findCachedTemplate("starter", "1.2.3", "abc123", true);
+
+        assertThat(result.isCacheHit()).isFalse();
+        assertThat(result.missReason()).isEqualTo(TemplateCacheMissReason.DEV_MODE_BYPASS);
+    }
+
+    @Test
     void rejectsBlankExpectedChecksum() {
         TemplateCacheLookupService service = createService();
 

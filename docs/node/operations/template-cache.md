@@ -8,6 +8,10 @@ Define where the node agent stores cached templates and how cache paths are reso
 - Created the template cache root on startup before any downloads occur.
 - Added cache lookup that validates cached template checksums before reuse.
 - Added an optional startup cache check for manually seeded cache entries.
+- Added cache population that downloads template tarballs from S3, extracts them into a temp directory, and moves them into place atomically.
+- Added metadata written alongside cached templates (including checksum, S3 key, and cache timestamp).
+- Added a cache purge handler that can delete all cached templates or a single template on demand.
+- Added dev-mode cache bypass so templates can always be refreshed from S3 when requested.
 
 ## How to use / impact
 - The node agent creates `<cacheDir>/templates` on startup.
@@ -20,17 +24,47 @@ Define where the node agent stores cached templates and how cache paths are reso
 - Use `TemplateCacheLookupService.findCachedTemplate(templateId, version, expectedChecksum)` to validate a cache entry.
   - Returns `NOT_FOUND` when the contents directory or checksum file is missing.
   - Returns `CHECKSUM_MISMATCH` when the stored checksum differs.
+  - When dev-mode bypass is enabled, use the overload with `bypassCache=true` to force a
+    `DEV_MODE_BYPASS` miss and log the cache bypass.
+- Use `TemplateCachePopulateService.ensureCachedTemplate(templateId, version, checksum, s3Key)` to download and extract a tarball when cache is missing or invalid.
+  - When dev-mode is enabled, the cache lookup is bypassed and the tarball is always re-downloaded from S3 (and still written to cache).
+  - Downloads the tarball to a temp file, extracts into a temp directory, then atomically moves into `<templateId>/<version>`.
+  - Writes `checksum.sha256` and `metadata.json` before the atomic move.
+  - Validates the downloaded tarball checksum (SHA-256) against the expected checksum before writing cache markers.
+  - If the storage response reports a content length, the download length is verified before extraction.
+  - Enforces extraction limits (`node-agent.template-cache-limits.*`) for total extracted bytes and entry count.
+  - Restores POSIX permissions from tar entry modes when supported; non-POSIX filesystems fall back to best-effort executable bits.
+  - `metadata.json` fields: `templateId`, `version`, `checksum`, `s3Key`, `cachedAt`.
 - For manual validation at startup, set `node-agent.template-cache-check.*` to trigger a single
   cache lookup and log the hit/miss decision.
+- To purge cached templates, call `POST /api/cache/purge` on the node agent:
+  - Requires Brain authentication (shared token header or client certificate, depending on node-agent auth configuration).
+  - No body purges the entire template cache.
+  - Body with `templateId` purges a single template:
+
+```json
+{
+  "templateId": "starter"
+}
+```
+
+- The purge response includes `scope`, `templateId` (when applicable), and counts for deleted files,
+  deleted directories, and deleted bytes.
+- Purge operations are restricted to the node's template cache root (`<cacheDir>/templates`) and will
+  refuse to delete paths outside that directory.
 
 ## Edge cases / risks
 - `templateId` and `version` must be single path segments (no slashes or `..`).
+- Purging a template that is not cached returns zero deleted entries and logs the outcome.
 - Invalid cache paths or permission failures stop the node agent at startup.
 - Unreadable checksum files throw `TemplateCacheException` and should be treated as cache errors.
+- Partial downloads or extraction failures are cleaned up before the error is raised.
+- Tarballs that exceed extraction limits are rejected and cleaned up.
 
 ## Links
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/template/cache/TemplateCacheLayout.java`
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/template/cache/TemplateCacheInitializer.java`
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/template/cache/TemplateCacheLookupService.java`
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/template/cache/TemplateCacheLookupResult.java`
+- `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/template/cache/TemplateCachePopulateService.java`
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/config/NodeConfig.java`
