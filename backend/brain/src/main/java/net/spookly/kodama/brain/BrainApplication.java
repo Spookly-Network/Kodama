@@ -1,6 +1,7 @@
 package net.spookly.kodama.brain;
 
 import net.spookly.kodama.brain.config.BrainSecurityProperties;
+import net.spookly.kodama.brain.config.BrainCorsProperties;
 import net.spookly.kodama.brain.config.InstanceStaleDetectionProperties;
 import net.spookly.kodama.brain.config.NodeProperties;
 import org.springframework.boot.SpringApplication;
@@ -10,6 +11,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableConfigurationProperties({
+        BrainCorsProperties.class,
         NodeProperties.class,
         BrainSecurityProperties.class,
         InstanceStaleDetectionProperties.class
