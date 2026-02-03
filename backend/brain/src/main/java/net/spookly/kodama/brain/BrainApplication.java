@@ -1,7 +1,7 @@
 package net.spookly.kodama.brain;
 
-import net.spookly.kodama.brain.config.BrainSecurityProperties;
 import net.spookly.kodama.brain.config.BrainCorsProperties;
+import net.spookly.kodama.brain.config.BrainSecurityProperties;
 import net.spookly.kodama.brain.config.InstanceStaleDetectionProperties;
 import net.spookly.kodama.brain.config.NodeProperties;
 import org.springframework.boot.SpringApplication;
