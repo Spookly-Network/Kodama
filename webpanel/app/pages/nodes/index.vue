@@ -21,9 +21,15 @@
         <AppStatsCard v-for="i in 1" :key="i" variant="blue"/>
       </div>
       <section class="text-foreground space-y-4">
-        <div>
-          <h2 class="text-2xl font-semibold">Nodes</h2>
-          <div class="text-muted-foreground">Penis 123</div>
+        <div class="flex justify-between">
+          <div>
+            <h2 class="text-2xl font-semibold">Nodes</h2>
+            <div class="text-muted-foreground">Penis 123</div>
+          </div>
+          <div>
+            <AppNodesCreateDialog />
+          </div>
+
         </div>
         <div class="bg-muted/50 min-h-screen flex-1 rounded-xl md:min-h-min border">
           <AppNodesTable :data="rows" :columns="columns"/>
@@ -36,11 +42,12 @@
 <script lang="ts" setup>
 import {columns} from "~/components/app/nodes/columns";
 import {useNodesStore} from "~/store/nodes";
-import {Earth, CircleDashed, CircleDot} from "lucide-vue-next";
+import {Earth, CircleDashed, CircleDot, Plus} from "lucide-vue-next";
+import AppNodesCreateDialog from "~/components/app/nodes/AppNodesCreateDialog.vue";
 
 const nodesStore = useNodesStore()
 // TODO enable when prod
-// await nodes.ensureFresh() // nodes likely already loaded at login
+await nodesStore.ensureFresh() // nodes likely already loaded at login
 
 const amountNodesOnline = computed(() => {
   return Object.values(nodesStore.byId).filter(node => node.status === NodeStatus.ONLINE).length

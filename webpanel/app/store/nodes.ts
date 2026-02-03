@@ -1,7 +1,8 @@
 import {type NodeDto, NodeStatus} from "#shared/types/Node";
+import {type LoginRequest, type LoginResponse, useAuthStore} from "~/store/auth";
+import type {NodeCreatePayload} from "~/components/app/nodes/AppNodesCreateForm.vue";
 
 export type InstanceState = 'CREATED' | 'STARTING' | 'RUNNING' | 'STOPPING' | 'STOPPED' | 'FAILED'
-export type NodeStatus = 'ONLINE' | 'OFFLINE' | 'DEGRADED' | 'MAINTENANCE'
 
 export interface InstanceDto {
     id: string
@@ -20,20 +21,6 @@ export interface InstanceDto {
     startedAt?: string
     stoppedAt?: string
     failureReason?: string
-}
-
-export interface NodeDto {
-    id: string
-    name: string
-    region: string
-    status: NodeStatus
-    devMode: boolean
-    capacitySlots: number
-    usedSlots: number
-    lastHeartbeatAt: string
-    nodeVersion: string
-    tags: string
-    baseUrl: string
 }
 
 export const mockNodes: NodeDto[] = [
@@ -136,5 +123,20 @@ export const useNodesStore = defineStore('nodes', () => {
         return nodeId ? byId[nodeId] : undefined
     }
 
-    return { byId, refresh, ensureFresh, get, lastLoadedAt, upsertMany }
+    async function create(node: NodeCreatePayload) {
+        const api = useBrainApi()
+        const auth = useAuthStore();
+
+        const request = await api<CreateNodeResponse>('/api/nodes/register', {
+            method: 'POST',
+            headers: [['Authorization', auth.authHeader || ""]],
+            body: { ...node } satisfies NodeCreatePayload,
+        })
+    }
+
+    return { byId, refresh, create, ensureFresh, get, lastLoadedAt, upsertMany }
 })
+
+interface CreateNodeResponse {
+    nodeId: string
+}

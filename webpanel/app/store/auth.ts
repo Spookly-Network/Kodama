@@ -17,25 +17,29 @@ export interface LoginResponse {
 
 type AuthSession = LoginResponse
 
-function safeParseSession(value: string | null): AuthSession | null {
+function normalizeSession(value: unknown): AuthSession | null {
     if (!value) return null
-    try {
-        const parsed = JSON.parse(value) as AuthSession
-        if (!parsed?.accessToken) return null
-        return parsed
-    } catch {
-        return null
+    if (typeof value === 'string') {
+        try {
+            value = JSON.parse(value)
+        } catch {
+            return null
+        }
     }
+    if (typeof value !== 'object' || value === null) return null
+    const parsed = value as AuthSession
+    if (!parsed?.accessToken) return null
+    return parsed
 }
 
 export const useAuthStore = defineStore('auth', () => {
     const brainApi = useBrainApi()
-    const sessionCookie = useCookie<string | null>('kodama.session', {
+    const sessionCookie = useCookie<AuthSession | string | null>('kodama.session', {
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production',
     })
 
-    const session = ref<AuthSession | null>(safeParseSession(sessionCookie.value))
+    const session = ref<AuthSession | null>(normalizeSession(sessionCookie.value))
 
     const accessToken = computed(() => session.value?.accessToken ?? null)
     const tokenType = computed(() => session.value?.tokenType ?? 'Bearer')
@@ -60,11 +64,15 @@ export const useAuthStore = defineStore('auth', () => {
 
     function setSession(next: AuthSession | null) {
         session.value = next
-        sessionCookie.value = next ? JSON.stringify(next) : null
+        sessionCookie.value = next
     }
 
     function initFromCookie() {
-        session.value = safeParseSession(sessionCookie.value)
+        const next = normalizeSession(sessionCookie.value)
+        session.value = next
+        if (!next && sessionCookie.value) {
+            sessionCookie.value = null
+        }
     }
 
     async function login(username: string, password: string) {
