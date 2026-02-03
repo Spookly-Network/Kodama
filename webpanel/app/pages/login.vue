@@ -28,11 +28,11 @@ async function onSubmit() {
   errorMessage.value = null
   isSubmitting.value = true
 
-  try {
     await auth.login(username.value.trim(), password.value)
     const redirect =
       typeof route.query.redirect === "string" ? route.query.redirect : "/"
     await navigateTo(redirect)
+  try {
   } catch (error) {
     const status = (error as { response?: Response }).response?.status
     errorMessage.value =

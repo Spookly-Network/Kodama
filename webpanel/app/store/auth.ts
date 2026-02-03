@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { useBrainApi } from '@/composables/useBrainApi'
 
 export type Role = 'ADMIN' | 'OPERATOR' | 'VIEWER'
 

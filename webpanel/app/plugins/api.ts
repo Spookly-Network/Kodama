@@ -1,13 +1,13 @@
 import { useAuthStore } from "~/store/auth";
 
 export default defineNuxtPlugin(() => {
-    const auth = useAuthStore()
     const config = useRuntimeConfig()
     const baseURL = config.public.brainBaseUrl?.trim() || undefined
 
     const api = $fetch.create({
         baseURL,
         onRequest({ options }) {
+            const auth = useAuthStore()
             const header = auth.authHeader
             if (!header) return
 
@@ -17,6 +17,7 @@ export default defineNuxtPlugin(() => {
         },
         onResponseError({ response }) {
             if (response?.status === 401) {
+                const auth = useAuthStore()
                 auth.logout()
             }
         },
