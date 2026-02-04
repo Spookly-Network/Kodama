@@ -26,6 +26,7 @@ Configuration keys:
 - If `plugins.enabled` is set and the directory is missing or empty, the Node Agent will fail fast on startup.
 - Plugin failures during start will abort the container start.
 - Duplicate enabled plugin IDs are rejected.
+- Null env/label entries are ignored when building the start context.
 
 ## Links
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/plugin/KodamaNodePlugin.java`

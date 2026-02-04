@@ -9,8 +9,21 @@ public record NodeInstanceStartSpec(
         List<String> command
 ) {
     public NodeInstanceStartSpec {
-        env = env == null ? Map.of() : Map.copyOf(env);
-        labels = labels == null ? Map.of() : Map.copyOf(labels);
+        env = copyWithoutNulls(env);
+        labels = copyWithoutNulls(labels);
         command = command == null ? null : List.copyOf(command);
+    }
+
+    private static Map<String, String> copyWithoutNulls(Map<String, String> input) {
+        if (input == null || input.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, String> filtered = new java.util.LinkedHashMap<>();
+        for (Map.Entry<String, String> entry : input.entrySet()) {
+            if (entry.getKey() != null && entry.getValue() != null) {
+                filtered.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return filtered.isEmpty() ? Map.of() : Map.copyOf(filtered);
     }
 }
