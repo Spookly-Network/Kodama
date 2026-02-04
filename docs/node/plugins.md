@@ -17,6 +17,7 @@ Enable Node Agent extensions without changing core code. Node plugins are loaded
 Plugin hook behavior:
 - `onBeforeInstanceStart(...)` can set or remove environment variables and labels, and optionally override the container command.
 - If multiple plugins attempt to override the command, startup fails with a clear error.
+- `context.command()` is `null` when no base command is provided (image default).
 
 Configuration keys:
 - `plugins.dir` / `PLUGINS_DIR` (default: `./plugins`)

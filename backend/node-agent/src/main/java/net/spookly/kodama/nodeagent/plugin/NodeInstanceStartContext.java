@@ -17,7 +17,7 @@ public record NodeInstanceStartContext(
     public NodeInstanceStartContext {
         env = copyWithoutNulls(env);
         labels = copyWithoutNulls(labels);
-        command = command == null ? List.of() : List.copyOf(command);
+        command = command == null ? null : List.copyOf(command);
     }
 
     private static Map<String, String> copyWithoutNulls(Map<String, String> input) {

@@ -77,4 +77,32 @@ class NodeInstanceStartContextTest {
         assertThat(spec.labels()).containsEntry("ok", "yes");
         assertThat(spec.labels()).doesNotContainKeys("bad", null);
     }
+
+    @Test
+    void preservesNullCommandWhenNotProvided() {
+        NodeInstanceStartContext context = new NodeInstanceStartContext(
+                UUID.randomUUID(),
+                "requested",
+                null,
+                Map.of(),
+                Map.of(),
+                null
+        );
+
+        assertThat(context.command()).isNull();
+    }
+
+    @Test
+    void copiesCommandWhenProvided() {
+        NodeInstanceStartContext context = new NodeInstanceStartContext(
+                UUID.randomUUID(),
+                "requested",
+                null,
+                Map.of(),
+                Map.of(),
+                java.util.List.of("run", "server")
+        );
+
+        assertThat(context.command()).containsExactly("run", "server");
+    }
 }
