@@ -23,6 +23,7 @@ The Node Agent is a lightweight Java service that runs on each node and executes
 - Added a local registry listing endpoint and recorded workspace paths in instance registry entries.
 - Added a container monitor to detect stopped containers and record exit codes in the local registry.
 - Added Brain authentication checks for command endpoints using a shared token or client certificate.
+- Added a plugin loader that can mutate instance start parameters before container launch.
 
 ## How to use / impact
 - Build and run with `./gradlew :node-agent:bootRun` from `backend/`.
@@ -61,6 +62,8 @@ The Node Agent is a lightweight Java service that runs on each node and executes
     - `NODE_AGENT_S3_BUCKET`
     - `NODE_AGENT_S3_ACCESS_KEY`
     - `NODE_AGENT_S3_SECRET_KEY`
+    - `PLUGINS_DIR`
+    - `PLUGINS_ENABLED`
 - See `docs/node/operations/configuration.md` for the full mapping.
 - Health check is available at `GET /health` on the configured node-agent HTTP port.
 - Local instance registry listing is available at `GET /api/instances/registry` (Brain auth required) and returns workspace paths relative to `node-agent.workspace-dir`.
@@ -79,3 +82,4 @@ The Node Agent is a lightweight Java service that runs on each node and executes
 - `docs/node/operations/instance-workspaces.md`
 - `docs/node/operations/template-merge.md`
 - `docs/node/operations/instance-commands.md`
+- `docs/node/plugins.md`
