@@ -5,13 +5,14 @@ Enable Brain-specific extensions without changing core code. Brain plugins are l
 
 ## What changed
 - Added a Brain plugin API (`KodamaBrainPlugin`) with a single prepare hook.
-- Added a plugin loader that scans a local `plugins` directory for JARs.
+- Added a plugin loader that discovers enabled plugin IDs from JARs in a local `plugins` directory.
 - Added configuration for plugin directory and enabled plugin IDs.
 
 ## How to use / impact
 - Place plugin JARs in the Brain working directory under `./plugins` (or override with `PLUGINS_DIR`).
 - Provide a ServiceLoader entry in the JAR at `META-INF/services/net.spookly.kodama.brain.plugin.KodamaBrainPlugin`.
 - Enable plugins via `PLUGINS_ENABLED` (comma-separated list of plugin IDs).
+- Only plugins listed in `PLUGINS_ENABLED` are validated and loaded; other JARs are ignored.
 
 Plugin hook behavior:
 - `onPrepareInstance(...)` can set or remove variables before the prepare command is sent to the Node.
@@ -24,7 +25,7 @@ Configuration keys:
 ## Edge cases / risks
 - If `plugins.enabled` is set and the directory is missing or empty, Brain will fail fast on startup.
 - Plugin failures during prepare will fail the prepare dispatch (the instance will not start).
-- Duplicate plugin IDs are rejected.
+- Duplicate enabled plugin IDs are rejected.
 
 ## Links
 - `backend/brain/src/main/java/net/spookly/kodama/brain/plugin/KodamaBrainPlugin.java`

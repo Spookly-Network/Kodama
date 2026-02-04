@@ -77,11 +77,7 @@ public class NodePluginRegistry implements DisposableBean {
     @Override
     public void destroy() {
         for (URLClassLoader classLoader : classLoaders) {
-            try {
-                classLoader.close();
-            } catch (IOException ex) {
-                logger.warn("Failed to close plugin classloader", ex);
-            }
+            closeClassLoader(classLoader);
         }
     }
 
@@ -163,6 +159,7 @@ public class NodePluginRegistry implements DisposableBean {
         }
 
         Map<String, KodamaNodePlugin> pluginsById = new LinkedHashMap<>();
+        List<Throwable> jarFailures = new ArrayList<>();
         List<Path> pluginJars = listPluginJars(pluginsDir);
         if (pluginJars.isEmpty()) {
             throw new IllegalStateException("No plugin jars found in " + pluginsDir);
@@ -170,14 +167,14 @@ public class NodePluginRegistry implements DisposableBean {
 
         ClassLoader parentClassLoader = Thread.currentThread().getContextClassLoader();
         for (Path jar : pluginJars) {
-            loadJarPlugins(jar, parentClassLoader, pluginsById);
+            loadJarPlugins(jar, parentClassLoader, uniqueEnabled, pluginsById, jarFailures);
         }
 
         List<KodamaNodePlugin> enabledPlugins = new ArrayList<>();
         for (String enabledId : enabledIds) {
             KodamaNodePlugin plugin = pluginsById.get(enabledId);
             if (plugin == null) {
-                throw new IllegalStateException("Enabled plugin not found: " + enabledId);
+                throw buildMissingPluginException(enabledId, jarFailures);
             }
             enabledPlugins.add(plugin);
         }
@@ -200,33 +197,60 @@ public class NodePluginRegistry implements DisposableBean {
     private void loadJarPlugins(
             Path jar,
             ClassLoader parentClassLoader,
-            Map<String, KodamaNodePlugin> pluginsById
+            Set<String> enabledIds,
+            Map<String, KodamaNodePlugin> pluginsById,
+            List<Throwable> jarFailures
     ) {
         URLClassLoader classLoader;
         try {
             classLoader = new URLClassLoader(new URL[]{jar.toUri().toURL()}, parentClassLoader);
         } catch (IOException ex) {
-            throw new IllegalStateException("Failed to create plugin classloader for " + jar, ex);
+            jarFailures.add(new IllegalStateException("Failed to create plugin classloader for " + jar, ex));
+            return;
         }
-        classLoaders.add(classLoader);
 
+        boolean keepClassLoader = false;
         ServiceLoader<KodamaNodePlugin> loader = ServiceLoader.load(KodamaNodePlugin.class, classLoader);
         try {
             for (KodamaNodePlugin plugin : loader) {
-                registerPlugin(jar, plugin, pluginsById);
+                if (registerPlugin(jar, plugin, enabledIds, pluginsById)) {
+                    keepClassLoader = true;
+                }
             }
         } catch (ServiceConfigurationError error) {
-            throw new IllegalStateException("Failed to load plugins from " + jar, error);
+            jarFailures.add(new IllegalStateException("Failed to load plugins from " + jar, error));
+        } finally {
+            if (keepClassLoader) {
+                classLoaders.add(classLoader);
+            } else {
+                closeClassLoader(classLoader);
+            }
         }
     }
 
-    private void registerPlugin(Path jar, KodamaNodePlugin plugin, Map<String, KodamaNodePlugin> pluginsById) {
+    private boolean registerPlugin(
+            Path jar,
+            KodamaNodePlugin plugin,
+            Set<String> enabledIds,
+            Map<String, KodamaNodePlugin> pluginsById
+    ) {
         if (plugin == null) {
-            return;
+            return false;
         }
-        String id = plugin.id();
+        String id;
+        try {
+            id = plugin.id();
+        } catch (RuntimeException ex) {
+            logger.debug("Skipping plugin in {} that failed to provide an id", jar.getFileName(), ex);
+            return false;
+        }
         if (id == null || id.isBlank()) {
-            throw new IllegalStateException("Plugin id is required for plugin in " + jar);
+            logger.debug("Skipping plugin in {} with blank id", jar.getFileName());
+            return false;
+        }
+        if (!enabledIds.contains(id)) {
+            logger.debug("Skipping disabled plugin {} from {}", id, jar.getFileName());
+            return false;
         }
         if (plugin.apiVersion() != KodamaNodePlugin.API_VERSION) {
             throw new IllegalStateException(
@@ -238,6 +262,23 @@ public class NodePluginRegistry implements DisposableBean {
             throw new IllegalStateException("Duplicate plugin id " + id + " found in " + jar);
         }
         pluginsById.put(id, plugin);
-        logger.info("Discovered plugin {} from {}", id, jar.getFileName());
+        logger.info("Loaded enabled plugin {} from {}", id, jar.getFileName());
+        return true;
+    }
+
+    private IllegalStateException buildMissingPluginException(String enabledId, List<Throwable> jarFailures) {
+        IllegalStateException exception = new IllegalStateException("Enabled plugin not found: " + enabledId);
+        for (Throwable failure : jarFailures) {
+            exception.addSuppressed(failure);
+        }
+        return exception;
+    }
+
+    private void closeClassLoader(URLClassLoader classLoader) {
+        try {
+            classLoader.close();
+        } catch (IOException ex) {
+            logger.warn("Failed to close plugin classloader", ex);
+        }
     }
 }
