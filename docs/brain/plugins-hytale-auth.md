@@ -9,20 +9,36 @@ Provide Hytale authentication tokens during instance preparation without baking 
 ## How to use / impact
 - Build the plugin JAR from `plugins/` and copy it into the Brain working directory `./plugins`.
 - Enable it by setting `PLUGINS_ENABLED=hytale-auth` for the Brain process.
-- Configure the required environment variables below.
+- Add a config file at `./plugins/hytale-auth.json` (or override with `HYTALE_AUTH_CONFIG_PATH`).
 
-Required environment variables:
-- `HYTALE_AUTH_REFRESH_TOKEN`
-- `HYTALE_AUTH_TOKEN_URL`
-- `HYTALE_AUTH_PROFILES_URL`
-- `HYTALE_AUTH_SESSION_URL`
+Example config (`plugins/hytale-auth.json`):
 
-Optional environment variables:
-- `HYTALE_AUTH_CLIENT_ID` (defaults to `hytale-server`)
-- `HYTALE_AUTH_SCOPES` (defaults to `openid offline auth:server`)
-- `HYTALE_AUTH_PROFILE_UUID`
-- `HYTALE_AUTH_PROFILE_USERNAME`
-- `HYTALE_AUTH_TIMEOUT_SECONDS` (defaults to `10`)
+```json
+{
+  "refreshToken": "your-refresh-token",
+  "tokenUrl": "https://auth.hytale.com/...",
+  "profilesUrl": "https://api.hytale.com/my-account/get-profiles",
+  "sessionUrl": "https://api.hytale.com/game-session/new",
+  "clientId": "hytale-server",
+  "scopes": "openid offline auth:server",
+  "profileUuid": "00000000-0000-0000-0000-000000000000",
+  "profileUsername": "optional",
+  "timeoutSeconds": 10
+}
+```
+
+Required config fields:
+- `refreshToken`
+- `tokenUrl`
+- `profilesUrl`
+- `sessionUrl`
+
+Optional config fields:
+- `clientId` (defaults to `hytale-server`)
+- `scopes` (defaults to `openid offline auth:server`)
+- `profileUuid`
+- `profileUsername`
+- `timeoutSeconds` (defaults to `10`)
 
 Injected instance variables:
 - `HYTALE_SERVER_SESSION_TOKEN`

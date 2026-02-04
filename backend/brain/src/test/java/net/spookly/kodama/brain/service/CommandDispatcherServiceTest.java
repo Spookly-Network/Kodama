@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.spookly.kodama.brain.config.NodeProperties;
+import net.spookly.kodama.brain.config.PluginsProperties;
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceState;
 import net.spookly.kodama.brain.domain.instance.InstanceTemplateLayer;
@@ -27,7 +28,6 @@ import net.spookly.kodama.brain.dto.node.NodeInstanceCommandRequest;
 import net.spookly.kodama.brain.dto.node.NodePrepareInstanceLayer;
 import net.spookly.kodama.brain.dto.node.NodePrepareInstanceRequest;
 import net.spookly.kodama.brain.plugin.BrainPluginRegistry;
-import net.spookly.kodama.brain.config.PluginsProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;

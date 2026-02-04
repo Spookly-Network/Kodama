@@ -18,7 +18,7 @@ public class HytaleAuthPlugin implements KodamaBrainPlugin {
     private final HytaleAuthClient authClient;
 
     public HytaleAuthPlugin() {
-        this(new HytaleAuthClient(HytaleAuthConfig.fromEnvironment()));
+        this(new HytaleAuthClient(HytaleAuthConfig.load()));
     }
 
     HytaleAuthPlugin(HytaleAuthClient authClient) {

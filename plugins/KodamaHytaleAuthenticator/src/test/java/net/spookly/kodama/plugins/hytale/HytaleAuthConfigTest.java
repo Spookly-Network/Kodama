@@ -1,68 +1,63 @@
 package net.spookly.kodama.plugins.hytale;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class HytaleAuthConfigTest {
 
-    @Test
-    void fromEnvironmentRequiresRefreshToken() {
-        Map<String, String> env = baseEnv();
-        env.remove(HytaleAuthConfig.ENV_REFRESH_TOKEN);
+    @TempDir
+    Path tempDir;
 
+    @Test
+    void fromConfigFileRequiresRefreshToken() throws IOException {
+        Path configPath = writeConfig("{\"tokenUrl\":\"https://auth.invalid/token\","
+                + "\"profilesUrl\":\"https://auth.invalid/profiles\","
+                + "\"sessionUrl\":\"https://auth.invalid/session\"}");
         IllegalStateException ex = assertThrows(
                 IllegalStateException.class,
-                () -> HytaleAuthConfig.fromEnvironment(env)
+                () -> HytaleAuthConfig.fromConfigFile(configPath)
         );
 
-        assertEquals(HytaleAuthConfig.ENV_REFRESH_TOKEN + " is required", ex.getMessage());
+        assertEquals("refreshToken is required", ex.getMessage());
     }
 
     @Test
-    void fromEnvironmentParsesProfileUuid() {
-        Map<String, String> env = baseEnv();
-        UUID profileUuid = UUID.randomUUID();
-        env.put(HytaleAuthConfig.ENV_PROFILE_UUID, profileUuid.toString());
+    void fromConfigFileParsesTimeout() throws IOException {
+        Path configPath = writeConfig("{\"refreshToken\":\"refresh-token\","
+                + "\"tokenUrl\":\"https://auth.invalid/token\","
+                + "\"profilesUrl\":\"https://auth.invalid/profiles\","
+                + "\"sessionUrl\":\"https://auth.invalid/session\","
+                + "\"timeoutSeconds\":15}");
 
-        HytaleAuthConfig config = HytaleAuthConfig.fromEnvironment(env);
-
-        assertEquals(profileUuid, config.getProfileUuid());
-    }
-
-    @Test
-    void fromEnvironmentParsesTimeout() {
-        Map<String, String> env = baseEnv();
-        env.put(HytaleAuthConfig.ENV_TIMEOUT_SECONDS, "15");
-
-        HytaleAuthConfig config = HytaleAuthConfig.fromEnvironment(env);
+        HytaleAuthConfig config = HytaleAuthConfig.fromConfigFile(configPath);
 
         assertEquals(Duration.ofSeconds(15), config.getTimeout());
     }
 
     @Test
-    void fromEnvironmentDefaultsClientIdAndScopes() {
-        Map<String, String> env = baseEnv();
+    void fromConfigFileDefaultsClientIdAndScopes() throws IOException {
+        Path configPath = writeConfig("{\"refreshToken\":\"refresh-token\","
+                + "\"tokenUrl\":\"https://auth.invalid/token\","
+                + "\"profilesUrl\":\"https://auth.invalid/profiles\","
+                + "\"sessionUrl\":\"https://auth.invalid/session\"}");
 
-        HytaleAuthConfig config = HytaleAuthConfig.fromEnvironment(env);
+        HytaleAuthConfig config = HytaleAuthConfig.fromConfigFile(configPath);
 
-        assertNotNull(config.getClientId());
-        assertNotNull(config.getScopes());
+        assertEquals("hytale-server", config.getClientId());
+        assertEquals("openid offline auth:server", config.getScopes());
     }
 
-    private Map<String, String> baseEnv() {
-        Map<String, String> env = new HashMap<>();
-        env.put(HytaleAuthConfig.ENV_REFRESH_TOKEN, "refresh-token");
-        env.put(HytaleAuthConfig.ENV_TOKEN_URL, "https://auth.invalid/token");
-        env.put(HytaleAuthConfig.ENV_PROFILES_URL, "https://auth.invalid/profiles");
-        env.put(HytaleAuthConfig.ENV_SESSION_URL, "https://auth.invalid/session");
-        return env;
+    private Path writeConfig(String json) throws IOException {
+        Path configPath = tempDir.resolve("hytale-auth.json");
+        Files.writeString(configPath, json);
+        return configPath;
     }
 }

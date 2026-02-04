@@ -1,22 +1,22 @@
 package net.spookly.kodama.plugins.hytale;
 
+import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 public final class HytaleAuthConfig {
 
-    public static final String ENV_REFRESH_TOKEN = "HYTALE_AUTH_REFRESH_TOKEN";
-    public static final String ENV_TOKEN_URL = "HYTALE_AUTH_TOKEN_URL";
-    public static final String ENV_PROFILES_URL = "HYTALE_AUTH_PROFILES_URL";
-    public static final String ENV_SESSION_URL = "HYTALE_AUTH_SESSION_URL";
-    public static final String ENV_CLIENT_ID = "HYTALE_AUTH_CLIENT_ID";
-    public static final String ENV_SCOPES = "HYTALE_AUTH_SCOPES";
-    public static final String ENV_PROFILE_UUID = "HYTALE_AUTH_PROFILE_UUID";
-    public static final String ENV_PROFILE_USERNAME = "HYTALE_AUTH_PROFILE_USERNAME";
-    public static final String ENV_TIMEOUT_SECONDS = "HYTALE_AUTH_TIMEOUT_SECONDS";
+    public static final String ENV_CONFIG_PATH = "HYTALE_AUTH_CONFIG_PATH";
+    private static final String DEFAULT_CONFIG_PATH = "./plugins/hytale-auth.json";
+    private static final String DEFAULT_CLIENT_ID = "hytale-server";
+    private static final String DEFAULT_SCOPES = "openid offline auth:server";
+    private static final long DEFAULT_TIMEOUT_SECONDS = 10;
 
     private final String refreshToken;
     private final URI tokenUrl;
@@ -50,37 +50,55 @@ public final class HytaleAuthConfig {
         this.timeout = timeout;
     }
 
-    public static HytaleAuthConfig fromEnvironment() {
-        return fromEnvironment(System.getenv());
+    public static HytaleAuthConfig load() {
+        Path configPath = resolveConfigPath();
+        return fromConfigFile(configPath);
     }
 
-    static HytaleAuthConfig fromEnvironment(Map<String, String> environment) {
-        Objects.requireNonNull(environment, "environment");
-
-        String refreshToken = readRequired(environment, ENV_REFRESH_TOKEN);
-        URI tokenUrl = readRequiredUri(environment, ENV_TOKEN_URL);
-        URI profilesUrl = readRequiredUri(environment, ENV_PROFILES_URL);
-        URI sessionUrl = readRequiredUri(environment, ENV_SESSION_URL);
-
-        String clientId = readOptional(environment, ENV_CLIENT_ID);
-        if (clientId == null) {
-            clientId = "hytale-server";
+    static HytaleAuthConfig fromConfigFile(Path configPath) {
+        Objects.requireNonNull(configPath, "configPath");
+        if (!Files.exists(configPath)) {
+            throw new IllegalStateException("Hytale auth config file does not exist at " + configPath);
+        }
+        if (!Files.isRegularFile(configPath)) {
+            throw new IllegalStateException("Hytale auth config path is not a file: " + configPath);
         }
 
-        String scopes = readOptional(environment, ENV_SCOPES);
+        ObjectMapper mapper = new ObjectMapper();
+        HytaleAuthFileConfig fileConfig;
+        try {
+            fileConfig = mapper.readValue(configPath.toFile(), HytaleAuthFileConfig.class);
+        } catch (IOException ex) {
+            throw new IllegalStateException("Failed to read Hytale auth config at " + configPath, ex);
+        }
+        if (fileConfig == null) {
+            throw new IllegalStateException("Hytale auth config is empty at " + configPath);
+        }
+
+        String refreshToken = requireText(fileConfig.refreshToken, "refreshToken");
+        URI tokenUrl = parseUri(requireText(fileConfig.tokenUrl, "tokenUrl"), "tokenUrl");
+        URI profilesUrl = parseUri(requireText(fileConfig.profilesUrl, "profilesUrl"), "profilesUrl");
+        URI sessionUrl = parseUri(requireText(fileConfig.sessionUrl, "sessionUrl"), "sessionUrl");
+
+        String clientId = readOptional(fileConfig.clientId);
+        if (clientId == null) {
+            clientId = DEFAULT_CLIENT_ID;
+        }
+
+        String scopes = readOptional(fileConfig.scopes);
         if (scopes == null) {
-            scopes = "openid offline auth:server";
+            scopes = DEFAULT_SCOPES;
         }
 
         UUID profileUuid = null;
-        String rawProfileUuid = readOptional(environment, ENV_PROFILE_UUID);
+        String rawProfileUuid = readOptional(fileConfig.profileUuid);
         if (rawProfileUuid != null) {
-            profileUuid = parseUuid(ENV_PROFILE_UUID, rawProfileUuid);
+            profileUuid = parseUuid("profileUuid", rawProfileUuid);
         }
 
-        String profileUsername = readOptional(environment, ENV_PROFILE_USERNAME);
+        String profileUsername = readOptional(fileConfig.profileUsername);
 
-        Duration timeout = parseTimeout(environment);
+        Duration timeout = parseTimeoutSeconds(fileConfig.timeoutSeconds);
 
         return new HytaleAuthConfig(
                 refreshToken,
@@ -131,49 +149,38 @@ public final class HytaleAuthConfig {
         return timeout;
     }
 
-    private static Duration parseTimeout(Map<String, String> environment) {
-        String rawTimeout = readOptional(environment, ENV_TIMEOUT_SECONDS);
-        if (rawTimeout == null) {
-            return Duration.ofSeconds(10);
+    private static Duration parseTimeoutSeconds(Long timeoutSeconds) {
+        if (timeoutSeconds == null) {
+            return Duration.ofSeconds(DEFAULT_TIMEOUT_SECONDS);
         }
-        try {
-            long value = Long.parseLong(rawTimeout);
-            if (value <= 0) {
-                throw new IllegalStateException(ENV_TIMEOUT_SECONDS + " must be greater than 0");
-            }
-            return Duration.ofSeconds(value);
-        } catch (NumberFormatException ex) {
-            throw new IllegalStateException(ENV_TIMEOUT_SECONDS + " must be a number", ex);
+        if (timeoutSeconds <= 0) {
+            throw new IllegalStateException("timeoutSeconds must be greater than 0");
         }
+        return Duration.ofSeconds(timeoutSeconds);
     }
 
-    private static String readRequired(Map<String, String> environment, String key) {
-        String value = readOptional(environment, key);
-        if (value == null) {
-            throw new IllegalStateException(key + " is required");
+    private static String requireText(String value, String label) {
+        String normalized = readOptional(value);
+        if (normalized == null) {
+            throw new IllegalStateException(label + " is required");
         }
-        return value;
+        return normalized;
     }
 
-    private static URI readRequiredUri(Map<String, String> environment, String key) {
-        String value = readOptional(environment, key);
-        if (value == null) {
-            throw new IllegalStateException(key + " is required");
-        }
-        try {
-            return URI.create(value);
-        } catch (IllegalArgumentException ex) {
-            throw new IllegalStateException(key + " must be a valid URI", ex);
-        }
-    }
-
-    private static String readOptional(Map<String, String> environment, String key) {
-        String value = environment.get(key);
+    private static String readOptional(String value) {
         if (value == null) {
             return null;
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static URI parseUri(String rawValue, String label) {
+        try {
+            return URI.create(rawValue);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalStateException(label + " must be a valid URI", ex);
+        }
     }
 
     private static UUID parseUuid(String label, String raw) {
@@ -182,5 +189,25 @@ public final class HytaleAuthConfig {
         } catch (IllegalArgumentException ex) {
             throw new IllegalStateException(label + " must be a valid UUID", ex);
         }
+    }
+
+    private static Path resolveConfigPath() {
+        String override = readOptional(System.getenv(ENV_CONFIG_PATH));
+        if (override != null) {
+            return Path.of(override).toAbsolutePath().normalize();
+        }
+        return Path.of(DEFAULT_CONFIG_PATH).toAbsolutePath().normalize();
+    }
+
+    private static final class HytaleAuthFileConfig {
+        public String refreshToken;
+        public String tokenUrl;
+        public String profilesUrl;
+        public String sessionUrl;
+        public String clientId;
+        public String scopes;
+        public String profileUuid;
+        public String profileUsername;
+        public Long timeoutSeconds;
     }
 }
