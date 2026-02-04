@@ -31,3 +31,4 @@ Configuration keys:
 - `backend/brain/src/main/java/net/spookly/kodama/brain/plugin/KodamaBrainPlugin.java`
 - `backend/brain/src/main/java/net/spookly/kodama/brain/plugin/BrainPluginRegistry.java`
 - `backend/brain/src/main/resources/application.yml`
+- `docs/brain/plugins-hytale-auth.md`
