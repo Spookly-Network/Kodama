@@ -44,6 +44,7 @@ class CommandDispatcherServiceTest {
     private MockRestServiceServer server;
     private NodeProperties nodeProperties;
     private CommandDispatcherService dispatcher;
+    private static final String TEMPLATE_CREATOR_USERNAME = "admin";
 
     @BeforeEach
     void setUp() {
@@ -220,7 +221,7 @@ class CommandDispatcherServiceTest {
                 "Template 1",
                 TemplateType.CUSTOM,
                 now,
-                UUID.randomUUID()
+                TEMPLATE_CREATOR_USERNAME
         );
         ReflectionTestUtils.setField(template, "id", templateId);
         TemplateVersion version = new TemplateVersion(

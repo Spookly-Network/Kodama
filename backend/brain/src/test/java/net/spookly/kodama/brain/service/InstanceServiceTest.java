@@ -61,7 +61,8 @@ class InstanceServiceTest {
         registry.add("spring.datasource.driver-class-name", mysql::getDriverClassName);
     }
 
-    private static final UUID REQUESTER_ID = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    private static final String REQUESTER_USERNAME = "admin";
+    private static final UUID REQUESTER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
     @Autowired
     private InstanceService instanceService;
@@ -430,12 +431,12 @@ class InstanceServiceTest {
 
     private Template createTemplate(String name) {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        return templateRepository.save(new Template(name, "desc", TemplateType.CUSTOM, now, REQUESTER_ID));
+        return templateRepository.save(new Template(name, "desc", TemplateType.CUSTOM, now, REQUESTER_USERNAME));
     }
 
     private TemplateVersion createTemplateVersion(String templateName, String version) {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        Template template = new Template(templateName, "desc", TemplateType.CUSTOM, now, REQUESTER_ID);
+        Template template = new Template(templateName, "desc", TemplateType.CUSTOM, now, REQUESTER_USERNAME);
         Template savedTemplate = templateRepository.save(template);
 
         TemplateVersion templateVersion = new TemplateVersion(
