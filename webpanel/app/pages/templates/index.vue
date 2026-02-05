@@ -8,8 +8,8 @@
       </AppStatsCard>
       <AppStatsCard variant="green">
         <template #icon><Sparkles /></template>
-        <template #number>{{ activeTemplates }}</template>
-        <template #label>Active templates</template>
+        <template #number>{{ versionedTemplates }}</template>
+        <template #label>Versioned templates</template>
       </AppStatsCard>
       <AppStatsCard variant="amber">
         <template #icon><SquareStack /></template>
@@ -46,7 +46,7 @@
             <div class="space-y-1">
               <CardTitle>Template library</CardTitle>
               <CardDescription>
-                Most recently updated templates with status, usage, and owners.
+                Most recently updated templates with usage and owners.
               </CardDescription>
             </div>
             <Badge variant="secondary">{{ totalTemplates }} total</Badge>
@@ -55,33 +55,30 @@
             <div class="overflow-hidden rounded-lg border">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Template</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Versions</TableHead>
-                    <TableHead>Instances</TableHead>
-                    <TableHead>Owner</TableHead>
-                    <TableHead>Updated</TableHead>
-                    <TableHead class="text-right">Status</TableHead>
+                <TableRow>
+                  <TableHead>Template</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Versions</TableHead>
+                  <TableHead>Instances</TableHead>
+                  <TableHead>Owner</TableHead>
+                  <TableHead>Updated</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <template v-if="loading">
+                  <TableRow v-for="row in 5" :key="row">
+                    <TableCell v-for="cell in 6" :key="cell">
+                      <Skeleton class="h-4 w-full" />
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow v-for="template in templates" :key="template.id">
+                </template>
+                <template v-else-if="templateRows.length">
+                  <TableRow v-for="template in templateRows" :key="template.id">
                     <TableCell class="w-[320px]">
                       <div class="space-y-2">
                         <div class="font-medium">{{ template.name }}</div>
                         <div class="text-xs text-muted-foreground">
                           {{ template.description }}
-                        </div>
-                        <div class="flex flex-wrap gap-1">
-                          <Badge
-                            v-for="tag in template.tags"
-                            :key="tag"
-                            variant="secondary"
-                            class="text-xs"
-                          >
-                            {{ tag }}
-                          </Badge>
                         </div>
                       </div>
                     </TableCell>
@@ -111,7 +108,7 @@
                       <div class="space-y-1">
                         <div class="font-medium">{{ template.owner }}</div>
                         <div class="text-xs text-muted-foreground">
-                          {{ template.runtime }}
+                          Created by
                         </div>
                       </div>
                     </TableCell>
@@ -123,17 +120,29 @@
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell class="text-right">
-                      <Badge variant="outline" :class="statusStyles[template.status]">
-                        {{ template.status }}
-                      </Badge>
+                  </TableRow>
+                </template>
+                <template v-else>
+                  <TableRow>
+                    <TableCell :colspan="6" class="h-24 text-center text-muted-foreground">
+                      No templates found.
                     </TableCell>
                   </TableRow>
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+                </template>
+              </TableBody>
+            </Table>
+          </div>
+          <div v-if="loadError" class="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            {{ loadError }}
+            <Button variant="secondary" size="sm" class="ml-3" @click="loadTemplates">
+              Retry
+            </Button>
+          </div>
+          <div v-else-if="loadWarning" class="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">
+            {{ loadWarning }}
+          </div>
+        </CardContent>
+      </Card>
 
         <div class="grid gap-4">
           <Card class="border bg-muted/30">
@@ -160,6 +169,9 @@
                   <div>{{ activity.when }}</div>
                 </div>
               </div>
+              <div v-if="!recentActivity.length && !loading" class="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+                No template activity yet.
+              </div>
             </CardContent>
           </Card>
 
@@ -183,8 +195,8 @@
                   ></div>
                 </div>
               </div>
-              <div class="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
-                {{ draftsCount }} drafts and {{ archivedCount }} archived templates are waiting for updates.
+              <div v-if="!adoptionLeaders.length && !loading" class="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+                No template usage detected yet.
               </div>
             </CardContent>
           </Card>
@@ -197,22 +209,48 @@
 <script setup lang="ts">
 import { Layers, Package, Plus, Sparkles, SquareStack } from "lucide-vue-next"
 
-type TemplateStatus = "ACTIVE" | "DRAFT" | "ARCHIVED"
+type TemplateDto = {
+  id: string
+  name: string
+  description: string
+  type: string
+  createdAt: string
+  createdBy: string
+}
+
+type TemplateVersionDto = {
+  id: string
+  templateId: string
+  version: string
+  checksum: string
+  s3Key: string
+  metadataJson?: string | null
+  createdAt: string
+}
+
+type InstanceTemplateLayerDto = {
+  id: string
+  templateVersionId: string
+  orderIndex: number
+}
+
+type InstanceSummaryDto = {
+  id: string
+  templateLayers: InstanceTemplateLayerDto[]
+}
 
 type TemplateRow = {
   id: string
   name: string
   description: string
   type: string
-  status: TemplateStatus
   versions: number
   instances: number
   latestVersion: string
   owner: string
-  runtime: string
+  updatedAt: string
   updatedAtLabel: string
   createdAtLabel: string
-  tags: string[]
 }
 
 type ActivityItem = {
@@ -221,156 +259,179 @@ type ActivityItem = {
   summary: string
   actor: string
   when: string
+  whenRaw: string
 }
 
-const statusStyles: Record<TemplateStatus, string> = {
-  ACTIVE: "bg-emerald-500/10 text-emerald-500",
-  DRAFT: "bg-amber-500/10 text-amber-500",
-  ARCHIVED: "bg-slate-500/10 text-slate-400",
+const brainApi = useBrainApi()
+
+const templates = ref<TemplateDto[]>([])
+const templateVersions = ref<Record<string, TemplateVersionDto[]>>({})
+const instances = ref<InstanceSummaryDto[]>([])
+const loading = ref(true)
+const loadError = ref<string | null>(null)
+const loadWarning = ref<string | null>(null)
+
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+})
+
+const formatDate = (value: string) => {
+  const parsed = Date.parse(value)
+  if (Number.isNaN(parsed)) return "—"
+  return dateFormatter.format(parsed)
 }
 
-const templates = ref<TemplateRow[]>([
-  {
-    id: "tmpl_01J9A9FQY2V0A1B2C3D4E5F6G7",
-    name: "Hytale Survival Core",
-    description: "Base survival server with economy and starter kit.",
-    type: "CUSTOM",
-    status: "ACTIVE",
-    versions: 5,
-    instances: 12,
-    latestVersion: "v1.4.2",
-    owner: "admin",
-    runtime: "hytale-1.4",
-    updatedAtLabel: "Feb 3, 2026",
-    createdAtLabel: "Jan 5, 2026",
-    tags: ["survival", "public", "economy"],
-  },
-  {
-    id: "tmpl_01J9A9FQY2V0A1B2C3D4E5F6G8",
-    name: "Lobby Hub",
-    description: "Entry point with matchmaking and cosmetic store.",
-    type: "CUSTOM",
-    status: "ACTIVE",
-    versions: 8,
-    instances: 6,
-    latestVersion: "v2.0.1",
-    owner: "admin",
-    runtime: "hytale-1.4",
-    updatedAtLabel: "Feb 2, 2026",
-    createdAtLabel: "Dec 20, 2025",
-    tags: ["hub", "critical", "entry"],
-  },
-  {
-    id: "tmpl_01J9A9FQY2V0A1B2C3D4E5F6G9",
-    name: "Minigames Rotation",
-    description: "Fast matchmaking and rotating maps for weekly events.",
-    type: "CUSTOM",
-    status: "ACTIVE",
-    versions: 4,
-    instances: 9,
-    latestVersion: "v1.3.0",
-    owner: "operator",
-    runtime: "hytale-1.3",
-    updatedAtLabel: "Jan 31, 2026",
-    createdAtLabel: "Jan 10, 2026",
-    tags: ["minigames", "events"],
-  },
-  {
-    id: "tmpl_01J9A9FQY2V0A1B2C3D4E5F6H0",
-    name: "Creative Plots",
-    description: "Dedicated build worlds with permissions and plot tools.",
-    type: "CUSTOM",
-    status: "DRAFT",
-    versions: 2,
-    instances: 0,
-    latestVersion: "v0.9.5",
-    owner: "viewer",
-    runtime: "hytale-1.2",
-    updatedAtLabel: "Jan 26, 2026",
-    createdAtLabel: "Jan 12, 2026",
-    tags: ["creative", "private"],
-  },
-  {
-    id: "tmpl_01J9A9FQY2V0A1B2C3D4E5F6H1",
-    name: "Seasonal Events",
-    description: "Limited time event template with seasonal progression.",
-    type: "CUSTOM",
-    status: "ACTIVE",
-    versions: 3,
-    instances: 4,
-    latestVersion: "v1.1.0",
-    owner: "operator",
-    runtime: "hytale-1.4",
-    updatedAtLabel: "Jan 25, 2026",
-    createdAtLabel: "Nov 30, 2025",
-    tags: ["events", "seasonal"],
-  },
-  {
-    id: "tmpl_01J9A9FQY2V0A1B2C3D4E5F6H2",
-    name: "Legacy Modpack",
-    description: "Deprecated template awaiting migration plan.",
-    type: "CUSTOM",
-    status: "ARCHIVED",
-    versions: 7,
-    instances: 0,
-    latestVersion: "v0.8.4",
-    owner: "admin",
-    runtime: "hytale-1.1",
-    updatedAtLabel: "Jan 14, 2026",
-    createdAtLabel: "Oct 2, 2025",
-    tags: ["legacy", "migration"],
-  },
-])
+const formatOwner = (value: string) => {
+  if (!value) return "—"
+  if (value.length <= 12) return value
+  return `${value.slice(0, 8)}…${value.slice(-4)}`
+}
 
-const recentActivity = ref<ActivityItem[]>([
-  {
-    id: "act_01",
-    template: "Hytale Survival Core",
-    summary: "Published version v1.4.2 with updated loot tables.",
-    actor: "admin",
-    when: "2 hours ago",
-  },
-  {
-    id: "act_02",
-    template: "Lobby Hub",
-    summary: "Updated matchmaking configs and health checks.",
-    actor: "admin",
-    when: "Yesterday",
-  },
-  {
-    id: "act_03",
-    template: "Minigames Rotation",
-    summary: "Enabled weekly map rotation for February.",
-    actor: "operator",
-    when: "3 days ago",
-  },
-])
+const loadTemplates = async () => {
+  loading.value = true
+  loadError.value = null
+  loadWarning.value = null
+  try {
+    const templateList = await brainApi<TemplateDto[]>("/api/templates")
+    templates.value = templateList
 
-const totalTemplates = computed(() => templates.value.length)
-const activeTemplates = computed(
-  () => templates.value.filter((template) => template.status === "ACTIVE").length,
+    const instancesResult = await brainApi<InstanceSummaryDto[]>("/api/instances").catch(() => {
+      loadWarning.value = "Instance usage data is unavailable."
+      return []
+    })
+    instances.value = instancesResult
+
+    if (templateList.length === 0) {
+      templateVersions.value = {}
+      return
+    }
+
+    const versionResults = await Promise.allSettled(
+      templateList.map((template) =>
+        brainApi<TemplateVersionDto[]>(`/api/templates/${template.id}/versions`),
+      ),
+    )
+
+    const nextVersions: Record<string, TemplateVersionDto[]> = {}
+    let versionsFailed = false
+    versionResults.forEach((result, index) => {
+      const templateId = templateList[index].id
+      if (result.status === "fulfilled") {
+        nextVersions[templateId] = result.value
+      } else {
+        nextVersions[templateId] = []
+        versionsFailed = true
+      }
+    })
+    templateVersions.value = nextVersions
+    if (versionsFailed) {
+      loadWarning.value = "Some template versions could not be loaded."
+    }
+  } catch (error) {
+    loadError.value = "Unable to load templates. Check your session and Brain API connectivity."
+    templates.value = []
+    templateVersions.value = {}
+    instances.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+await loadTemplates()
+
+const versionIdToTemplate = computed(() => {
+  const mapping = new Map<string, string>()
+  for (const [templateId, versions] of Object.entries(templateVersions.value)) {
+    for (const version of versions) {
+      mapping.set(version.id, templateId)
+    }
+  }
+  return mapping
+})
+
+const usageCounts = computed(() => {
+  const counts = new Map<string, number>()
+  for (const instance of instances.value) {
+    const templateIds = new Set<string>()
+    for (const layer of instance.templateLayers ?? []) {
+      const templateId = versionIdToTemplate.value.get(layer.templateVersionId)
+      if (templateId) {
+        templateIds.add(templateId)
+      }
+    }
+    for (const templateId of templateIds) {
+      counts.set(templateId, (counts.get(templateId) ?? 0) + 1)
+    }
+  }
+  return counts
+})
+
+const templateRows = computed<TemplateRow[]>(() => {
+  return templates.value
+    .map((template) => {
+      const versions = templateVersions.value[template.id] ?? []
+      const latestVersion = versions[0]
+      const updatedAt = latestVersion?.createdAt ?? template.createdAt
+      return {
+        id: template.id,
+        name: template.name,
+        description: template.description,
+        type: template.type,
+        versions: versions.length,
+        instances: usageCounts.value.get(template.id) ?? 0,
+        latestVersion: latestVersion?.version ?? "—",
+        owner: formatOwner(template.createdBy),
+        updatedAt,
+        updatedAtLabel: formatDate(updatedAt),
+        createdAtLabel: formatDate(template.createdAt),
+      }
+    })
+    .sort((first, second) => Date.parse(second.updatedAt) - Date.parse(first.updatedAt))
+})
+
+const totalTemplates = computed(() => templateRows.value.length)
+const versionedTemplates = computed(
+  () => templateRows.value.filter((template) => template.versions > 0).length,
 )
 const templatesInUse = computed(
-  () => templates.value.filter((template) => template.instances > 0).length,
+  () => templateRows.value.filter((template) => template.instances > 0).length,
 )
 const totalVersions = computed(() =>
-  templates.value.reduce((total, template) => total + template.versions, 0),
+  templateRows.value.reduce((total, template) => total + template.versions, 0),
 )
-const draftsCount = computed(
-  () => templates.value.filter((template) => template.status === "DRAFT").length,
-)
-const archivedCount = computed(
-  () => templates.value.filter((template) => template.status === "ARCHIVED").length,
-)
+
 const maxInstances = computed(() => {
-  const values = templates.value.map((template) => template.instances)
+  const values = templateRows.value.map((template) => template.instances)
   return Math.max(1, ...values)
 })
 
 const adoptionLeaders = computed(() => {
-  return [...templates.value]
+  return [...templateRows.value]
     .sort((first, second) => second.instances - first.instances)
+    .filter((template) => template.instances > 0)
     .slice(0, 4)
+})
+
+const recentActivity = computed<ActivityItem[]>(() => {
+  const items: ActivityItem[] = []
+  for (const template of templates.value) {
+    const versions = templateVersions.value[template.id] ?? []
+    for (const version of versions) {
+      items.push({
+        id: version.id,
+        template: template.name,
+        summary: `Published version ${version.version}.`,
+        actor: formatOwner(template.createdBy),
+        when: formatDate(version.createdAt),
+        whenRaw: version.createdAt,
+      })
+    }
+  }
+  return items
+    .sort((first, second) => Date.parse(second.whenRaw) - Date.parse(first.whenRaw))
+    .slice(0, 3)
 })
 
 const usagePercentFor = (instances: number) => {
