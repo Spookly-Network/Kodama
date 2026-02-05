@@ -18,6 +18,8 @@ Describe the JWT-based authentication used by the Brain admin API.
   - `POST /api/nodes/{nodeId}/heartbeat`
   - `POST /api/nodes/{nodeId}/instances/{instanceId}/*`
 - User tokens are not accepted on node callback endpoints.
+- For cross-origin browser clients, configure `brain.web.cors` to allow the panel origin and include
+  `Authorization` and `X-Node-Token` in `allowed-headers`.
 
 Role access summary:
 - `ADMIN`: full access to all user-facing endpoints.
@@ -43,6 +45,11 @@ brain:
         email: admin@example.com
         password: ${BRAIN_ADMIN_PASSWORD}
         roles: ADMIN
+  web:
+    cors:
+      allowed-origins: ${BRAIN_CORS_ALLOWED_ORIGINS:https://panel.example.com}
+      allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+      allowed-headers: Authorization,Content-Type,X-Node-Token
 ```
 
 Password values without a `{id}` prefix are treated as `{noop}` for development.
@@ -53,6 +60,7 @@ Password values without a `{id}` prefix are treated as `{noop}` for development.
 - Tokens expire after `token-ttl-seconds` and must be refreshed via login.
 - `VIEWER` tokens are read-only; write endpoints return `403 Forbidden`.
 - Node endpoints require `brain.security.node.token` to be configured.
+- CORS preflight requests are allowed without node authentication.
 - Set `brain.security.enabled=false` to disable HTTP and method security in local development.
 
 ## Links

@@ -15,6 +15,7 @@ import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
+import org.springframework.web.cors.CorsUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
@@ -30,7 +31,13 @@ public class NodeAuthFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return false;
+        if (!securityProperties.isEnabled()) {
+            return true;
+        }
+        if (CorsUtils.isPreFlightRequest(request)) {
+            return true;
+        }
+        return !NodeAuthRequestMatcher.matches(request);
     }
 
     @Override
@@ -39,14 +46,6 @@ public class NodeAuthFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        if (!securityProperties.isEnabled()) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-        if (!NodeAuthRequestMatcher.matches(request)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
         BrainSecurityProperties.NodeAuth nodeAuth = securityProperties.getNode();
         String expectedToken = nodeAuth == null ? null : nodeAuth.getToken();
         if (expectedToken == null || expectedToken.isBlank()) {
