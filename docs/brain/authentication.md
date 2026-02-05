@@ -18,6 +18,7 @@ Describe the JWT-based authentication used by the Brain admin API.
   - `POST /api/nodes/{nodeId}/heartbeat`
   - `POST /api/nodes/{nodeId}/instances/{instanceId}/*`
 - User tokens are not accepted on node callback endpoints.
+- Template creation derives `createdBy` from the authenticated username; clients cannot supply it in the request.
 - For cross-origin browser clients, configure `brain.web.cors` to allow the panel origin and include
   `Authorization` and `X-Node-Token` in `allowed-headers`.
 
@@ -62,6 +63,7 @@ Password values without a `{id}` prefix are treated as `{noop}` for development.
 - Node endpoints require `brain.security.node.token` to be configured.
 - CORS preflight requests are allowed without node authentication.
 - Set `brain.security.enabled=false` to disable HTTP and method security in local development.
+- When security is disabled, template creation uses the system username `system` for `createdBy`.
 
 ## Links
 - Config: `backend/brain/src/main/java/net/spookly/kodama/brain/config/BrainSecurityProperties.java`

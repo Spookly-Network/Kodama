@@ -40,9 +40,9 @@ public class Template {
     private OffsetDateTime createdAt;
 
     @Column(nullable = false)
-    private UUID createdBy;
+    private String createdBy;
 
-    public Template(String name, String description, TemplateType type, OffsetDateTime createdAt, UUID createdBy) {
+    public Template(String name, String description, TemplateType type, OffsetDateTime createdAt, String createdBy) {
         this.name = name;
         this.description = description;
         this.type = type;

@@ -678,7 +678,7 @@ components:
           format: date-time
         createdBy:
           type: string
-          format: uuid
+          description: Username of the authenticated user who created the template.
     TemplateVersion:
       type: object
       required: [id, templateId, version, checksum, s3Key, createdAt]
@@ -704,7 +704,8 @@ components:
           format: date-time
     CreateTemplateRequest:
       type: object
-      required: [name, description, type, createdBy]
+      description: Template creator is derived from the authenticated user.
+      required: [name, description, type]
       properties:
         name:
           type: string
@@ -712,9 +713,6 @@ components:
           type: string
         type:
           $ref: "#/components/schemas/TemplateType"
-        createdBy:
-          type: string
-          format: uuid
     CreateTemplateVersionRequest:
       type: object
       required: [version, checksum, s3Key]
