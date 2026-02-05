@@ -32,11 +32,183 @@
           </div>
         </div>
         <div class="flex flex-wrap gap-2">
-          <Button variant="secondary">Import Template</Button>
-          <Button>
-            <Plus class="size-4" />
-            New Template
-          </Button>
+          <Dialog v-model:open="importDialogOpen">
+            <DialogTrigger>
+              <Button variant="secondary" :disabled="loading || templates.length === 0">
+                Import Template
+              </Button>
+            </DialogTrigger>
+            <DialogContent class="sm:max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Import template version</DialogTitle>
+                <DialogDescription>
+                  Register a new template version from an uploaded artifact.
+                </DialogDescription>
+              </DialogHeader>
+              <form class="space-y-6" @submit.prevent="submitImport">
+                <FieldGroup class="grid gap-5 sm:grid-cols-2">
+                  <Field class="sm:col-span-2">
+                    <FieldLabel for="import-template-id">Template</FieldLabel>
+                    <select
+                      id="import-template-id"
+                      v-model="importForm.templateId"
+                      :class="inputClasses"
+                      :disabled="importSubmitting"
+                    >
+                      <option value="" disabled>Select a template</option>
+                      <option v-for="template in templates" :key="template.id" :value="template.id">
+                        {{ template.name }}
+                      </option>
+                    </select>
+                    <FieldError v-if="importSubmitted" :errors="importErrors.templateId" />
+                  </Field>
+                  <Field>
+                    <FieldLabel for="import-version">Version</FieldLabel>
+                    <Input
+                      id="import-version"
+                      v-model="importForm.version"
+                      autocomplete="off"
+                      placeholder="v1.0.0"
+                      :disabled="importSubmitting"
+                      :aria-invalid="importSubmitted && !!importErrors.version?.length"
+                    />
+                    <FieldError v-if="importSubmitted" :errors="importErrors.version" />
+                  </Field>
+                  <Field>
+                    <FieldLabel for="import-checksum">Checksum</FieldLabel>
+                    <Input
+                      id="import-checksum"
+                      v-model="importForm.checksum"
+                      autocomplete="off"
+                      placeholder="sha256:..."
+                      :disabled="importSubmitting"
+                      :aria-invalid="importSubmitted && !!importErrors.checksum?.length"
+                    />
+                    <FieldError v-if="importSubmitted" :errors="importErrors.checksum" />
+                  </Field>
+                  <Field class="sm:col-span-2">
+                    <FieldLabel for="import-s3">S3 key</FieldLabel>
+                    <Input
+                      id="import-s3"
+                      v-model="importForm.s3Key"
+                      autocomplete="off"
+                      placeholder="templates/hytale/survival-v1.0.0.tar.gz"
+                      :disabled="importSubmitting"
+                      :aria-invalid="importSubmitted && !!importErrors.s3Key?.length"
+                    />
+                    <FieldError v-if="importSubmitted" :errors="importErrors.s3Key" />
+                  </Field>
+                  <Field class="sm:col-span-2">
+                    <FieldLabel for="import-metadata">Metadata JSON (optional)</FieldLabel>
+                    <textarea
+                      id="import-metadata"
+                      v-model="importForm.metadataJson"
+                      rows="4"
+                      :class="inputClasses"
+                      :disabled="importSubmitting"
+                      :aria-invalid="importSubmitted && !!importErrors.metadataJson?.length"
+                    ></textarea>
+                    <FieldDescription>Raw JSON string stored with the version.</FieldDescription>
+                    <FieldError v-if="importSubmitted" :errors="importErrors.metadataJson" />
+                  </Field>
+                </FieldGroup>
+                <div v-if="importError" class="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                  {{ importError }}
+                </div>
+                <DialogFooter class="gap-2">
+                  <DialogClose as-child>
+                    <Button type="button" variant="outline" :disabled="importSubmitting">
+                      Cancel
+                    </Button>
+                  </DialogClose>
+                  <Button type="submit" :disabled="importSubmitting">
+                    {{ importSubmitting ? "Importing..." : "Import version" }}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+          <Dialog v-model:open="createDialogOpen">
+            <DialogTrigger>
+              <Button>
+                <Plus class="size-4" />
+                New Template
+              </Button>
+            </DialogTrigger>
+            <DialogContent class="sm:max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Create template</DialogTitle>
+                <DialogDescription>
+                  Define a new template before publishing versions.
+                </DialogDescription>
+              </DialogHeader>
+              <form class="space-y-6" @submit.prevent="submitCreate">
+                <FieldGroup class="grid gap-5 sm:grid-cols-2">
+                  <Field class="sm:col-span-2">
+                    <FieldLabel for="create-name">Name</FieldLabel>
+                    <Input
+                      id="create-name"
+                      v-model="createForm.name"
+                      autocomplete="off"
+                      placeholder="Hytale Survival Core"
+                      :disabled="createSubmitting"
+                      :aria-invalid="createSubmitted && !!createErrors.name?.length"
+                    />
+                    <FieldError v-if="createSubmitted" :errors="createErrors.name" />
+                  </Field>
+                  <Field class="sm:col-span-2">
+                    <FieldLabel for="create-description">Description</FieldLabel>
+                    <textarea
+                      id="create-description"
+                      v-model="createForm.description"
+                      rows="3"
+                      :class="inputClasses"
+                      :disabled="createSubmitting"
+                      :aria-invalid="createSubmitted && !!createErrors.description?.length"
+                    ></textarea>
+                    <FieldError v-if="createSubmitted" :errors="createErrors.description" />
+                  </Field>
+                  <Field>
+                    <FieldLabel for="create-type">Type</FieldLabel>
+                    <select
+                      id="create-type"
+                      v-model="createForm.type"
+                      :class="inputClasses"
+                      :disabled="createSubmitting"
+                    >
+                      <option value="CUSTOM">CUSTOM</option>
+                    </select>
+                  </Field>
+                  <Field>
+                    <FieldLabel for="create-created-by">Created by (UUID)</FieldLabel>
+                    <Input
+                      id="create-created-by"
+                      v-model="createForm.createdBy"
+                      autocomplete="off"
+                      placeholder="00000000-0000-0000-0000-000000000000"
+                      :disabled="createSubmitting"
+                      :aria-invalid="createSubmitted && !!createErrors.createdBy?.length"
+                    />
+                    <FieldDescription>Use the creator's user ID.</FieldDescription>
+                    <FieldError v-if="createSubmitted" :errors="createErrors.createdBy" />
+                  </Field>
+                </FieldGroup>
+                <div v-if="createError" class="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                  {{ createError }}
+                </div>
+                <DialogFooter class="gap-2">
+                  <DialogClose as-child>
+                    <Button type="button" variant="outline" :disabled="createSubmitting">
+                      Cancel
+                    </Button>
+                  </DialogClose>
+                  <Button type="submit" :disabled="createSubmitting">
+                    {{ createSubmitting ? "Creating..." : "Create template" }}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -55,16 +227,16 @@
             <div class="overflow-hidden rounded-lg border">
               <Table>
                 <TableHeader>
-                <TableRow>
-                  <TableHead>Template</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Versions</TableHead>
-                  <TableHead>Instances</TableHead>
-                  <TableHead>Owner</TableHead>
-                  <TableHead>Updated</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+                  <TableRow>
+                    <TableHead>Template</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Versions</TableHead>
+                    <TableHead>Instances</TableHead>
+                    <TableHead>Owner</TableHead>
+                    <TableHead>Updated</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                 <template v-if="loading">
                   <TableRow v-for="row in 5" :key="row">
                     <TableCell v-for="cell in 6" :key="cell">
@@ -129,9 +301,9 @@
                     </TableCell>
                   </TableRow>
                 </template>
-              </TableBody>
-            </Table>
-          </div>
+                </TableBody>
+              </Table>
+            </div>
           <div v-if="loadError" class="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
             {{ loadError }}
             <Button variant="secondary" size="sm" class="ml-3" @click="loadTemplates">
@@ -270,6 +442,63 @@ const instances = ref<InstanceSummaryDto[]>([])
 const loading = ref(true)
 const loadError = ref<string | null>(null)
 const loadWarning = ref<string | null>(null)
+const createDialogOpen = ref(false)
+const importDialogOpen = ref(false)
+const createSubmitting = ref(false)
+const importSubmitting = ref(false)
+const createSubmitted = ref(false)
+const importSubmitted = ref(false)
+const createError = ref<string | null>(null)
+const importError = ref<string | null>(null)
+
+const createForm = reactive({
+  name: "",
+  description: "",
+  type: "CUSTOM",
+  createdBy: "",
+})
+
+const importForm = reactive({
+  templateId: "",
+  version: "",
+  checksum: "",
+  s3Key: "",
+  metadataJson: "",
+})
+
+const inputClasses =
+  "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive"
+
+const isValidUuid = (value: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+
+const createErrors = computed(() => {
+  const next: Record<string, string[]> = {}
+  if (!createForm.name.trim()) next.name = ["Name is required."]
+  if (!createForm.description.trim()) next.description = ["Description is required."]
+  if (!createForm.createdBy.trim()) {
+    next.createdBy = ["Created by is required."]
+  } else if (!isValidUuid(createForm.createdBy.trim())) {
+    next.createdBy = ["Created by must be a valid UUID."]
+  }
+  return next
+})
+
+const importErrors = computed(() => {
+  const next: Record<string, string[]> = {}
+  if (!importForm.templateId.trim()) next.templateId = ["Template is required."]
+  if (!importForm.version.trim()) next.version = ["Version is required."]
+  if (!importForm.checksum.trim()) next.checksum = ["Checksum is required."]
+  if (!importForm.s3Key.trim()) next.s3Key = ["S3 key is required."]
+  if (importForm.metadataJson.trim()) {
+    try {
+      JSON.parse(importForm.metadataJson)
+    } catch {
+      next.metadataJson = ["Metadata must be valid JSON."]
+    }
+  }
+  return next
+})
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -287,6 +516,12 @@ const formatOwner = (value: string) => {
   if (!value) return "—"
   if (value.length <= 12) return value
   return `${value.slice(0, 8)}…${value.slice(-4)}`
+}
+
+const extractErrorMessage = (error: unknown, fallback: string) => {
+  if (!error || typeof error !== "object") return fallback
+  const record = error as { data?: { message?: string }; message?: string }
+  return record.data?.message || record.message || fallback
 }
 
 const loadTemplates = async () => {
@@ -340,6 +575,28 @@ const loadTemplates = async () => {
 }
 
 await loadTemplates()
+
+watch(
+  () => templates.value,
+  (next) => {
+    if (!importForm.templateId && next.length > 0) {
+      importForm.templateId = next[0].id
+    }
+  },
+  { immediate: true },
+)
+
+watch(createDialogOpen, (open) => {
+  if (!open) {
+    resetCreateForm()
+  }
+})
+
+watch(importDialogOpen, (open) => {
+  if (!open) {
+    resetImportForm()
+  }
+})
 
 const versionIdToTemplate = computed(() => {
   const mapping = new Map<string, string>()
@@ -436,6 +693,75 @@ const recentActivity = computed<ActivityItem[]>(() => {
 
 const usagePercentFor = (instances: number) => {
   return Math.round((instances / maxInstances.value) * 100)
+}
+
+function resetCreateForm() {
+  createForm.name = ""
+  createForm.description = ""
+  createForm.type = "CUSTOM"
+  createForm.createdBy = ""
+  createSubmitted.value = false
+  createError.value = null
+}
+
+function resetImportForm() {
+  importForm.version = ""
+  importForm.checksum = ""
+  importForm.s3Key = ""
+  importForm.metadataJson = ""
+  importSubmitted.value = false
+  importError.value = null
+}
+
+const submitCreate = async () => {
+  createSubmitted.value = true
+  if (Object.keys(createErrors.value).length > 0) return
+  createSubmitting.value = true
+  createError.value = null
+  try {
+    await brainApi<TemplateDto>("/api/templates", {
+      method: "POST",
+      body: {
+        name: createForm.name.trim(),
+        description: createForm.description.trim(),
+        type: createForm.type,
+        createdBy: createForm.createdBy.trim(),
+      },
+    })
+    resetCreateForm()
+    createDialogOpen.value = false
+    await loadTemplates()
+  } catch (error) {
+    createError.value = extractErrorMessage(error, "Unable to create template.")
+  } finally {
+    createSubmitting.value = false
+  }
+}
+
+const submitImport = async () => {
+  importSubmitted.value = true
+  if (Object.keys(importErrors.value).length > 0) return
+  importSubmitting.value = true
+  importError.value = null
+  const metadata = importForm.metadataJson.trim()
+  try {
+    await brainApi<TemplateVersionDto>(`/api/templates/${importForm.templateId}/versions`, {
+      method: "POST",
+      body: {
+        version: importForm.version.trim(),
+        checksum: importForm.checksum.trim(),
+        s3Key: importForm.s3Key.trim(),
+        ...(metadata ? { metadataJson: metadata } : {}),
+      },
+    })
+    resetImportForm()
+    importDialogOpen.value = false
+    await loadTemplates()
+  } catch (error) {
+    importError.value = extractErrorMessage(error, "Unable to import template version.")
+  } finally {
+    importSubmitting.value = false
+  }
 }
 </script>
 
