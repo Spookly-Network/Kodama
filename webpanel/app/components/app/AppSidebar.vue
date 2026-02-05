@@ -41,7 +41,7 @@ const data = {
     },
     {
       title: "Templates",
-      url: "#",
+      url: "/templates",
       icon: Package,
       items: [
         {

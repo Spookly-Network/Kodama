@@ -9,8 +9,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { useAuthStore } from "~/store/auth"
 
-import pattern from "@/assets/images/patterns/01.svg"
-
 definePageMeta({
   layout: "authentification",
   auth: false,
@@ -22,6 +20,7 @@ const username = ref("")
 const password = ref("")
 const errorMessage = ref<string | null>(null)
 const isSubmitting = ref(false)
+const c = ref();
 
 async function onSubmit() {
   if (isSubmitting.value) return
@@ -43,6 +42,10 @@ async function onSubmit() {
     isSubmitting.value = false
   }
 }
+
+onMounted(() => {
+  c.value = Math.floor(Math.random() * 15) + 1
+})
 </script>
 
 <template>
@@ -100,9 +103,10 @@ async function onSubmit() {
         </form>
         <div class="bg-muted relative hidden md:block">
           <img
-              :src="pattern"
+              v-if="c"
+              :src="`/assets/images/patterns/0${c}.svg`"
               alt="Image"
-              class="absolute inset-0 h-full w-full object-cover dark:brightness-[0.5]"
+              class="absolute inset-0 h-full w-full object-cover dark:brightness-[0.8]"
           >
         </div>
       </CardContent>
