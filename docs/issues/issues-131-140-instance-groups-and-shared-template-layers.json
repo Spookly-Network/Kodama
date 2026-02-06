@@ -1,0 +1,210 @@
+[
+  {
+    "id": "#131",
+    "title": "[Epic] Instance organization with multi-group template assignments",
+    "summary": "Add instance grouping as an optional organizational addon where each instance can belong to multiple groups, while template assignments resolve from both direct instance assignments and assigned groups.",
+    "goal": "Deliver a deterministic, testable, and migration-safe model based on assignment relationships (no shared `template_layers` table), with explicit override semantics and non-unique priorities.",
+    "context": "The current instance template model is directly chained to instances and does not support group contributions cleanly. This epic introduces many-to-many memberships and assignment tables that carry metadata (`priority`, optional `templateVersionId`) directly on the relationship.",
+    "scope": "- Add groups and instance-group memberships.\n- Add assignment tables for instance->template and group->template with metadata.\n- Implement effective resolution from both sources.\n- Enforce validation: `templateId` required, `templateVersionId` optional.\n- Add migrations, tests, and documentation/contract updates.",
+    "tasks": "- [ ] #132\n- [ ] #133\n- [ ] #134\n- [ ] #135\n- [ ] #136\n- [ ] #137\n- [ ] #138\n- [ ] #139\n- [ ] #140",
+    "notes": "- `priority` is intentionally non-unique.\n- Allowed payload forms are `templateId` and `templateId + templateVersionId`.\n- Group contributions are additive; direct instance assignments win conflicts.",
+    "labels": [
+      "area: Brain",
+      "area: instance",
+      "area: template-system",
+      "prio: high"
+    ],
+    "type": "Epic",
+    "parent": "",
+    "blockedby": [],
+    "milestone": "Instance Organization v1"
+  },
+  {
+    "id": "#132",
+    "title": "[Architecture] Brain: assignment-table model for instance/group templates",
+    "summary": "Define and implement the target architecture using assignment tables between owners and templates, with relationship metadata (`priority`, optional `templateVersionId`).",
+    "problem": "A shared `template_layers` indirection adds complexity without clear value for current requirements. We need multi-owner assignment behavior with straightforward persistence and queries.",
+    "proposal": "- Use owner-specific assignment tables: `instance_template_assignments` and `group_template_assignments`.\n- Include `template_id` (required), `template_version_id` (optional), `priority` (non-unique).\n- Add `instance_group_memberships(instance_id, group_id)`.\n- Keep deterministic merge logic in the service layer.",
+    "impact": "- Brain domain model and repositories.\n- Flyway migrations and backfill from legacy instance template layers.\n- Instance/group services and effective assignment resolver.\n- Contract and docs for new payload semantics.",
+    "acceptance": "- Assignment-table architecture is implemented and documented.\n- No `template_layers` shared table is introduced.\n- Existing non-group behavior remains stable.\n- Validation rules and merge precedence are explicit and tested.",
+    "notes": "- Parent epic: #131",
+    "labels": [
+      "area: Brain",
+      "area: instance",
+      "area: template-system",
+      "prio: high"
+    ],
+    "type": "Architecture",
+    "parent": "#131",
+    "blockedby": [],
+    "milestone": "Instance Organization v1"
+  },
+  {
+    "id": "#133",
+    "title": "[Feature] Brain: groups and instance-group memberships API",
+    "summary": "Add group CRUD and many-to-many instance-group membership management.",
+    "details": "Groups are an optional organization layer. Instances can belong to zero, one, or many groups. This issue focuses on membership structure and APIs, independent from effective template assignment resolution.",
+    "scope": "- Add persistence for `instance_groups` and `instance_group_memberships(instance_id, group_id)`.\n- Add endpoints for create/list/get groups, assign/remove memberships for an instance, and list groups for an instance.\n- Validate duplicate memberships and not-found references.\n- Keep membership operations idempotent where possible.",
+    "acceptance": "- An instance can be assigned to multiple groups.\n- Duplicate membership assignment is rejected or treated idempotently with a clear contract.\n- Removing membership updates state correctly without affecting lifecycle behavior.\n- API behavior is covered by tests.",
+    "notes": "- Parent epic: #131\n- Keep this issue independent from assignment-merge logic.",
+    "labels": [
+      "area: Brain",
+      "area: instance",
+      "prio: medium"
+    ],
+    "type": "Feature",
+    "parent": "#131",
+    "blockedby": [],
+    "milestone": "Instance Organization v1"
+  },
+  {
+    "id": "#134",
+    "title": "[Feature] Brain: template assignment reference model with required templateId",
+    "summary": "Introduce template assignment records where `templateId` is required and `templateVersionId` is optional.",
+    "details": "Assignment addressing modes: `templateId` resolves latest version, and `templateId + templateVersionId` pins exact version. Validation enforces version-to-template consistency when version is provided.",
+    "scope": "- Add assignment DTO/entity validation with rules: `templateId` required, `templateVersionId` optional, `priority >= 0` (duplicates allowed).\n- Add helper for resolving latest version from `templateId`.\n- Add validation path for template/version mismatch.\n- Keep explicit error behavior for missing templates or versions.",
+    "acceptance": "- Assignment records persist with required `templateId`.\n- Latest-version resolution for `templateId` works and is tested.\n- Exact-version pinning for `templateVersionId` works and is tested.\n- Priority collisions do not fail persistence.",
+    "notes": "- Parent epic: #131",
+    "labels": [
+      "area: Brain",
+      "area: template-system",
+      "area: instance",
+      "prio: high"
+    ],
+    "type": "Feature",
+    "parent": "#131",
+    "blockedby": [
+      "#132"
+    ],
+    "milestone": "Instance Organization v1"
+  },
+  {
+    "id": "#135",
+    "title": "[Feature] Brain: group template assignments",
+    "summary": "Add APIs and persistence logic to attach/detach template assignments to groups.",
+    "details": "Groups contribute template assignments to instances via membership. This issue adds group assignment linkage only, not final merge execution behavior.",
+    "scope": "- Add `group_template_assignments` with `group_id`, required `template_id`, optional `template_version_id`, and `priority`.\n- Add endpoints to add/remove/list group assignments.\n- Validate duplicate assignment rules and bad references.",
+    "acceptance": "- Group assignments can be added, listed, and removed.\n- `templateId` is mandatory in requests.\n- Invalid group/template/version IDs return clear errors.\n- Tests cover assignment lifecycle.",
+    "notes": "- Parent epic: #131",
+    "labels": [
+      "area: Brain",
+      "area: instance",
+      "area: template-system",
+      "prio: medium"
+    ],
+    "type": "Feature",
+    "parent": "#131",
+    "blockedby": [
+      "#133",
+      "#134"
+    ],
+    "milestone": "Instance Organization v1"
+  },
+  {
+    "id": "#136",
+    "title": "[Feature] Brain: direct instance template assignments",
+    "summary": "Add APIs and persistence logic for direct template assignments on instances.",
+    "details": "Direct instance assignments remain supported and must override group-contributed assignments during effective resolution.",
+    "scope": "- Add `instance_template_assignments` with `instance_id`, required `template_id`, optional `template_version_id`, and `priority`.\n- Extend instance create/update flows to accept direct assignments.\n- Validate required `templateId`, optional `templateVersionId`, and mismatch conditions.\n- Preserve backward compatibility where feasible.",
+    "acceptance": "- Instance assignments can be created, listed, and removed.\n- Existing instance creation path remains stable for non-group usage.\n- Assignment operations are covered by tests.",
+    "notes": "- Parent epic: #131",
+    "labels": [
+      "area: Brain",
+      "area: instance",
+      "area: template-system",
+      "prio: medium"
+    ],
+    "type": "Feature",
+    "parent": "#131",
+    "blockedby": [
+      "#134"
+    ],
+    "milestone": "Instance Organization v1"
+  },
+  {
+    "id": "#137",
+    "title": "[Feature] Brain: effective template assignment resolution from instance + groups",
+    "summary": "Resolve effective template versions by merging direct instance assignments and group assignments with deterministic conflict rules.",
+    "details": "Source set is all group assignments plus direct instance assignments. Priorities are non-unique. `templateId` resolves latest when version is absent. Direct instance assignment wins on conflict.",
+    "scope": "- Implement merge/resolution service.\n- Use resolver in runtime path that builds prepare/scheduling stacks.\n- Define deterministic tie-breakers beyond priority and source precedence.\n- Ensure clear behavior for missing referenced versions during resolve.",
+    "acceptance": "- Effective output is stable across repeated runs.\n- Direct instance assignment overrides group assignment on conflict.\n- Multi-group duplicates are accepted and resolved predictably.\n- Service behavior is covered by unit/integration tests.",
+    "notes": "- Parent epic: #131",
+    "labels": [
+      "area: Brain",
+      "area: instance",
+      "area: template-system",
+      "prio: high"
+    ],
+    "type": "Feature",
+    "parent": "#131",
+    "blockedby": [
+      "#135",
+      "#136"
+    ],
+    "milestone": "Instance Organization v1"
+  },
+  {
+    "id": "#138",
+    "title": "[Task] Brain: migrate legacy `instance_template_layers` to assignment tables",
+    "summary": "Add Flyway migration and backfill logic to move existing instance layer data into the new assignment-table schema safely.",
+    "details": "Existing rows in `instance_template_layers` must be preserved as equivalent direct instance assignments with deterministic ordering semantics intact.",
+    "scope": "- Create migrations for `instance_template_assignments`, `group_template_assignments`, `instance_group_memberships`, and `instance_groups`.\n- Backfill `instance_template_layers` into `instance_template_assignments`.\n- Validate migrated rows for count and ordering equivalence.\n- Document migration behavior and compatibility expectations.",
+    "acceptance": "- Migration runs cleanly on MySQL.\n- Existing instances retain equivalent effective output after migration.\n- No data loss for order/priority semantics.\n- Roll-forward migration path is documented.",
+    "notes": "- Parent epic: #131",
+    "labels": [
+      "area: Brain",
+      "area: instance",
+      "area: infrastructure",
+      "prio: high"
+    ],
+    "type": "Task",
+    "parent": "#131",
+    "blockedby": [
+      "#134"
+    ],
+    "milestone": "Instance Organization v1"
+  },
+  {
+    "id": "#139",
+    "title": "[Task] Brain: test suite for group-aware assignment resolution",
+    "summary": "Add focused tests for multi-group membership, latest-version resolution, and deterministic merge behavior.",
+    "details": "This change combines multiple assignment sources and precedence rules, which requires strong regression coverage.",
+    "scope": "- Unit tests for equal priorities, direct instance override over group, duplicate group contributions, and deterministic tie-breaks.\n- Integration/DataJpa tests for assignment persistence and joins.\n- Tests for `templateId`-only (latest) and `templateId + templateVersionId` (exact).\n- Negative tests for missing/mismatched template-version references.",
+    "acceptance": "- Tests cover all agreed rules and pass consistently.\n- No flaky tests due to ordering or timing.\n- Coverage includes happy paths and error/conflict paths.",
+    "notes": "- Parent epic: #131",
+    "labels": [
+      "area: Brain",
+      "area: instance",
+      "area: template-system",
+      "prio: medium"
+    ],
+    "type": "Task",
+    "parent": "#131",
+    "blockedby": [
+      "#137"
+    ],
+    "milestone": "Instance Organization v1"
+  },
+  {
+    "id": "#140",
+    "title": "[Documentation] Document instance groups and assignment-based template model",
+    "summary": "Update Brain docs and OpenAPI contract for multi-group memberships and assignment-based template resolution.",
+    "details": "This feature introduces new structures and merge rules that must be reflected in both `/contracts/openapi.yml` and `/docs/brain/`.",
+    "scope": "- Update `/contracts/openapi.yml` with group endpoints, membership endpoints, assignment schemas, and validation semantics (`templateId` required, `templateVersionId` optional).\n- Add/update docs in `/docs/brain/` for data model, precedence/tie-break behavior, migration notes, and edge cases.\n- Link new docs from existing Brain module pages.",
+    "acceptance": "- OpenAPI reflects implemented endpoints and payloads.\n- Docs explain deterministic assignment resolution with concrete examples.\n- A new contributor can understand override behavior and version resolution.",
+    "notes": "- Parent epic: #131",
+    "labels": [
+      "area: Brain",
+      "area: instance",
+      "area: template-system",
+      "prio: low"
+    ],
+    "type": "Documentation",
+    "parent": "#131",
+    "blockedby": [
+      "#137",
+      "#138"
+    ],
+    "milestone": "Instance Organization v1"
+  }
+]
