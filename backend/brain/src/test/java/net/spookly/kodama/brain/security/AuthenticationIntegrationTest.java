@@ -190,8 +190,9 @@ class AuthenticationIntegrationTest {
                   "name": "instance-1",
                   "templateLayers": [
                     {
+                      "templateId": "00000000-0000-0000-0000-000000000000",
                       "templateVersionId": "00000000-0000-0000-0000-000000000000",
-                      "orderIndex": 0
+                      "priority": 0
                     }
                   ]
                 }
@@ -221,8 +222,9 @@ class AuthenticationIntegrationTest {
                   "name": "instance-1",
                   "templateLayers": [
                     {
+                      "templateId": "00000000-0000-0000-0000-000000000000",
                       "templateVersionId": "00000000-0000-0000-0000-000000000000",
-                      "orderIndex": 0
+                      "priority": 0
                     }
                   ]
                 }

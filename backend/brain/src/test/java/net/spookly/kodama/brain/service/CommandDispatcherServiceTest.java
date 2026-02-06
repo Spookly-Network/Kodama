@@ -18,7 +18,6 @@ import net.spookly.kodama.brain.config.NodeProperties;
 import net.spookly.kodama.brain.config.PluginsProperties;
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceState;
-import net.spookly.kodama.brain.domain.instance.InstanceTemplateLayer;
 import net.spookly.kodama.brain.domain.node.Node;
 import net.spookly.kodama.brain.domain.node.NodeStatus;
 import net.spookly.kodama.brain.domain.template.Template;
@@ -28,6 +27,8 @@ import net.spookly.kodama.brain.dto.node.NodeInstanceCommandRequest;
 import net.spookly.kodama.brain.dto.node.NodePrepareInstanceLayer;
 import net.spookly.kodama.brain.dto.node.NodePrepareInstanceRequest;
 import net.spookly.kodama.brain.plugin.BrainPluginRegistry;
+import net.spookly.kodama.brain.service.ResolvedTemplateLayer;
+import net.spookly.kodama.brain.domain.instance.TemplateAssignmentSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -65,7 +66,7 @@ class CommandDispatcherServiceTest {
         UUID templateVersionId = UUID.randomUUID();
         Node node = buildNode(nodeId, "http://node-1.internal");
         Instance instance = buildInstance(instanceId, node);
-        InstanceTemplateLayer layer = buildLayer(instance, templateId, templateVersionId);
+        ResolvedTemplateLayer layer = buildLayer(instance, templateId, templateVersionId);
 
         Map<String, String> variables = Map.of("WORLD_NAME", "test");
         NodePrepareInstanceLayer expectedLayer = new NodePrepareInstanceLayer(
@@ -214,7 +215,7 @@ class CommandDispatcherServiceTest {
         return instance;
     }
 
-    private InstanceTemplateLayer buildLayer(Instance instance, UUID templateId, UUID templateVersionId) {
+    private ResolvedTemplateLayer buildLayer(Instance instance, UUID templateId, UUID templateVersionId) {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         Template template = new Template(
                 "template-1",
@@ -233,6 +234,13 @@ class CommandDispatcherServiceTest {
                 now
         );
         ReflectionTestUtils.setField(version, "id", templateVersionId);
-        return new InstanceTemplateLayer(instance, version, 0);
+        return new ResolvedTemplateLayer(
+                UUID.randomUUID(),
+                templateId,
+                version,
+                0,
+                0,
+                TemplateAssignmentSource.INSTANCE
+        );
     }
 }

@@ -3,8 +3,6 @@ package net.spookly.kodama.brain.service;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -19,16 +17,16 @@ import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceEvent;
 import net.spookly.kodama.brain.domain.instance.InstanceEventType;
 import net.spookly.kodama.brain.domain.instance.InstanceState;
-import net.spookly.kodama.brain.domain.instance.InstanceTemplateLayer;
+import net.spookly.kodama.brain.domain.instance.InstanceTemplateAssignment;
 import net.spookly.kodama.brain.domain.node.Node;
 import net.spookly.kodama.brain.domain.template.Template;
 import net.spookly.kodama.brain.domain.template.TemplateVersion;
 import net.spookly.kodama.brain.dto.CreateInstanceRequest;
 import net.spookly.kodama.brain.dto.InstanceDto;
-import net.spookly.kodama.brain.dto.InstanceTemplateLayerRequest;
+import net.spookly.kodama.brain.dto.TemplateAssignmentRequest;
 import net.spookly.kodama.brain.repository.InstanceEventRepository;
 import net.spookly.kodama.brain.repository.InstanceRepository;
-import net.spookly.kodama.brain.repository.InstanceTemplateLayerRepository;
+import net.spookly.kodama.brain.repository.InstanceTemplateAssignmentRepository;
 import net.spookly.kodama.brain.repository.NodeRepository;
 import net.spookly.kodama.brain.repository.TemplateRepository;
 import net.spookly.kodama.brain.repository.TemplateVersionRepository;
@@ -42,38 +40,42 @@ import org.springframework.web.server.ResponseStatusException;
 public class InstanceService {
 
     private final InstanceRepository instanceRepository;
-    private final InstanceTemplateLayerRepository instanceTemplateLayerRepository;
+    private final InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository;
     private final InstanceEventRepository instanceEventRepository;
     private final InstanceStateMachine instanceStateMachine;
     private final ObjectMapper objectMapper;
     private final TemplateRepository templateRepository;
     private final TemplateVersionRepository templateVersionRepository;
     private final NodeRepository nodeRepository;
+    private final TemplateAssignmentResolver templateAssignmentResolver;
 
     public InstanceService(
             InstanceRepository instanceRepository,
-            InstanceTemplateLayerRepository instanceTemplateLayerRepository,
+            InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository,
             InstanceEventRepository instanceEventRepository,
             InstanceStateMachine instanceStateMachine,
             ObjectMapper objectMapper,
             TemplateRepository templateRepository,
             TemplateVersionRepository templateVersionRepository,
-            NodeRepository nodeRepository
+            NodeRepository nodeRepository,
+            TemplateAssignmentResolver templateAssignmentResolver
     ) {
         this.instanceRepository = instanceRepository;
-        this.instanceTemplateLayerRepository = instanceTemplateLayerRepository;
+        this.instanceTemplateAssignmentRepository = instanceTemplateAssignmentRepository;
         this.instanceEventRepository = instanceEventRepository;
         this.instanceStateMachine = instanceStateMachine;
         this.objectMapper = objectMapper;
         this.templateRepository = templateRepository;
         this.templateVersionRepository = templateVersionRepository;
         this.nodeRepository = nodeRepository;
+        this.templateAssignmentResolver = templateAssignmentResolver;
     }
 
     @Transactional(readOnly = true)
     public List<InstanceDto> listInstances() {
         List<Instance> instances = instanceRepository.findAll();
-        Map<UUID, List<InstanceTemplateLayer>> layersByInstance = findLayers(instances);
+        Map<UUID, List<ResolvedTemplateLayer>> layersByInstance =
+                templateAssignmentResolver.resolveForInstances(instances.stream().map(Instance::getId).toList());
 
         return instances.stream()
                 .map(instance -> InstanceDto.fromEntity(
@@ -87,7 +89,7 @@ public class InstanceService {
     public InstanceDto getInstance(UUID id) {
         Instance instance = instanceRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Instance not found"));
-        List<InstanceTemplateLayer> layers = instanceTemplateLayerRepository.findAllByInstanceId(id);
+        List<ResolvedTemplateLayer> layers = templateAssignmentResolver.resolveForInstance(id);
         return InstanceDto.fromEntity(instance, layers);
     }
 
@@ -96,8 +98,9 @@ public class InstanceService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Instance with the same name already exists");
         });
 
-        List<LayerDescriptor> layerDescriptors = validateAndNormalizeTemplateLayers(request.getTemplateLayers());
-        Map<LayerDescriptor, TemplateVersion> templateVersions = loadTemplateVersions(layerDescriptors);
+        List<AssignmentDescriptor> assignmentDescriptors =
+                validateAndNormalizeTemplateAssignments(request.getTemplateLayers());
+        AssignmentLookup assignmentLookup = resolveAssignmentReferences(assignmentDescriptors);
 
         Node node = null;
         if (request.getNodeId() != null) {
@@ -123,13 +126,16 @@ public class InstanceService {
         );
 
         Instance savedInstance = instanceRepository.save(instance);
-        List<InstanceTemplateLayer> layers = buildLayers(savedInstance, layerDescriptors, templateVersions);
-        instanceTemplateLayerRepository.saveAll(layers);
+        List<InstanceTemplateAssignment> assignments =
+                buildAssignments(savedInstance, assignmentDescriptors, assignmentLookup);
+        instanceTemplateAssignmentRepository.saveAll(assignments);
 
         InstanceEvent requestedEvent = new InstanceEvent(savedInstance, now, InstanceEventType.REQUEST_RECEIVED, null);
         instanceEventRepository.save(requestedEvent);
 
-        return InstanceDto.fromEntity(savedInstance, layers);
+        List<ResolvedTemplateLayer> resolvedLayers =
+                templateAssignmentResolver.resolveForInstance(savedInstance.getId());
+        return InstanceDto.fromEntity(savedInstance, resolvedLayers);
     }
 
     public void reportInstancePrepared(UUID nodeId, UUID instanceId) {
@@ -162,40 +168,33 @@ public class InstanceService {
         instanceStateMachine.transition(instance, InstanceState.FAILED, InstanceEventType.FAILURE_REPORTED, now, null);
     }
 
-    private Map<UUID, List<InstanceTemplateLayer>> findLayers(List<Instance> instances) {
-        if (instances.isEmpty()) {
-            return Map.of();
+    private List<AssignmentDescriptor> validateAndNormalizeTemplateAssignments(
+            List<TemplateAssignmentRequest> assignments
+    ) {
+        if (assignments == null || assignments.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one template assignment is required");
         }
 
-        Collection<UUID> instanceIds = instances.stream().map(Instance::getId).toList();
-        List<InstanceTemplateLayer> layers = instanceTemplateLayerRepository.findAllByInstanceIds(instanceIds);
-
-        return layers.stream().collect(Collectors.groupingBy(layer -> layer.getInstance().getId()));
-    }
-
-    private List<LayerDescriptor> validateAndNormalizeTemplateLayers(List<InstanceTemplateLayerRequest> layers) {
-        if (layers == null || layers.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one template layer is required");
-        }
-
-        Set<Integer> orderIndexes = new HashSet<>();
-        List<LayerDescriptor> descriptors = new ArrayList<>();
-        for (int i = 0; i < layers.size(); i++) {
-            InstanceTemplateLayerRequest layer = layers.get(i);
-            if (layer.getTemplateId() == null && layer.getTemplateVersionId() == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "templateId or templateVersionId is required for each layer");
+        List<AssignmentDescriptor> descriptors = new ArrayList<>();
+        for (int i = 0; i < assignments.size(); i++) {
+            TemplateAssignmentRequest assignment = assignments.get(i);
+            if (assignment == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Template assignment entry is required");
+            }
+            if (assignment.getTemplateId() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "templateId is required for each assignment");
             }
 
-            int orderIndex = layer.getOrderIndex() != null ? layer.getOrderIndex() : i;
-            if (orderIndex < 0) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Layer order index must be >= 0");
-            }
-            if (!orderIndexes.add(orderIndex)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Duplicate layer order index");
+            int priority = assignment.getPriority() != null ? assignment.getPriority() : i;
+            if (priority < 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Priority must be >= 0");
             }
 
-            descriptors.add(new LayerDescriptor(layer.getTemplateVersionId(), layer.getTemplateId(), orderIndex));
+            descriptors.add(new AssignmentDescriptor(
+                    assignment.getTemplateId(),
+                    assignment.getTemplateVersionId(),
+                    priority
+            ));
         }
         return descriptors;
     }
@@ -217,48 +216,13 @@ public class InstanceService {
         }
     }
 
-    private List<InstanceTemplateLayer> buildLayers(
-            Instance instance,
-            List<LayerDescriptor> layerDescriptors,
-            Map<LayerDescriptor, TemplateVersion> templateVersions
-    ) {
-        return layerDescriptors.stream()
-                .sorted((a, b) -> Integer.compare(a.orderIndex(), b.orderIndex()))
-                .map(descriptor -> new InstanceTemplateLayer(
-                        instance,
-                        templateVersions.get(descriptor),
-                        descriptor.orderIndex()
-                ))
-                .toList();
-    }
-
-    private Map<LayerDescriptor, TemplateVersion> loadTemplateVersions(List<LayerDescriptor> layerDescriptors) {
-        Map<LayerDescriptor, TemplateVersion> resolved = new HashMap<>();
-
-        Set<UUID> templateVersionIds = layerDescriptors.stream()
-                .map(LayerDescriptor::templateVersionId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        Map<UUID, TemplateVersion> versionsById = templateVersionRepository.findAllById(templateVersionIds).stream()
-                .collect(Collectors.toMap(TemplateVersion::getId, v -> v));
-
-        if (versionsById.size() != templateVersionIds.size()) {
-            Set<UUID> missingIds = new HashSet<>(templateVersionIds);
-            missingIds.removeAll(versionsById.keySet());
-            UUID missing = missingIds.stream().findFirst().orElse(null);
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
-                    "Template version not found" + (missing == null ? "" : ": " + missing));
-        }
-
-        Set<UUID> templateIds = layerDescriptors.stream()
-                .filter(descriptor -> descriptor.templateVersionId() == null)
-                .map(LayerDescriptor::templateId)
-                .filter(Objects::nonNull)
+    private AssignmentLookup resolveAssignmentReferences(List<AssignmentDescriptor> descriptors) {
+        Set<UUID> templateIds = descriptors.stream()
+                .map(AssignmentDescriptor::templateId)
                 .collect(Collectors.toSet());
 
         Map<UUID, Template> templatesById = templateRepository.findAllById(templateIds).stream()
-                .collect(Collectors.toMap(Template::getId, t -> t));
+                .collect(Collectors.toMap(Template::getId, template -> template));
 
         if (templatesById.size() != templateIds.size()) {
             Set<UUID> missingIds = new HashSet<>(templateIds);
@@ -268,32 +232,51 @@ public class InstanceService {
                     "Template not found" + (missing == null ? "" : ": " + missing));
         }
 
-        Map<UUID, TemplateVersion> latestVersionsByTemplate = new HashMap<>();
-        for (UUID templateId : templateIds) {
-            Template template = templatesById.get(templateId);
-            TemplateVersion latest = templateVersionRepository.findFirstByTemplateOrderByCreatedAtDesc(template)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                            "Template has no versions: " + templateId));
-            latestVersionsByTemplate.put(templateId, latest);
+        Set<UUID> templateVersionIds = descriptors.stream()
+                .map(AssignmentDescriptor::templateVersionId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<UUID, TemplateVersion> versionsById = templateVersionRepository.findAllById(templateVersionIds).stream()
+                .collect(Collectors.toMap(TemplateVersion::getId, version -> version));
+
+        if (versionsById.size() != templateVersionIds.size()) {
+            Set<UUID> missingIds = new HashSet<>(templateVersionIds);
+            missingIds.removeAll(versionsById.keySet());
+            UUID missing = missingIds.stream().findFirst().orElse(null);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Template version not found" + (missing == null ? "" : ": " + missing));
         }
 
-        for (LayerDescriptor descriptor : layerDescriptors) {
-            TemplateVersion version;
-            if (descriptor.templateVersionId() != null) {
-                version = versionsById.get(descriptor.templateVersionId());
-                if (descriptor.templateId() != null
-                        && !descriptor.templateId().equals(version.getTemplate().getId())) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                            "templateVersionId does not belong to templateId");
-                }
-            } else {
-                version = latestVersionsByTemplate.get(descriptor.templateId());
+        for (AssignmentDescriptor descriptor : descriptors) {
+            if (descriptor.templateVersionId() == null) {
+                continue;
             }
-
-            resolved.put(descriptor, version);
+            TemplateVersion version = versionsById.get(descriptor.templateVersionId());
+            if (!descriptor.templateId().equals(version.getTemplate().getId())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "templateVersionId does not belong to templateId");
+            }
         }
 
-        return resolved;
+        return new AssignmentLookup(templatesById, versionsById);
+    }
+
+    private List<InstanceTemplateAssignment> buildAssignments(
+            Instance instance,
+            List<AssignmentDescriptor> descriptors,
+            AssignmentLookup lookup
+    ) {
+        return descriptors.stream()
+                .map(descriptor -> new InstanceTemplateAssignment(
+                        instance,
+                        lookup.templatesById().get(descriptor.templateId()),
+                        descriptor.templateVersionId() == null
+                                ? null
+                                : lookup.versionsById().get(descriptor.templateVersionId()),
+                        descriptor.priority()
+                ))
+                .toList();
     }
 
     private Instance loadInstanceForNode(UUID nodeId, UUID instanceId) {
@@ -310,6 +293,12 @@ public class InstanceService {
         return instance;
     }
 
-    private record LayerDescriptor(UUID templateVersionId, UUID templateId, int orderIndex) {
+    private record AssignmentDescriptor(UUID templateId, UUID templateVersionId, int priority) {
+    }
+
+    private record AssignmentLookup(
+            Map<UUID, Template> templatesById,
+            Map<UUID, TemplateVersion> versionsById
+    ) {
     }
 }

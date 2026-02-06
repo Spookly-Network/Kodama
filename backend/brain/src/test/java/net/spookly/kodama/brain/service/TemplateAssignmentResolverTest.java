@@ -1,0 +1,196 @@
+package net.spookly.kodama.brain.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.UUID;
+
+import net.spookly.kodama.brain.domain.instance.GroupTemplateAssignment;
+import net.spookly.kodama.brain.domain.instance.Instance;
+import net.spookly.kodama.brain.domain.instance.InstanceGroup;
+import net.spookly.kodama.brain.domain.instance.InstanceGroupMembership;
+import net.spookly.kodama.brain.domain.instance.InstanceState;
+import net.spookly.kodama.brain.domain.instance.InstanceTemplateAssignment;
+import net.spookly.kodama.brain.domain.instance.TemplateAssignmentSource;
+import net.spookly.kodama.brain.domain.template.Template;
+import net.spookly.kodama.brain.domain.template.TemplateType;
+import net.spookly.kodama.brain.domain.template.TemplateVersion;
+import net.spookly.kodama.brain.repository.GroupTemplateAssignmentRepository;
+import net.spookly.kodama.brain.repository.InstanceGroupMembershipRepository;
+import net.spookly.kodama.brain.repository.InstanceGroupRepository;
+import net.spookly.kodama.brain.repository.InstanceRepository;
+import net.spookly.kodama.brain.repository.InstanceTemplateAssignmentRepository;
+import net.spookly.kodama.brain.repository.TemplateRepository;
+import net.spookly.kodama.brain.repository.TemplateVersionRepository;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+@Testcontainers
+@DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=validate")
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Import(TemplateAssignmentResolver.class)
+class TemplateAssignmentResolverTest {
+
+    @Container
+    private static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4.0");
+
+    @DynamicPropertySource
+    static void configureDatasource(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", mysql::getJdbcUrl);
+        registry.add("spring.datasource.username", mysql::getUsername);
+        registry.add("spring.datasource.password", mysql::getPassword);
+        registry.add("spring.datasource.driver-class-name", mysql::getDriverClassName);
+    }
+
+    private static final String CREATOR_USERNAME = "admin";
+
+    @Autowired
+    private TemplateAssignmentResolver resolver;
+
+    @Autowired
+    private InstanceRepository instanceRepository;
+
+    @Autowired
+    private InstanceGroupRepository instanceGroupRepository;
+
+    @Autowired
+    private InstanceGroupMembershipRepository membershipRepository;
+
+    @Autowired
+    private InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository;
+
+    @Autowired
+    private GroupTemplateAssignmentRepository groupTemplateAssignmentRepository;
+
+    @Autowired
+    private TemplateRepository templateRepository;
+
+    @Autowired
+    private TemplateVersionRepository templateVersionRepository;
+
+    @Test
+    void resolvePrefersInstanceAssignmentOverGroup() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Template template = createTemplate("Shared Template", now);
+        TemplateVersion groupVersion = createTemplateVersion(template, "1.0.0", now.minusMinutes(5));
+        TemplateVersion instanceVersion = createTemplateVersion(template, "2.0.0", now);
+
+        Instance instance = createInstance("instance-one", now);
+        InstanceGroup group = createGroup("group-one", now);
+        membershipRepository.save(new InstanceGroupMembership(instance, group));
+
+        groupTemplateAssignmentRepository.save(new GroupTemplateAssignment(
+                group,
+                template,
+                groupVersion,
+                0
+        ));
+        instanceTemplateAssignmentRepository.save(new InstanceTemplateAssignment(
+                instance,
+                template,
+                instanceVersion,
+                5
+        ));
+
+        List<ResolvedTemplateLayer> resolved = resolver.resolveForInstance(instance.getId());
+
+        assertThat(resolved).hasSize(1);
+        ResolvedTemplateLayer layer = resolved.getFirst();
+        assertThat(layer.templateVersion().getId()).isEqualTo(instanceVersion.getId());
+        assertThat(layer.source()).isEqualTo(TemplateAssignmentSource.INSTANCE);
+        assertThat(layer.priority()).isEqualTo(5);
+    }
+
+    @Test
+    void resolveOrdersLayersByPriorityAcrossSources() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Instance instance = createInstance("instance-two", now);
+        InstanceGroup group = createGroup("group-two", now);
+        membershipRepository.save(new InstanceGroupMembership(instance, group));
+
+        Template templateA = createTemplate("Template A", now);
+        Template templateB = createTemplate("Template B", now);
+        Template templateC = createTemplate("Template C", now);
+        TemplateVersion versionA = createTemplateVersion(templateA, "1.0.0", now.minusMinutes(3));
+        TemplateVersion versionB = createTemplateVersion(templateB, "1.0.0", now.minusMinutes(2));
+        TemplateVersion versionC = createTemplateVersion(templateC, "1.0.0", now.minusMinutes(1));
+
+        instanceTemplateAssignmentRepository.save(new InstanceTemplateAssignment(
+                instance,
+                templateA,
+                versionA,
+                5
+        ));
+        groupTemplateAssignmentRepository.save(new GroupTemplateAssignment(
+                group,
+                templateB,
+                versionB,
+                1
+        ));
+        instanceTemplateAssignmentRepository.save(new InstanceTemplateAssignment(
+                instance,
+                templateC,
+                versionC,
+                0
+        ));
+
+        List<ResolvedTemplateLayer> resolved = resolver.resolveForInstance(instance.getId());
+
+        assertThat(resolved).hasSize(3);
+        assertThat(resolved.get(0).templateVersion().getId()).isEqualTo(versionC.getId());
+        assertThat(resolved.get(0).orderIndex()).isZero();
+        assertThat(resolved.get(1).templateVersion().getId()).isEqualTo(versionB.getId());
+        assertThat(resolved.get(1).orderIndex()).isEqualTo(1);
+        assertThat(resolved.get(2).templateVersion().getId()).isEqualTo(versionA.getId());
+        assertThat(resolved.get(2).orderIndex()).isEqualTo(2);
+    }
+
+    private Template createTemplate(String name, OffsetDateTime now) {
+        return templateRepository.save(new Template(name, "desc", TemplateType.CUSTOM, now, CREATOR_USERNAME));
+    }
+
+    private TemplateVersion createTemplateVersion(Template template, String version, OffsetDateTime createdAt) {
+        TemplateVersion templateVersion = new TemplateVersion(
+                template,
+                version,
+                "checksum",
+                "s3/key",
+                null,
+                createdAt
+        );
+        return templateVersionRepository.save(templateVersion);
+    }
+
+    private Instance createInstance(String name, OffsetDateTime now) {
+        Instance instance = new Instance(
+                name,
+                name,
+                InstanceState.REQUESTED,
+                UUID.randomUUID(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                now,
+                now
+        );
+        return instanceRepository.save(instance);
+    }
+
+    private InstanceGroup createGroup(String name, OffsetDateTime now) {
+        InstanceGroup group = new InstanceGroup(name, null, now, now);
+        return instanceGroupRepository.save(group);
+    }
+}

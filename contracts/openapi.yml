@@ -147,6 +147,237 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /api/instances/{id}/template-assignments:
+    parameters:
+      - $ref: "#/components/parameters/InstanceId"
+    get:
+      tags: [Template Assignments]
+      summary: List instance template assignments
+      responses:
+        "200":
+          description: Assignments ordered by priority.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TemplateAssignment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Template Assignments]
+      summary: Add template assignment to instance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TemplateAssignmentRequest"
+      responses:
+        "201":
+          description: Assignment created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemplateAssignment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/instances/{id}/template-assignments/{assignmentId}:
+    parameters:
+      - $ref: "#/components/parameters/InstanceId"
+      - $ref: "#/components/parameters/AssignmentId"
+    delete:
+      tags: [Template Assignments]
+      summary: Remove template assignment from instance
+      responses:
+        "204":
+          description: Assignment removed.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/instances/{id}/groups:
+    parameters:
+      - $ref: "#/components/parameters/InstanceId"
+    get:
+      tags: [Instance Groups]
+      summary: List groups for an instance
+      responses:
+        "200":
+          description: Groups associated with the instance.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InstanceGroup"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/instances/{id}/groups/{groupId}:
+    parameters:
+      - $ref: "#/components/parameters/InstanceId"
+      - $ref: "#/components/parameters/GroupId"
+    put:
+      tags: [Instance Groups]
+      summary: Add instance to group
+      responses:
+        "204":
+          description: Membership added.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Instance Groups]
+      summary: Remove instance from group
+      responses:
+        "204":
+          description: Membership removed.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/instance-groups:
+    get:
+      tags: [Instance Groups]
+      summary: List instance groups
+      responses:
+        "200":
+          description: Groups ordered by persistence default.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InstanceGroup"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Instance Groups]
+      summary: Create instance group
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInstanceGroupRequest"
+      responses:
+        "201":
+          description: Group created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceGroup"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/instance-groups/{groupId}:
+    parameters:
+      - $ref: "#/components/parameters/GroupId"
+    get:
+      tags: [Instance Groups]
+      summary: Get instance group
+      responses:
+        "200":
+          description: Group found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceGroup"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/instance-groups/{groupId}/template-assignments:
+    parameters:
+      - $ref: "#/components/parameters/GroupId"
+    get:
+      tags: [Template Assignments]
+      summary: List group template assignments
+      responses:
+        "200":
+          description: Assignments ordered by priority.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TemplateAssignment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Template Assignments]
+      summary: Add template assignment to group
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TemplateAssignmentRequest"
+      responses:
+        "201":
+          description: Assignment created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemplateAssignment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/instance-groups/{groupId}/template-assignments/{assignmentId}:
+    parameters:
+      - $ref: "#/components/parameters/GroupId"
+      - $ref: "#/components/parameters/AssignmentId"
+    delete:
+      tags: [Template Assignments]
+      summary: Remove template assignment from group
+      responses:
+        "204":
+          description: Assignment removed.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/nodes:
     get:
       tags: [Nodes]
@@ -454,6 +685,22 @@ components:
       schema:
         type: string
         format: uuid
+    GroupId:
+      name: groupId
+      in: path
+      required: true
+      description: Instance group identifier.
+      schema:
+        type: string
+        format: uuid
+    AssignmentId:
+      name: assignmentId
+      in: path
+      required: true
+      description: Template assignment identifier.
+      schema:
+        type: string
+        format: uuid
     NodeId:
       name: nodeId
       in: path
@@ -735,6 +982,33 @@ components:
     Role:
       type: string
       enum: [ADMIN, OPERATOR, VIEWER]
+    InstanceGroup:
+      type: object
+      required: [id, name, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CreateInstanceGroupRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
     Instance:
       type: object
       required:
@@ -798,18 +1072,27 @@ components:
             $ref: "#/components/schemas/InstanceTemplateLayer"
     InstanceTemplateLayer:
       type: object
-      required: [id, templateVersionId, orderIndex]
+      required: [id, templateId, templateVersionId, priority, orderIndex, source]
       properties:
         id:
+          type: string
+          format: uuid
+        templateId:
           type: string
           format: uuid
         templateVersionId:
           type: string
           format: uuid
+        priority:
+          type: integer
+          format: int32
+          minimum: 0
         orderIndex:
           type: integer
           format: int32
           minimum: 0
+        source:
+          $ref: "#/components/schemas/TemplateAssignmentSource"
     CreateInstanceRequest:
       type: object
       required: [name, displayName, templateLayers]
@@ -840,7 +1123,7 @@ components:
           type: array
           minItems: 1
           items:
-            $ref: "#/components/schemas/InstanceTemplateLayerRequest"
+            $ref: "#/components/schemas/TemplateAssignmentRequest"
         variables:
           type: object
           nullable: true
@@ -856,24 +1139,45 @@ components:
           nullable: true
       not:
         required: [variables, variablesJson]
-    InstanceTemplateLayerRequest:
+    TemplateAssignmentRequest:
       type: object
-      description: Either `templateId` or `templateVersionId` is required. If `orderIndex` is omitted, list order is used.
-      required: []
+      description: `templateId` is required. `templateVersionId` pins an exact version; omit it to use latest at resolve time.
+      required: [templateId]
       properties:
-        templateVersionId:
-          type: string
-          format: uuid
-          description: Reference a specific template version.
         templateId:
           type: string
           format: uuid
           description: Reference a template; latest version is used when no version id is provided.
-        orderIndex:
+        templateVersionId:
+          type: string
+          format: uuid
+          description: Reference a specific template version.
+        priority:
           type: integer
           format: int32
           minimum: 0
-          description: Optional explicit order; defaults to list order position.
+          description: Optional priority; defaults to list order position when omitted.
+    TemplateAssignment:
+      type: object
+      required: [id, templateId, priority]
+      properties:
+        id:
+          type: string
+          format: uuid
+        templateId:
+          type: string
+          format: uuid
+        templateVersionId:
+          type: string
+          format: uuid
+          nullable: true
+        priority:
+          type: integer
+          format: int32
+          minimum: 0
+    TemplateAssignmentSource:
+      type: string
+      enum: [INSTANCE, GROUP]
     InstanceState:
       type: string
       enum:
