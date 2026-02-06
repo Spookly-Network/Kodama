@@ -179,19 +179,6 @@
                       <option value="CUSTOM">CUSTOM</option>
                     </select>
                   </Field>
-                  <Field>
-                    <FieldLabel for="create-created-by">Created by (UUID)</FieldLabel>
-                    <Input
-                      id="create-created-by"
-                      v-model="createForm.createdBy"
-                      autocomplete="off"
-                      placeholder="00000000-0000-0000-0000-000000000000"
-                      :disabled="createSubmitting"
-                      :aria-invalid="createSubmitted && !!createErrors.createdBy?.length"
-                    />
-                    <FieldDescription>Use the creator's user ID.</FieldDescription>
-                    <FieldError v-if="createSubmitted" :errors="createErrors.createdBy" />
-                  </Field>
                 </FieldGroup>
                 <div v-if="createError" class="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                   {{ createError }}
@@ -455,7 +442,6 @@ const createForm = reactive({
   name: "",
   description: "",
   type: "CUSTOM",
-  createdBy: "",
 })
 
 const importForm = reactive({
@@ -476,11 +462,6 @@ const createErrors = computed(() => {
   const next: Record<string, string[]> = {}
   if (!createForm.name.trim()) next.name = ["Name is required."]
   if (!createForm.description.trim()) next.description = ["Description is required."]
-  if (!createForm.createdBy.trim()) {
-    next.createdBy = ["Created by is required."]
-  } else if (!isValidUuid(createForm.createdBy.trim())) {
-    next.createdBy = ["Created by must be a valid UUID."]
-  }
   return next
 })
 
@@ -515,7 +496,7 @@ const formatDate = (value: string) => {
 const formatOwner = (value: string) => {
   if (!value) return "—"
   if (value.length <= 12) return value
-  return `${value.slice(0, 8)}…${value.slice(-4)}`
+  return value
 }
 
 const extractErrorMessage = (error: unknown, fallback: string) => {
@@ -699,7 +680,6 @@ function resetCreateForm() {
   createForm.name = ""
   createForm.description = ""
   createForm.type = "CUSTOM"
-  createForm.createdBy = ""
   createSubmitted.value = false
   createError.value = null
 }
@@ -724,8 +704,7 @@ const submitCreate = async () => {
       body: {
         name: createForm.name.trim(),
         description: createForm.description.trim(),
-        type: createForm.type,
-        createdBy: createForm.createdBy.trim(),
+        type: createForm.type
       },
     })
     resetCreateForm()
