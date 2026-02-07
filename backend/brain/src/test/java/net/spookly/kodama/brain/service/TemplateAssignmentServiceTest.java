@@ -1,5 +1,6 @@
 package net.spookly.kodama.brain.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.OffsetDateTime;
@@ -13,6 +14,7 @@ import net.spookly.kodama.brain.domain.instance.InstanceState;
 import net.spookly.kodama.brain.domain.template.Template;
 import net.spookly.kodama.brain.domain.template.TemplateType;
 import net.spookly.kodama.brain.domain.template.TemplateVersion;
+import net.spookly.kodama.brain.dto.TemplateAssignmentDto;
 import net.spookly.kodama.brain.dto.TemplateAssignmentRequest;
 import net.spookly.kodama.brain.repository.InstanceGroupRepository;
 import net.spookly.kodama.brain.repository.InstanceRepository;
@@ -90,6 +92,111 @@ class TemplateAssignmentServiceTest {
 
         TemplateAssignmentRequest request = new TemplateAssignmentRequest();
         request.setTemplateId(template.getId());
+        request.setPriority(0);
+
+        assertThatThrownBy(() -> templateAssignmentService.addGroupAssignment(group.getId(), request))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void addGroupAssignmentPersistsAndListsAssignments() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Template template = createTemplate("Group Template", now);
+        TemplateVersion templateVersion = createTemplateVersion(template, "1.0.0", now);
+        InstanceGroup group = createGroup("group-two", now);
+
+        TemplateAssignmentRequest request = new TemplateAssignmentRequest();
+        request.setTemplateId(template.getId());
+        request.setTemplateVersionId(templateVersion.getId());
+
+        TemplateAssignmentDto created = templateAssignmentService.addGroupAssignment(group.getId(), request);
+
+        assertThat(created.getId()).isNotNull();
+        assertThat(created.getTemplateId()).isEqualTo(template.getId());
+        assertThat(created.getTemplateVersionId()).isEqualTo(templateVersion.getId());
+        assertThat(created.getPriority()).isZero();
+
+        List<TemplateAssignmentDto> assignments = templateAssignmentService.listGroupAssignments(group.getId());
+        assertThat(assignments).hasSize(1);
+        assertThat(assignments.getFirst().getId()).isEqualTo(created.getId());
+    }
+
+    @Test
+    void removeGroupAssignmentDeletesAssignment() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Template template = createTemplate("Group Template Remove", now);
+        TemplateVersion templateVersion = createTemplateVersion(template, "1.0.0", now);
+        InstanceGroup group = createGroup("group-remove", now);
+
+        TemplateAssignmentRequest request = new TemplateAssignmentRequest(
+                template.getId(),
+                templateVersion.getId(),
+                3
+        );
+        TemplateAssignmentDto created = templateAssignmentService.addGroupAssignment(group.getId(), request);
+
+        templateAssignmentService.removeGroupAssignment(group.getId(), created.getId());
+
+        assertThat(templateAssignmentService.listGroupAssignments(group.getId())).isEmpty();
+    }
+
+    @Test
+    void removeGroupAssignmentRejectsAssignmentFromOtherGroup() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Template template = createTemplate("Group Template Invalid", now);
+        TemplateVersion templateVersion = createTemplateVersion(template, "1.0.0", now);
+        InstanceGroup group = createGroup("group-three", now);
+        InstanceGroup otherGroup = createGroup("group-four", now);
+
+        TemplateAssignmentRequest request = new TemplateAssignmentRequest(
+                template.getId(),
+                templateVersion.getId(),
+                1
+        );
+        TemplateAssignmentDto created = templateAssignmentService.addGroupAssignment(group.getId(), request);
+
+        assertThatThrownBy(() -> templateAssignmentService.removeGroupAssignment(otherGroup.getId(), created.getId()))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void listGroupAssignmentsRequiresExistingGroup() {
+        UUID missingGroupId = UUID.fromString("00000000-0000-0000-0000-000000000905");
+
+        assertThatThrownBy(() -> templateAssignmentService.listGroupAssignments(missingGroupId))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void addGroupAssignmentRejectsMissingTemplate() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        InstanceGroup group = createGroup("group-missing-template", now);
+
+        TemplateAssignmentRequest request = new TemplateAssignmentRequest();
+        request.setTemplateId(UUID.fromString("00000000-0000-0000-0000-000000000910"));
+        request.setPriority(0);
+
+        assertThatThrownBy(() -> templateAssignmentService.addGroupAssignment(group.getId(), request))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void addGroupAssignmentRejectsMissingTemplateVersion() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Template template = createTemplate("Template Missing Version", now);
+        InstanceGroup group = createGroup("group-missing-version", now);
+
+        TemplateAssignmentRequest request = new TemplateAssignmentRequest();
+        request.setTemplateId(template.getId());
+        request.setTemplateVersionId(UUID.fromString("00000000-0000-0000-0000-000000000911"));
         request.setPriority(0);
 
         assertThatThrownBy(() -> templateAssignmentService.addGroupAssignment(group.getId(), request))
