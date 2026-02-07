@@ -1,6 +1,7 @@
 package net.spookly.kodama.brain.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -29,8 +30,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -217,6 +220,101 @@ class TemplateAssignmentResolverTest {
         ResolvedTemplateLayer layer = resolved.getFirst();
         assertThat(layer.templateVersion().getId()).isEqualTo(newer.getId());
         assertThat(newer.getCreatedAt()).isAfter(older.getCreatedAt());
+    }
+
+    @Test
+    void resolveDedupesGroupAssignmentsByGroupIdOnPriorityTie() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Template template = createTemplate("Group Dedup Template", now);
+        TemplateVersion version = createTemplateVersion(template, "1.0.0", now);
+
+        Instance instance = createInstance("instance-group-dedup", now);
+        InstanceGroup groupA = createGroup("group-a", now);
+        InstanceGroup groupB = createGroup("group-b", now);
+        membershipRepository.save(new InstanceGroupMembership(instance, groupA));
+        membershipRepository.save(new InstanceGroupMembership(instance, groupB));
+
+        GroupTemplateAssignment assignmentA = groupTemplateAssignmentRepository.save(new GroupTemplateAssignment(
+                groupA,
+                template,
+                version,
+                0
+        ));
+        GroupTemplateAssignment assignmentB = groupTemplateAssignmentRepository.save(new GroupTemplateAssignment(
+                groupB,
+                template,
+                version,
+                0
+        ));
+
+        GroupTemplateAssignment expected = groupA.getId().compareTo(groupB.getId()) < 0 ? assignmentA : assignmentB;
+
+        List<ResolvedTemplateLayer> resolved = resolver.resolveForInstance(instance.getId());
+
+        assertThat(resolved).hasSize(1);
+        ResolvedTemplateLayer layer = resolved.getFirst();
+        assertThat(layer.assignmentId()).isEqualTo(expected.getId());
+        assertThat(layer.source()).isEqualTo(TemplateAssignmentSource.GROUP);
+    }
+
+    @Test
+    void resolveOrdersSamePriorityByTemplateIdWithinSource() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Instance instance = createInstance("instance-template-order", now);
+
+        Template templateA = createTemplate("Template Order A", now);
+        Template templateB = createTemplate("Template Order B", now);
+        TemplateVersion versionA = createTemplateVersion(templateA, "1.0.0", now.minusMinutes(2));
+        TemplateVersion versionB = createTemplateVersion(templateB, "1.0.0", now.minusMinutes(1));
+
+        instanceTemplateAssignmentRepository.save(new InstanceTemplateAssignment(
+                instance,
+                templateA,
+                versionA,
+                1
+        ));
+        instanceTemplateAssignmentRepository.save(new InstanceTemplateAssignment(
+                instance,
+                templateB,
+                versionB,
+                1
+        ));
+
+        List<ResolvedTemplateLayer> resolved = resolver.resolveForInstance(instance.getId());
+
+        assertThat(resolved).hasSize(2);
+        UUID expectedFirst = templateA.getId().compareTo(templateB.getId()) < 0
+                ? templateA.getId()
+                : templateB.getId();
+        UUID expectedSecond = expectedFirst.equals(templateA.getId())
+                ? templateB.getId()
+                : templateA.getId();
+
+        assertThat(resolved.get(0).templateId()).isEqualTo(expectedFirst);
+        assertThat(resolved.get(1).templateId()).isEqualTo(expectedSecond);
+        assertThat(resolved.get(0).source()).isEqualTo(TemplateAssignmentSource.INSTANCE);
+        assertThat(resolved.get(1).source()).isEqualTo(TemplateAssignmentSource.INSTANCE);
+    }
+
+    @Test
+    void resolveRejectsTemplateWithoutVersionsWhenAssignmentOmitsVersion() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Template template = createTemplate("No Versions Template", now);
+        Instance instance = createInstance("instance-no-versions", now);
+
+        instanceTemplateAssignmentRepository.save(new InstanceTemplateAssignment(
+                instance,
+                template,
+                null,
+                0
+        ));
+
+        assertThatThrownBy(() -> resolver.resolveForInstance(instance.getId()))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException statusException = (ResponseStatusException) ex;
+                    assertThat(statusException.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                });
     }
 
     private Template createTemplate(String name, OffsetDateTime now) {
