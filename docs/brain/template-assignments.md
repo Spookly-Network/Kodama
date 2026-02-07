@@ -20,6 +20,7 @@ Effective layers are derived with deterministic rules:
 - `templateId` resolves to the latest template version when `templateVersionId` is absent.
 - When `templateVersionId` is omitted, the write path rejects templates with no versions (`404 Not Found`).
 - Conflicts by `templateId` are resolved in favor of direct instance assignments.
+- Direct instance assignments are not deduplicated; multiple layers for the same `templateId` are preserved and ordered by priority.
 - Duplicate group contributions for the same `templateId` are deduplicated by lowest `priority`, then `groupId`, then assignment id.
 - Ordering is by `priority` ascending, then source (`INSTANCE` before `GROUP`), then `templateId`, then assignment id.
 - `orderIndex` is derived from the sorted list to keep node merge order deterministic.

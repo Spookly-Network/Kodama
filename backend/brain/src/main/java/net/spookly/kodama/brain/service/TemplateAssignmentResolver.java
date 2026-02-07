@@ -32,10 +32,6 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional(readOnly = true)
 public class TemplateAssignmentResolver {
 
-    private static final Comparator<TemplateAssignmentCandidate> INSTANCE_DEDUP_ORDER = Comparator
-            .comparingInt(TemplateAssignmentCandidate::priority)
-            .thenComparing(TemplateAssignmentCandidate::assignmentId, Comparator.nullsLast(Comparator.naturalOrder()));
-
     private static final Comparator<TemplateAssignmentCandidate> GROUP_DEDUP_ORDER = Comparator
             .comparingInt(TemplateAssignmentCandidate::priority)
             .thenComparing(candidate -> candidate.groupId() == null ? null : candidate.groupId(),
@@ -166,15 +162,21 @@ public class TemplateAssignmentResolver {
             return List.of();
         }
 
-        Map<UUID, TemplateAssignmentCandidate> bestInstanceAssignments =
-                selectBest(instanceCandidates, INSTANCE_DEDUP_ORDER);
+        Set<UUID> instanceTemplateIds = instanceCandidates.stream()
+                .map(TemplateAssignmentCandidate::templateId)
+                .collect(Collectors.toSet());
+
+        List<TemplateAssignmentCandidate> eligibleGroupCandidates = groupCandidates.stream()
+                .filter(candidate -> !instanceTemplateIds.contains(candidate.templateId()))
+                .toList();
+
         Map<UUID, TemplateAssignmentCandidate> bestGroupAssignments =
-                selectBest(groupCandidates, GROUP_DEDUP_ORDER);
+                selectBest(eligibleGroupCandidates, GROUP_DEDUP_ORDER);
 
-        Map<UUID, TemplateAssignmentCandidate> effectiveAssignments = new HashMap<>(bestGroupAssignments);
-        effectiveAssignments.putAll(bestInstanceAssignments);
-
-        List<TemplateAssignmentCandidate> ordered = new ArrayList<>(effectiveAssignments.values());
+        List<TemplateAssignmentCandidate> ordered = new ArrayList<>(instanceCandidates.size()
+                + bestGroupAssignments.size());
+        ordered.addAll(instanceCandidates);
+        ordered.addAll(bestGroupAssignments.values());
         ordered.sort(EFFECTIVE_ORDER);
         return ordered;
     }

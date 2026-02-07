@@ -41,6 +41,7 @@ Request body (`Content-Type: application/json`):
 - `templateId` (UUID, required). Missing templates return `404 Not Found`.
 - `templateVersionId` (UUID, optional). When provided, it must belong to `templateId`; when omitted, the template must already have at least one version.
 - `priority` (integer, >= 0, optional). Defaults to list order when omitted. Priorities are non-unique.
+- Multiple entries with the same `templateId` are allowed; each becomes its own layer ordered by `priority`.
 
 Behavior:
 - Validates that at least one template assignment is provided.

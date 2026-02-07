@@ -155,6 +155,47 @@ class TemplateAssignmentResolverTest {
         assertThat(resolved.get(2).orderIndex()).isEqualTo(2);
     }
 
+    @Test
+    void resolvePreservesMultipleInstanceAssignmentsForSameTemplate() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Instance instance = createInstance("instance-three", now);
+        InstanceGroup group = createGroup("group-three", now);
+        membershipRepository.save(new InstanceGroupMembership(instance, group));
+
+        Template template = createTemplate("Repeated Template", now);
+        TemplateVersion versionA = createTemplateVersion(template, "1.0.0", now.minusMinutes(2));
+        TemplateVersion versionB = createTemplateVersion(template, "2.0.0", now.minusMinutes(1));
+
+        groupTemplateAssignmentRepository.save(new GroupTemplateAssignment(
+                group,
+                template,
+                versionA,
+                0
+        ));
+        instanceTemplateAssignmentRepository.save(new InstanceTemplateAssignment(
+                instance,
+                template,
+                versionA,
+                2
+        ));
+        instanceTemplateAssignmentRepository.save(new InstanceTemplateAssignment(
+                instance,
+                template,
+                versionB,
+                5
+        ));
+
+        List<ResolvedTemplateLayer> resolved = resolver.resolveForInstance(instance.getId());
+
+        assertThat(resolved).hasSize(2);
+        assertThat(resolved.get(0).templateVersion().getId()).isEqualTo(versionA.getId());
+        assertThat(resolved.get(0).priority()).isEqualTo(2);
+        assertThat(resolved.get(0).source()).isEqualTo(TemplateAssignmentSource.INSTANCE);
+        assertThat(resolved.get(1).templateVersion().getId()).isEqualTo(versionB.getId());
+        assertThat(resolved.get(1).priority()).isEqualTo(5);
+        assertThat(resolved.get(1).source()).isEqualTo(TemplateAssignmentSource.INSTANCE);
+    }
+
     private Template createTemplate(String name, OffsetDateTime now) {
         return templateRepository.save(new Template(name, "desc", TemplateType.CUSTOM, now, CREATOR_USERNAME));
     }
