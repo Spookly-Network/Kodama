@@ -136,6 +136,8 @@ public class TemplateAssignmentService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "templateVersionId does not belong to templateId");
             }
+        } else {
+            ensureTemplateHasVersion(template.getId());
         }
 
         return new AssignmentTarget(template, templateVersion, priority);
@@ -150,6 +152,12 @@ public class TemplateAssignmentService {
     private void ensureGroupExists(UUID groupId) {
         if (!instanceGroupRepository.existsById(groupId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found");
+        }
+    }
+
+    private void ensureTemplateHasVersion(UUID templateId) {
+        if (templateVersionRepository.findLatestForTemplateIds(List.of(templateId)).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Template has no versions: " + templateId);
         }
     }
 

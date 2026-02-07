@@ -18,6 +18,7 @@ When `priority` is omitted in `POST /api/instances`, the list order is used. Whe
 Effective layers are derived with deterministic rules:
 - Source set = all group assignments + direct instance assignments.
 - `templateId` resolves to the latest template version when `templateVersionId` is absent.
+- When `templateVersionId` is omitted, the write path rejects templates with no versions (`404 Not Found`).
 - Conflicts by `templateId` are resolved in favor of direct instance assignments.
 - Duplicate group contributions for the same `templateId` are deduplicated by lowest `priority`, then `groupId`, then assignment id.
 - Ordering is by `priority` ascending, then source (`INSTANCE` before `GROUP`), then `templateId`, then assignment id.

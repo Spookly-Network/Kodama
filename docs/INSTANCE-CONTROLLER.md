@@ -39,12 +39,12 @@ Request body (`Content-Type: application/json`):
 
 `TemplateAssignmentRequest`:
 - `templateId` (UUID, required). Missing templates return `404 Not Found`.
-- `templateVersionId` (UUID, optional). When provided, it must belong to `templateId`; otherwise `400 Bad Request`.
+- `templateVersionId` (UUID, optional). When provided, it must belong to `templateId`; when omitted, the template must already have at least one version.
 - `priority` (integer, >= 0, optional). Defaults to list order when omitted. Priorities are non-unique.
 
 Behavior:
 - Validates that at least one template assignment is provided.
-- Validates `templateId` and optional `templateVersionId` references.
+- Validates `templateId` and optional `templateVersionId` references, and ensures templates without an explicit version already have at least one version.
 - Resolves the optional node id.
 - Serializes `variables` into `variablesJson` when provided (rejects requests that provide both).
 - Persists the instance with `state=REQUESTED`, `createdAt`/`updatedAt` set to the current UTC time, and stores assignments with their priority.

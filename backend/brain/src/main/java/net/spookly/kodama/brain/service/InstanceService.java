@@ -259,7 +259,34 @@ public class InstanceService {
             }
         }
 
+        ensureTemplatesHaveVersions(descriptors.stream()
+                .filter(descriptor -> descriptor.templateVersionId() == null)
+                .map(AssignmentDescriptor::templateId)
+                .collect(Collectors.toSet()));
+
         return new AssignmentLookup(templatesById, versionsById);
+    }
+
+    private void ensureTemplatesHaveVersions(Set<UUID> templateIdsWithoutVersion) {
+        if (templateIdsWithoutVersion.isEmpty()) {
+            return;
+        }
+
+        Map<UUID, TemplateVersion> latestVersions = templateVersionRepository
+                .findLatestForTemplateIds(templateIdsWithoutVersion).stream()
+                .collect(Collectors.toMap(
+                        version -> version.getTemplate().getId(),
+                        version -> version,
+                        (left, right) -> left
+                ));
+
+        if (latestVersions.size() != templateIdsWithoutVersion.size()) {
+            Set<UUID> missingIds = new HashSet<>(templateIdsWithoutVersion);
+            missingIds.removeAll(latestVersions.keySet());
+            UUID missing = missingIds.stream().findFirst().orElse(null);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Template has no versions" + (missing == null ? "" : ": " + missing));
+        }
     }
 
     private List<InstanceTemplateAssignment> buildAssignments(

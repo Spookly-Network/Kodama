@@ -197,6 +197,24 @@ class InstanceServiceTest {
     }
 
     @Test
+    void createInstanceRejectsTemplateWithoutVersionsWhenVersionOmitted() {
+        Template template = createTemplate("Template Without Versions");
+        TemplateAssignmentRequest layer = new TemplateAssignmentRequest();
+        layer.setTemplateId(template.getId());
+
+        CreateInstanceRequest request = new CreateInstanceRequest(
+                "no-version-instance",
+                List.of(layer)
+        );
+        request.setRequestedBy(REQUESTER_ID);
+
+        assertThatThrownBy(() -> instanceService.createInstance(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
     void createInstanceRejectsDuplicateNames() {
         TemplateVersion version = createTemplateVersion("Dupe Template", "1.0.0");
         TemplateAssignmentRequest assignment = new TemplateAssignmentRequest(
