@@ -38,7 +38,7 @@ Body: `NodePrepareInstanceRequest`
 }
 ```
 
-`variables` and `variablesJson` are mutually exclusive. Brain will send `variables` when provided, otherwise it forwards `variablesJson` from the instance record.
+`variables` and `variablesJson` are mutually exclusive. Brain will send `variables` when provided, otherwise it forwards `variablesJson` from the instance record. `orderIndex` is derived from template assignment priority and deterministic tie-breakers.
 
 ### Start
 

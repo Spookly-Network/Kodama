@@ -16,6 +16,18 @@ Validation: `name`, `type`, `s3Key`, `version`, and `checksum` must be provided.
 
 - `GET /api/instances` — list instances.
 - `GET /api/instances/{id}` — fetch a single instance (404 if missing).
-- `POST /api/instances` — create an instance. Body: `name`, `requestedBy`, and `templateLayers` (each with `templateVersionId` and `orderIndex`) are required. Optional: `displayName`, `nodeId`, `region`, `tags`, `devModeAllowed`, `variables` (map), `variablesJson`, `portsJson`.
+- `POST /api/instances` — create an instance. Body: `name`, `requestedBy`, and `templateLayers` (each with required `templateId` and optional `templateVersionId`/`priority`) are required. Optional: `displayName`, `nodeId`, `region`, `tags`, `devModeAllowed`, `variables` (map), `variablesJson`, `portsJson`.
+- `GET /api/instances/{id}/template-assignments` — list direct instance assignments.
+- `POST /api/instances/{id}/template-assignments` — add a direct instance assignment.
+- `DELETE /api/instances/{id}/template-assignments/{assignmentId}` — remove a direct instance assignment.
+- `GET /api/instances/{id}/groups` — list groups for an instance.
+- `PUT /api/instances/{id}/groups/{groupId}` — add instance to a group.
+- `DELETE /api/instances/{id}/groups/{groupId}` — remove instance from a group.
+- `GET /api/instance-groups` — list instance groups.
+- `POST /api/instance-groups` — create an instance group.
+- `GET /api/instance-groups/{groupId}` — fetch a group.
+- `GET /api/instance-groups/{groupId}/template-assignments` — list group assignments.
+- `POST /api/instance-groups/{groupId}/template-assignments` — add a group assignment.
+- `DELETE /api/instance-groups/{groupId}/template-assignments/{assignmentId}` — remove a group assignment.
 
-Validation: at least one template layer with unique `orderIndex` values. Duplicate instance names return HTTP 409. Unknown nodes or template versions return HTTP 404. `variables` and `variablesJson` are mutually exclusive.
+Validation: at least one template assignment with required `templateId`. Duplicate instance names return HTTP 409. Unknown nodes, templates, or template versions return HTTP 404. `variables` and `variablesJson` are mutually exclusive.

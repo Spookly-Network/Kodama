@@ -14,7 +14,7 @@ import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceEvent;
 import net.spookly.kodama.brain.domain.instance.InstanceEventType;
 import net.spookly.kodama.brain.domain.instance.InstanceState;
-import net.spookly.kodama.brain.domain.instance.InstanceTemplateLayer;
+import net.spookly.kodama.brain.domain.instance.InstanceTemplateAssignment;
 import net.spookly.kodama.brain.domain.node.Node;
 import net.spookly.kodama.brain.domain.node.NodeStatus;
 import net.spookly.kodama.brain.domain.template.Template;
@@ -22,10 +22,10 @@ import net.spookly.kodama.brain.domain.template.TemplateType;
 import net.spookly.kodama.brain.domain.template.TemplateVersion;
 import net.spookly.kodama.brain.dto.CreateInstanceRequest;
 import net.spookly.kodama.brain.dto.InstanceDto;
-import net.spookly.kodama.brain.dto.InstanceTemplateLayerRequest;
+import net.spookly.kodama.brain.dto.TemplateAssignmentRequest;
 import net.spookly.kodama.brain.repository.InstanceEventRepository;
 import net.spookly.kodama.brain.repository.InstanceRepository;
-import net.spookly.kodama.brain.repository.InstanceTemplateLayerRepository;
+import net.spookly.kodama.brain.repository.InstanceTemplateAssignmentRepository;
 import net.spookly.kodama.brain.repository.NodeRepository;
 import net.spookly.kodama.brain.repository.TemplateRepository;
 import net.spookly.kodama.brain.repository.TemplateVersionRepository;
@@ -47,7 +47,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=validate")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({InstanceService.class, InstanceStateMachine.class, InstanceServiceTest.ObjectMapperTestConfig.class})
+@Import({
+        InstanceService.class,
+        InstanceStateMachine.class,
+        TemplateAssignmentResolver.class,
+        InstanceServiceTest.ObjectMapperTestConfig.class
+})
 class InstanceServiceTest {
 
     @Container
@@ -71,7 +76,7 @@ class InstanceServiceTest {
     private InstanceRepository instanceRepository;
 
     @Autowired
-    private InstanceTemplateLayerRepository instanceTemplateLayerRepository;
+    private InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository;
 
     @Autowired
     private InstanceEventRepository instanceEventRepository;
@@ -97,9 +102,14 @@ class InstanceServiceTest {
     void createInstancePersistsLayersAndRequestedEvent() {
         TemplateVersion version = createTemplateVersion("Base Template", "1.0.0");
 
+        TemplateAssignmentRequest assignment = new TemplateAssignmentRequest(
+                version.getTemplate().getId(),
+                version.getId(),
+                0
+        );
         CreateInstanceRequest request = new CreateInstanceRequest(
                 "instance-one",
-                List.of(new InstanceTemplateLayerRequest(version.getId(), 0))
+                List.of(assignment)
         );
         request.setDisplayName("Instance One");
         request.setRequestedBy(REQUESTER_ID);
@@ -118,10 +128,12 @@ class InstanceServiceTest {
         assertThat(persisted.getTags()).isEqualTo("primary,ssd");
         assertThat(persisted.getDevModeAllowed()).isTrue();
 
-        List<InstanceTemplateLayer> layers = instanceTemplateLayerRepository.findAllByInstanceId(created.getId());
-        assertThat(layers).hasSize(1);
-        assertThat(layers.get(0).getTemplateVersion().getId()).isEqualTo(version.getId());
-        assertThat(layers.get(0).getOrderIndex()).isZero();
+        List<InstanceTemplateAssignment> assignments =
+                instanceTemplateAssignmentRepository.findAllByInstanceId(created.getId());
+        assertThat(assignments).hasSize(1);
+        assertThat(assignments.getFirst().getTemplate().getId()).isEqualTo(version.getTemplate().getId());
+        assertThat(assignments.getFirst().getTemplateVersion().getId()).isEqualTo(version.getId());
+        assertThat(assignments.getFirst().getPriority()).isZero();
 
         List<InstanceEvent> events =
                 instanceEventRepository.findAllByInstanceIdOrderByTimestampAsc(created.getId());
@@ -134,9 +146,11 @@ class InstanceServiceTest {
         TemplateVersion base = createTemplateVersion("Base Template", "1.0.0");
         TemplateVersion overlay = createTemplateVersion("Overlay Template", "1.0.0");
 
-        InstanceTemplateLayerRequest baseLayer = new InstanceTemplateLayerRequest();
+        TemplateAssignmentRequest baseLayer = new TemplateAssignmentRequest();
+        baseLayer.setTemplateId(base.getTemplate().getId());
         baseLayer.setTemplateVersionId(base.getId());
-        InstanceTemplateLayerRequest overlayLayer = new InstanceTemplateLayerRequest();
+        TemplateAssignmentRequest overlayLayer = new TemplateAssignmentRequest();
+        overlayLayer.setTemplateId(overlay.getTemplate().getId());
         overlayLayer.setTemplateVersionId(overlay.getId());
 
         CreateInstanceRequest request = new CreateInstanceRequest(
@@ -147,13 +161,13 @@ class InstanceServiceTest {
         request.setRequestedBy(REQUESTER_ID);
 
         InstanceDto created = instanceService.createInstance(request);
-        List<InstanceTemplateLayer> layers = instanceTemplateLayerRepository.findAllByInstanceId(created.getId());
-
-        assertThat(layers).hasSize(2);
-        assertThat(layers.get(0).getTemplateVersion().getId()).isEqualTo(base.getId());
-        assertThat(layers.get(0).getOrderIndex()).isZero();
-        assertThat(layers.get(1).getTemplateVersion().getId()).isEqualTo(overlay.getId());
-        assertThat(layers.get(1).getOrderIndex()).isEqualTo(1);
+        assertThat(created.getTemplateLayers()).hasSize(2);
+        assertThat(created.getTemplateLayers().get(0).getTemplateVersionId()).isEqualTo(base.getId());
+        assertThat(created.getTemplateLayers().get(0).getPriority()).isZero();
+        assertThat(created.getTemplateLayers().get(0).getOrderIndex()).isZero();
+        assertThat(created.getTemplateLayers().get(1).getTemplateVersionId()).isEqualTo(overlay.getId());
+        assertThat(created.getTemplateLayers().get(1).getPriority()).isEqualTo(1);
+        assertThat(created.getTemplateLayers().get(1).getOrderIndex()).isEqualTo(1);
     }
 
     @Test
@@ -165,7 +179,7 @@ class InstanceServiceTest {
         TemplateVersion second = templateVersionRepository.save(new TemplateVersion(
                 template, "1.1.0", "checksum-2", "s3/key/2", null, OffsetDateTime.now(ZoneOffset.UTC)));
 
-        InstanceTemplateLayerRequest layer = new InstanceTemplateLayerRequest();
+        TemplateAssignmentRequest layer = new TemplateAssignmentRequest();
         layer.setTemplateId(template.getId());
 
         CreateInstanceRequest request = new CreateInstanceRequest(
@@ -175,20 +189,42 @@ class InstanceServiceTest {
         request.setRequestedBy(REQUESTER_ID);
 
         InstanceDto created = instanceService.createInstance(request);
-        List<InstanceTemplateLayer> layers = instanceTemplateLayerRepository.findAllByInstanceId(created.getId());
-
-        assertThat(layers).hasSize(1);
-        assertThat(layers.getFirst().getTemplateVersion().getId()).isEqualTo(second.getId());
-        assertThat(layers.getFirst().getOrderIndex()).isZero();
+        assertThat(created.getTemplateLayers()).hasSize(1);
+        assertThat(created.getTemplateLayers().getFirst().getTemplateVersionId()).isEqualTo(second.getId());
+        assertThat(created.getTemplateLayers().getFirst().getPriority()).isZero();
+        assertThat(created.getTemplateLayers().getFirst().getOrderIndex()).isZero();
         assertThat(second.getCreatedAt()).isAfter(first.getCreatedAt());
+    }
+
+    @Test
+    void createInstanceRejectsTemplateWithoutVersionsWhenVersionOmitted() {
+        Template template = createTemplate("Template Without Versions");
+        TemplateAssignmentRequest layer = new TemplateAssignmentRequest();
+        layer.setTemplateId(template.getId());
+
+        CreateInstanceRequest request = new CreateInstanceRequest(
+                "no-version-instance",
+                List.of(layer)
+        );
+        request.setRequestedBy(REQUESTER_ID);
+
+        assertThatThrownBy(() -> instanceService.createInstance(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
     void createInstanceRejectsDuplicateNames() {
         TemplateVersion version = createTemplateVersion("Dupe Template", "1.0.0");
+        TemplateAssignmentRequest assignment = new TemplateAssignmentRequest(
+                version.getTemplate().getId(),
+                version.getId(),
+                0
+        );
         CreateInstanceRequest request = new CreateInstanceRequest(
                 "duplicate-instance",
-                List.of(new InstanceTemplateLayerRequest(version.getId(), 0))
+                List.of(assignment)
         );
 
 
@@ -201,9 +237,10 @@ class InstanceServiceTest {
 
     @Test
     void createInstanceFailsWhenTemplateVersionMissing() {
+        Template template = createTemplate("Missing Version Template");
         CreateInstanceRequest request = new CreateInstanceRequest(
                 "missing-template-version",
-                List.of(new InstanceTemplateLayerRequest(UUID.randomUUID(), 0))
+                List.of(new TemplateAssignmentRequest(template.getId(), UUID.randomUUID(), 0))
         );
         request.setRequestedBy(REQUESTER_ID);
 
@@ -229,9 +266,14 @@ class InstanceServiceTest {
         ));
         TemplateVersion version = createTemplateVersion("Node Template", "1.0.0");
 
+        TemplateAssignmentRequest assignment = new TemplateAssignmentRequest(
+                version.getTemplate().getId(),
+                version.getId(),
+                0
+        );
         CreateInstanceRequest request = new CreateInstanceRequest(
                 "with-node",
-                List.of(new InstanceTemplateLayerRequest(version.getId(), 0))
+                List.of(assignment)
         );
         request.setRequestedBy(REQUESTER_ID);
         request.setNodeId(node.getId());
@@ -245,9 +287,14 @@ class InstanceServiceTest {
     @Test
     void createInstanceRejectsVariablesAndVariablesJsonTogether() {
         TemplateVersion version = createTemplateVersion("Mixed Variables", "1.0.0");
+        TemplateAssignmentRequest assignment = new TemplateAssignmentRequest(
+                version.getTemplate().getId(),
+                version.getId(),
+                0
+        );
         CreateInstanceRequest request = new CreateInstanceRequest(
                 "invalid-variables",
-                List.of(new InstanceTemplateLayerRequest(version.getId(), 0))
+                List.of(assignment)
         );
         request.setVariables(Map.of("ENV", "prod"));
         request.setVariablesJson("{\"ENV\":\"prod\"}");

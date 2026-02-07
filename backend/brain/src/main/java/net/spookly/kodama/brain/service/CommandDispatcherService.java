@@ -8,7 +8,6 @@ import java.util.UUID;
 
 import net.spookly.kodama.brain.config.NodeProperties;
 import net.spookly.kodama.brain.domain.instance.Instance;
-import net.spookly.kodama.brain.domain.instance.InstanceTemplateLayer;
 import net.spookly.kodama.brain.domain.node.Node;
 import net.spookly.kodama.brain.domain.template.TemplateVersion;
 import net.spookly.kodama.brain.dto.node.NodeInstanceCommandRequest;
@@ -52,7 +51,7 @@ public class CommandDispatcherService {
     public void sendPrepareInstance(
             Node node,
             Instance instance,
-            List<InstanceTemplateLayer> layers,
+            List<ResolvedTemplateLayer> layers,
             Map<String, String> variables
     ) {
         Objects.requireNonNull(layers, "layers");
@@ -182,8 +181,8 @@ public class CommandDispatcherService {
                 .toUri();
     }
 
-    private NodePrepareInstanceLayer toPrepareLayer(InstanceTemplateLayer layer) {
-        TemplateVersion version = layer.getTemplateVersion();
+    private NodePrepareInstanceLayer toPrepareLayer(ResolvedTemplateLayer layer) {
+        TemplateVersion version = layer.templateVersion();
         return new NodePrepareInstanceLayer(
                 version.getId(),
                 version.getTemplate().getId(),
@@ -191,12 +190,12 @@ public class CommandDispatcherService {
                 version.getChecksum(),
                 version.getS3Key(),
                 version.getMetadataJson(),
-                layer.getOrderIndex()
+                layer.orderIndex()
         );
     }
 
-    private BrainPrepareInstanceLayer toPluginLayer(InstanceTemplateLayer layer) {
-        TemplateVersion version = layer.getTemplateVersion();
+    private BrainPrepareInstanceLayer toPluginLayer(ResolvedTemplateLayer layer) {
+        TemplateVersion version = layer.templateVersion();
         return new BrainPrepareInstanceLayer(
                 version.getId(),
                 version.getTemplate().getId(),
@@ -204,7 +203,7 @@ public class CommandDispatcherService {
                 version.getChecksum(),
                 version.getS3Key(),
                 version.getMetadataJson(),
-                layer.getOrderIndex()
+                layer.orderIndex()
         );
     }
 

@@ -46,7 +46,10 @@ Entities:
 - Node
 - Instance
 - InstanceEvent
-- InstanceTemplateLayer
+- InstanceGroup
+- InstanceGroupMembership
+- InstanceTemplateAssignment
+- GroupTemplateAssignment
 - User
 - Role
 
