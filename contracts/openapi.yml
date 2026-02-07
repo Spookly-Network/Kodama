@@ -1156,7 +1156,7 @@ components:
           type: integer
           format: int32
           minimum: 0
-          description: Optional priority; defaults to list order position when omitted.
+          description: Optional priority; defaults to list order position when omitted for `POST /api/instances`, and defaults to 0 for assignment endpoints.
     TemplateAssignment:
       type: object
       required: [id, templateId, priority]
