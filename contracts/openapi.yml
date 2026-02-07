@@ -238,7 +238,7 @@ paths:
       summary: Add instance to group
       responses:
         "204":
-          description: Membership added.
+          description: Membership added (idempotent).
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -250,7 +250,7 @@ paths:
       summary: Remove instance from group
       responses:
         "204":
-          description: Membership removed.
+          description: Membership removed (idempotent).
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
