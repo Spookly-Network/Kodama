@@ -196,6 +196,29 @@ class TemplateAssignmentResolverTest {
         assertThat(resolved.get(1).source()).isEqualTo(TemplateAssignmentSource.INSTANCE);
     }
 
+    @Test
+    void resolveUsesLatestVersionWhenAssignmentOmitsVersion() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Template template = createTemplate("Latest Template", now);
+        TemplateVersion older = createTemplateVersion(template, "1.0.0", now.minusMinutes(10));
+        TemplateVersion newer = createTemplateVersion(template, "1.1.0", now);
+
+        Instance instance = createInstance("instance-latest", now);
+        instanceTemplateAssignmentRepository.save(new InstanceTemplateAssignment(
+                instance,
+                template,
+                null,
+                0
+        ));
+
+        List<ResolvedTemplateLayer> resolved = resolver.resolveForInstance(instance.getId());
+
+        assertThat(resolved).hasSize(1);
+        ResolvedTemplateLayer layer = resolved.getFirst();
+        assertThat(layer.templateVersion().getId()).isEqualTo(newer.getId());
+        assertThat(newer.getCreatedAt()).isAfter(older.getCreatedAt());
+    }
+
     private Template createTemplate(String name, OffsetDateTime now) {
         return templateRepository.save(new Template(name, "desc", TemplateType.CUSTOM, now, CREATOR_USERNAME));
     }

@@ -12,10 +12,12 @@ import net.spookly.kodama.brain.domain.instance.InstanceGroup;
 import net.spookly.kodama.brain.domain.instance.InstanceState;
 import net.spookly.kodama.brain.domain.template.Template;
 import net.spookly.kodama.brain.domain.template.TemplateType;
+import net.spookly.kodama.brain.domain.template.TemplateVersion;
 import net.spookly.kodama.brain.dto.TemplateAssignmentRequest;
 import net.spookly.kodama.brain.repository.InstanceGroupRepository;
 import net.spookly.kodama.brain.repository.InstanceRepository;
 import net.spookly.kodama.brain.repository.TemplateRepository;
+import net.spookly.kodama.brain.repository.TemplateVersionRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -61,6 +63,9 @@ class TemplateAssignmentServiceTest {
     @Autowired
     private TemplateRepository templateRepository;
 
+    @Autowired
+    private TemplateVersionRepository templateVersionRepository;
+
     @Test
     void addInstanceAssignmentRejectsTemplateWithoutVersions() {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
@@ -93,6 +98,25 @@ class TemplateAssignmentServiceTest {
                 .isEqualTo(HttpStatus.NOT_FOUND);
     }
 
+    @Test
+    void addInstanceAssignmentRejectsMismatchedTemplateVersion() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Template template = createTemplate("Template A", now);
+        Template otherTemplate = createTemplate("Template B", now);
+        TemplateVersion otherVersion = createTemplateVersion(otherTemplate, "1.0.0", now);
+        Instance instance = createInstance("instance-mismatch", now);
+
+        TemplateAssignmentRequest request = new TemplateAssignmentRequest();
+        request.setTemplateId(template.getId());
+        request.setTemplateVersionId(otherVersion.getId());
+        request.setPriority(0);
+
+        assertThatThrownBy(() -> templateAssignmentService.addInstanceAssignment(instance.getId(), request))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
     private Template createTemplate(String name, OffsetDateTime now) {
         return templateRepository.save(new Template(name, "desc", TemplateType.CUSTOM, now, REQUESTER_USERNAME));
     }
@@ -118,5 +142,17 @@ class TemplateAssignmentServiceTest {
     private InstanceGroup createGroup(String name, OffsetDateTime now) {
         InstanceGroup group = new InstanceGroup(name, null, now, now);
         return instanceGroupRepository.save(group);
+    }
+
+    private TemplateVersion createTemplateVersion(Template template, String version, OffsetDateTime now) {
+        TemplateVersion templateVersion = new TemplateVersion(
+                template,
+                version,
+                "checksum",
+                "s3/key",
+                null,
+                now
+        );
+        return templateVersionRepository.save(templateVersion);
     }
 }

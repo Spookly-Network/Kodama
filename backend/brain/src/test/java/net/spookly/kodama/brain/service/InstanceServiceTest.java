@@ -215,6 +215,36 @@ class InstanceServiceTest {
     }
 
     @Test
+    void createInstanceAllowsDuplicatePriorities() {
+        TemplateVersion base = createTemplateVersion("Priority Base", "1.0.0");
+        TemplateVersion overlay = createTemplateVersion("Priority Overlay", "1.0.0");
+
+        TemplateAssignmentRequest baseLayer = new TemplateAssignmentRequest(
+                base.getTemplate().getId(),
+                base.getId(),
+                0
+        );
+        TemplateAssignmentRequest overlayLayer = new TemplateAssignmentRequest(
+                overlay.getTemplate().getId(),
+                overlay.getId(),
+                0
+        );
+
+        CreateInstanceRequest request = new CreateInstanceRequest(
+                "duplicate-priority-instance",
+                List.of(baseLayer, overlayLayer)
+        );
+        request.setRequestedBy(REQUESTER_ID);
+
+        InstanceDto created = instanceService.createInstance(request);
+
+        List<InstanceTemplateAssignment> assignments =
+                instanceTemplateAssignmentRepository.findAllByInstanceId(created.getId());
+        assertThat(assignments).hasSize(2);
+        assertThat(assignments).allMatch(assignment -> assignment.getPriority() == 0);
+    }
+
+    @Test
     void createInstanceRejectsDuplicateNames() {
         TemplateVersion version = createTemplateVersion("Dupe Template", "1.0.0");
         TemplateAssignmentRequest assignment = new TemplateAssignmentRequest(
