@@ -85,6 +85,49 @@ class TemplateAssignmentServiceTest {
     }
 
     @Test
+    void addInstanceAssignmentPersistsAndListsAssignments() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Template template = createTemplate("Instance Template", now);
+        TemplateVersion templateVersion = createTemplateVersion(template, "1.0.0", now);
+        Instance instance = createInstance("instance-list", now);
+
+        TemplateAssignmentRequest request = new TemplateAssignmentRequest();
+        request.setTemplateId(template.getId());
+        request.setTemplateVersionId(templateVersion.getId());
+        request.setPriority(2);
+
+        TemplateAssignmentDto created = templateAssignmentService.addInstanceAssignment(instance.getId(), request);
+
+        assertThat(created.getId()).isNotNull();
+        assertThat(created.getTemplateId()).isEqualTo(template.getId());
+        assertThat(created.getTemplateVersionId()).isEqualTo(templateVersion.getId());
+        assertThat(created.getPriority()).isEqualTo(2);
+
+        List<TemplateAssignmentDto> assignments = templateAssignmentService.listInstanceAssignments(instance.getId());
+        assertThat(assignments).hasSize(1);
+        assertThat(assignments.getFirst().getId()).isEqualTo(created.getId());
+    }
+
+    @Test
+    void removeInstanceAssignmentDeletesAssignment() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Template template = createTemplate("Instance Template Remove", now);
+        TemplateVersion templateVersion = createTemplateVersion(template, "1.0.0", now);
+        Instance instance = createInstance("instance-remove", now);
+
+        TemplateAssignmentRequest request = new TemplateAssignmentRequest(
+                template.getId(),
+                templateVersion.getId(),
+                1
+        );
+        TemplateAssignmentDto created = templateAssignmentService.addInstanceAssignment(instance.getId(), request);
+
+        templateAssignmentService.removeInstanceAssignment(instance.getId(), created.getId());
+
+        assertThat(templateAssignmentService.listInstanceAssignments(instance.getId())).isEmpty();
+    }
+
+    @Test
     void addGroupAssignmentRejectsTemplateWithoutVersions() {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         Template template = createTemplate("Group Template Without Versions", now);
