@@ -5,8 +5,8 @@ import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import net.spookly.kodama.brain.service.ResolvedTemplateLayer;
 import net.spookly.kodama.brain.domain.instance.TemplateAssignmentSource;
+import net.spookly.kodama.brain.service.ResolvedTemplateLayer;
 
 @Getter
 @NoArgsConstructor

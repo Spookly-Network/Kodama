@@ -29,7 +29,6 @@ import net.spookly.kodama.brain.repository.InstanceTemplateAssignmentRepository;
 import net.spookly.kodama.brain.repository.NodeRepository;
 import net.spookly.kodama.brain.repository.TemplateRepository;
 import net.spookly.kodama.brain.repository.TemplateVersionRepository;
-import net.spookly.kodama.brain.service.TemplateAssignmentResolver;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;

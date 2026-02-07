@@ -4,9 +4,9 @@ import java.util.List;
 import java.util.UUID;
 
 import net.spookly.kodama.brain.domain.instance.GroupTemplateAssignment;
+import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceGroup;
 import net.spookly.kodama.brain.domain.instance.InstanceTemplateAssignment;
-import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.template.Template;
 import net.spookly.kodama.brain.domain.template.TemplateVersion;
 import net.spookly.kodama.brain.dto.TemplateAssignmentDto;
