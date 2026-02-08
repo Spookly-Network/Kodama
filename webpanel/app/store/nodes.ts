@@ -23,6 +23,15 @@ export interface InstanceDto {
     failureReason?: string
 }
 
+export interface NodeUpdatePayload {
+    region: string
+    capacitySlots: number
+    nodeVersion: string
+    devMode: boolean
+    tags?: string | null
+    baseUrl?: string | null
+}
+
 export const mockNodes: NodeDto[] = [
     {
         id: 'node_01HZXQ2W7QK5B3K9R2K4C3W2P1',
@@ -134,7 +143,17 @@ export const useNodesStore = defineStore('nodes', () => {
         })
     }
 
-    return { byId, refresh, create, ensureFresh, get, lastLoadedAt, upsertMany }
+    async function update(nodeId: string, payload: NodeUpdatePayload) {
+        const api = useBrainApi()
+        const updated = await api<NodeDto>(`/api/nodes/${nodeId}`, {
+            method: 'PUT',
+            body: { ...payload } satisfies NodeUpdatePayload,
+        })
+        byId[updated.id] = updated
+        return updated
+    }
+
+    return { byId, refresh, create, update, ensureFresh, get, lastLoadedAt, upsertMany, loading }
 })
 
 interface CreateNodeResponse {

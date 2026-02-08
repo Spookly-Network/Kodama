@@ -8,8 +8,8 @@ export interface Node {
     usedSlots: number
     lastHeartbeatAt: Date
     nodeVersion: string
-    tags: string
-    baseUrl: string
+    tags: string | null
+    baseUrl: string | null
 }
 
 export interface NodeDto {
@@ -22,8 +22,8 @@ export interface NodeDto {
     usedSlots: number
     lastHeartbeatAt: string
     nodeVersion: string
-    tags: string
-    baseUrl: string
+    tags: string | null
+    baseUrl: string | null
 }
 
 export enum NodeStatus {
