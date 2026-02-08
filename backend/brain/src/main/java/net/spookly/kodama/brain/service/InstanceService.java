@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.AllArgsConstructor;
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceEvent;
 import net.spookly.kodama.brain.domain.instance.InstanceEventType;
@@ -31,6 +30,8 @@ import net.spookly.kodama.brain.repository.InstanceTemplateAssignmentRepository;
 import net.spookly.kodama.brain.repository.NodeRepository;
 import net.spookly.kodama.brain.repository.TemplateRepository;
 import net.spookly.kodama.brain.repository.TemplateVersionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,8 +41,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @Transactional
-@AllArgsConstructor
 public class InstanceService {
+
+    private final Logger logger = LoggerFactory.getLogger(InstanceService.class.getName());
 
     private final InstanceRepository instanceRepository;
     private final InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository;
@@ -54,6 +56,32 @@ public class InstanceService {
     private final NodeRepository nodeRepository;
     private final TemplateAssignmentResolver templateAssignmentResolver;
     private final SchedulingService schedulingService;
+
+    public InstanceService(
+            InstanceRepository instanceRepository,
+            InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository,
+            InstanceEventRepository instanceEventRepository,
+            InstanceStateMachine instanceStateMachine,
+            CommandDispatcherService commandDispatcherService,
+            ObjectMapper objectMapper,
+            TemplateRepository templateRepository,
+            TemplateVersionRepository templateVersionRepository,
+            NodeRepository nodeRepository,
+            TemplateAssignmentResolver templateAssignmentResolver,
+            SchedulingService schedulingService
+    ) {
+        this.instanceRepository = instanceRepository;
+        this.instanceTemplateAssignmentRepository = instanceTemplateAssignmentRepository;
+        this.instanceEventRepository = instanceEventRepository;
+        this.instanceStateMachine = instanceStateMachine;
+        this.commandDispatcherService = commandDispatcherService;
+        this.objectMapper = objectMapper;
+        this.templateRepository = templateRepository;
+        this.templateVersionRepository = templateVersionRepository;
+        this.nodeRepository = nodeRepository;
+        this.templateAssignmentResolver = templateAssignmentResolver;
+        this.schedulingService = schedulingService;
+    }
 
     @Transactional(readOnly = true)
     public List<InstanceDto> listInstances() {
@@ -141,6 +169,7 @@ public class InstanceService {
                     layers,
                     null
             ));
+            logger.info("Instance {} has been prepared on node {}", id, node.getId());
             transitionOrConflict(instance, InstanceState.PREPARING, InstanceEventType.PREPARE_DISPATCHED, now);
         } else if (state == InstanceState.STOPPED) {
             dispatchNodeCommand("start", () -> commandDispatcherService.sendStartInstance(node, instance));
@@ -417,6 +446,7 @@ public class InstanceService {
             OffsetDateTime timestamp
     ) {
         try {
+            logger.info("Transitioning instance {} to state {} with event {} at {}", instance.getId(), targetState, eventType, timestamp);
             instanceStateMachine.transition(instance, targetState, eventType, timestamp);
         } catch (InvalidInstanceStateTransitionException ex) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);

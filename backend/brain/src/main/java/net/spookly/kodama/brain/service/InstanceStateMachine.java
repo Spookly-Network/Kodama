@@ -70,8 +70,7 @@ public class InstanceStateMachine {
         transitions.put(InstanceState.STOPPING, EnumSet.of(InstanceState.DESTROYED, InstanceState.STOPPED));
         transitions.put(InstanceState.STOPPED, EnumSet.of(
                 InstanceState.DESTROYED,
-                InstanceState.STARTING,
-                InstanceState.STOPPING
+                InstanceState.STARTING
         ));
 
         for (InstanceState state : InstanceState.values()) {

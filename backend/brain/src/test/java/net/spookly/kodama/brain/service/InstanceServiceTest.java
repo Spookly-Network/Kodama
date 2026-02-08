@@ -10,6 +10,8 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.spookly.kodama.brain.config.NodeProperties;
+import net.spookly.kodama.brain.config.PluginsProperties;
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceEvent;
 import net.spookly.kodama.brain.domain.instance.InstanceEventType;
@@ -23,6 +25,7 @@ import net.spookly.kodama.brain.domain.template.TemplateVersion;
 import net.spookly.kodama.brain.dto.CreateInstanceRequest;
 import net.spookly.kodama.brain.dto.InstanceDto;
 import net.spookly.kodama.brain.dto.TemplateAssignmentRequest;
+import net.spookly.kodama.brain.plugin.BrainPluginRegistry;
 import net.spookly.kodama.brain.repository.InstanceEventRepository;
 import net.spookly.kodama.brain.repository.InstanceRepository;
 import net.spookly.kodama.brain.repository.InstanceTemplateAssignmentRepository;
@@ -39,6 +42,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -96,6 +100,15 @@ class InstanceServiceTest {
         @Bean
         ObjectMapper objectMapper() {
             return new ObjectMapper();
+        }
+
+        @Bean
+        CommandDispatcherService commandDispatcherService(ObjectMapper objectMapper) {
+            return new CommandDispatcherService(
+                    new RestTemplate(),
+                    new NodeProperties(),
+                    new BrainPluginRegistry(new PluginsProperties(), objectMapper)
+            );
         }
     }
 
