@@ -10,6 +10,7 @@ Provide Hytale authentication tokens during instance preparation without baking 
 - Build the plugin JAR from `plugins/` and copy it into the Brain working directory `./plugins`.
 - Enable it by setting `PLUGINS_ENABLED=hytale-auth` for the Brain process.
 - Add a config file at `./plugins/hytale-auth.json` (or override with `HYTALE_AUTH_CONFIG_PATH`).
+- The plugin updates `refreshToken` in the config file when the Hytale token endpoint returns a rotated value, so the Brain process must have write access to the config file.
 
 Example config (`plugins/hytale-auth.json`):
 
@@ -48,6 +49,7 @@ Injected instance variables:
 - Tokens are minted at prepare time. If instances remain prepared for long periods, tokens may expire before start.
 - If Hytale endpoints are unavailable, instance preparation will fail.
 - If multiple profiles exist and no selector is configured, the first profile is used.
+- If the config file is read-only, refresh token rotation will fail and prevent session creation.
 
 ## Links
 - `plugins/KodamaHytaleAuthenticator/src/main/java/net/spookly/kodama/plugins/hytale/HytaleAuthPlugin.java`

@@ -8,7 +8,9 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 public final class HytaleAuthConfig {
 
@@ -27,6 +29,7 @@ public final class HytaleAuthConfig {
     private final UUID profileUuid;
     private final String profileUsername;
     private final Duration timeout;
+    private final Path configPath;
 
     private HytaleAuthConfig(
             String refreshToken,
@@ -37,7 +40,8 @@ public final class HytaleAuthConfig {
             String scopes,
             UUID profileUuid,
             String profileUsername,
-            Duration timeout
+            Duration timeout,
+            Path configPath
     ) {
         this.refreshToken = refreshToken;
         this.tokenUrl = tokenUrl;
@@ -48,6 +52,7 @@ public final class HytaleAuthConfig {
         this.profileUuid = profileUuid;
         this.profileUsername = profileUsername;
         this.timeout = timeout;
+        this.configPath = Objects.requireNonNull(configPath, "configPath");
     }
 
     public static HytaleAuthConfig load() {
@@ -109,7 +114,8 @@ public final class HytaleAuthConfig {
                 scopes,
                 profileUuid,
                 profileUsername,
-                timeout
+                timeout,
+                configPath
         );
     }
 
@@ -147,6 +153,32 @@ public final class HytaleAuthConfig {
 
     public Duration getTimeout() {
         return timeout;
+    }
+
+    void persistRefreshToken(String refreshToken) {
+        String normalized = requireText(refreshToken, "refreshToken");
+        ObjectMapper mapper = new ObjectMapper();
+        if (!Files.exists(configPath)) {
+            throw new IllegalStateException("Hytale auth config file does not exist at " + configPath);
+        }
+        if (!Files.isRegularFile(configPath)) {
+            throw new IllegalStateException("Hytale auth config path is not a file: " + configPath);
+        }
+        JsonNode root;
+        try {
+            root = mapper.readTree(configPath.toFile());
+        } catch (IOException ex) {
+            throw new IllegalStateException("Failed to read Hytale auth config at " + configPath, ex);
+        }
+        if (!(root instanceof ObjectNode objectNode)) {
+            throw new IllegalStateException("Hytale auth config must be a JSON object at " + configPath);
+        }
+        objectNode.put("refreshToken", normalized);
+        try {
+            mapper.writerWithDefaultPrettyPrinter().writeValue(configPath.toFile(), objectNode);
+        } catch (IOException ex) {
+            throw new IllegalStateException("Failed to write Hytale auth config at " + configPath, ex);
+        }
     }
 
     private static Duration parseTimeoutSeconds(Long timeoutSeconds) {

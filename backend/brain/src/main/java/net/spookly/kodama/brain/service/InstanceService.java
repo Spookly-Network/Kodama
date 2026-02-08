@@ -157,12 +157,21 @@ public class InstanceService {
 
     public InstanceDto startInstance(UUID id) {
         Instance instance = loadInstance(id);
-        Node node = requireAssignedNode(instance);
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         InstanceState state = instance.getState();
+        Node assignedNode = instance.getNode();
+        logger.info(
+                "Start instance requested. instanceId={} state={} nodeId={} nodeBaseUrl={}",
+                id,
+                state,
+                assignedNode == null ? null : assignedNode.getId(),
+                assignedNode == null ? null : assignedNode.getBaseUrl()
+        );
+        Node node = requireAssignedNode(instance);
 
         if (state == InstanceState.REQUESTED) {
             List<ResolvedTemplateLayer> layers = templateAssignmentResolver.resolveForInstance(id);
+            logger.info("Instance {} has been requested on node {}", id, node.getId());
             dispatchNodeCommand("prepare", () -> commandDispatcherService.sendPrepareInstance(
                     node,
                     instance,
@@ -419,18 +428,21 @@ public class InstanceService {
         try {
             command.run();
         } catch (ResourceAccessException ex) {
+            logger.warn("Node command failed to reach node. action={}", action, ex);
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY,
                     "Unable to reach node for " + action + " command",
                     ex
             );
         } catch (HttpStatusCodeException ex) {
+            logger.warn("Node command rejected by node. action={} status={}", action, ex.getStatusCode(), ex);
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY,
                     "Node rejected " + action + " command: " + ex.getStatusCode(),
                     ex
             );
         } catch (IllegalStateException ex) {
+            logger.warn("Node command failed preflight. action={} message={}", action, ex.getMessage(), ex);
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     ex.getMessage(),
@@ -449,6 +461,14 @@ public class InstanceService {
             logger.info("Transitioning instance {} to state {} with event {} at {}", instance.getId(), targetState, eventType, timestamp);
             instanceStateMachine.transition(instance, targetState, eventType, timestamp);
         } catch (InvalidInstanceStateTransitionException ex) {
+            logger.warn(
+                    "Invalid instance transition. instanceId={} currentState={} targetState={} eventType={}",
+                    instance.getId(),
+                    instance.getState(),
+                    targetState,
+                    eventType,
+                    ex
+            );
             throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
         }
     }
