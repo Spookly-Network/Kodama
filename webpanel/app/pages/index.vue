@@ -18,11 +18,10 @@
 </template>
 
 <script lang="ts" setup>
-import type {Instance} from "#shared/types/Instance";
-import {columns} from "~/components/app/instances/columns";
+import {columns, type InstanceRow} from "~/components/app/instances/columns";
 import {type InstanceDto, mockNodes} from "~/store/nodes";
 
-const instances: Ref<Instance[]> = ref([])
+const instances: Ref<InstanceRow[]> = ref([])
 const mockInstances: InstanceDto[] = [
   {
     id: 'inst_01J0A1B2C3D4E5F6G7H8J9K0L',

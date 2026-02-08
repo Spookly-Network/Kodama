@@ -12,7 +12,14 @@
         </TableRow>
       </TableHeader>
       <TableBody>
-        <template v-if="table.getRowModel().rows?.length">
+        <template v-if="loading">
+          <TableRow v-for="row in skeletonRows" :key="row">
+            <TableCell v-for="cell in columns.length" :key="cell">
+              <Skeleton class="h-4 w-full" />
+            </TableCell>
+          </TableRow>
+        </template>
+        <template v-else-if="table.getRowModel().rows?.length">
           <TableRow
               v-for="row in table.getRowModel().rows" :key="row.id"
               :data-state="row.getIsSelected() ? 'selected' : undefined"
@@ -24,8 +31,8 @@
         </template>
         <template v-else>
           <TableRow>
-            <TableCell :colspan="columns.length" class="h-24 text-center">
-              No results.
+            <TableCell :colspan="columns.length" class="h-24 text-center text-muted-foreground">
+              {{ emptyLabel }}
             </TableCell>
           </TableRow>
         </template>
@@ -35,6 +42,7 @@
 </template>
 
 <script setup lang="ts" generic="TData, TValue">
+import { computed } from 'vue'
 import type { ColumnDef } from '@tanstack/vue-table'
 import {
   FlexRender,
@@ -50,11 +58,19 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const props = defineProps<{
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
+  loading?: boolean
+  emptyLabel?: string
+  skeletonRows?: number
 }>()
+
+const loading = computed(() => props.loading ?? false)
+const emptyLabel = computed(() => props.emptyLabel ?? 'No results.')
+const skeletonRows = computed(() => props.skeletonRows ?? 5)
 
 const table = useVueTable({
   get data() { return props.data },

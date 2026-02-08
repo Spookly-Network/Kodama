@@ -83,7 +83,7 @@ const data = {
     },
     {
       title: "Instances",
-      url: "#",
+      url: "/instances",
       icon: SquareStack,
       items: [
         {
