@@ -18,6 +18,9 @@ import net.spookly.kodama.nodeagent.instance.registry.InstanceRegistryEntry;
 import net.spookly.kodama.nodeagent.instance.registry.InstanceRegistryService;
 import net.spookly.kodama.nodeagent.instance.workspace.InstanceWorkspaceLayout;
 import net.spookly.kodama.nodeagent.instance.workspace.InstanceWorkspacePaths;
+import net.spookly.kodama.nodeagent.plugin.NodeInstanceStartContext;
+import net.spookly.kodama.nodeagent.plugin.NodeInstanceStartSpec;
+import net.spookly.kodama.nodeagent.plugin.NodePluginRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -33,6 +36,7 @@ public class InstanceStartService {
     private final InstancePortBindingsResolver portBindingsResolver;
     private final NodeConfig config;
     private final InstanceProperties instanceProperties;
+    private final NodePluginRegistry pluginRegistry;
 
     public InstanceStartService(
             DockerService dockerService,
@@ -40,7 +44,8 @@ public class InstanceStartService {
             InstanceWorkspaceLayout workspaceLayout,
             InstancePortBindingsResolver portBindingsResolver,
             NodeConfig config,
-            InstanceProperties instanceProperties
+            InstanceProperties instanceProperties,
+            NodePluginRegistry pluginRegistry
     ) {
         this.dockerService = Objects.requireNonNull(dockerService, "dockerService");
         this.registryService = Objects.requireNonNull(registryService, "registryService");
@@ -48,6 +53,7 @@ public class InstanceStartService {
         this.portBindingsResolver = Objects.requireNonNull(portBindingsResolver, "portBindingsResolver");
         this.config = Objects.requireNonNull(config, "config");
         this.instanceProperties = Objects.requireNonNull(instanceProperties, "instanceProperties");
+        this.pluginRegistry = Objects.requireNonNull(pluginRegistry, "pluginRegistry");
     }
 
     public String startInstance(UUID instanceId, String requestedName) {
@@ -67,14 +73,25 @@ public class InstanceStartService {
                 new DockerVolumeMount(workspace.mergedDir().toString(), mountPath, false)
         );
         List<DockerPortBinding> portBindings = portBindingsResolver.resolveBindings(registry);
-        List<String> env = buildEnv(instanceId, registry, requestedName);
-        Map<String, String> labels = buildLabels(instanceId, registry);
+        Map<String, String> baseEnv = buildEnvMap(instanceId, registry, requestedName);
+        Map<String, String> baseLabels = buildLabels(instanceId, registry);
+        NodeInstanceStartContext context = new NodeInstanceStartContext(
+                instanceId,
+                requestedName,
+                registry,
+                baseEnv,
+                baseLabels,
+                null
+        );
+        NodeInstanceStartSpec spec = pluginRegistry.resolveStartSpec(context, baseEnv, baseLabels, null);
+        List<String> env = toEnvList(spec.env());
+        Map<String, String> labels = spec.labels();
         String containerName = "kodama-instance-" + instanceId;
 
         DockerContainerCreateRequest request = new DockerContainerCreateRequest(
                 image,
                 containerName,
-                null,
+                spec.command(),
                 env,
                 labels,
                 workingDir,
@@ -143,7 +160,7 @@ public class InstanceStartService {
         return workingDir.trim();
     }
 
-    private List<String> buildEnv(UUID instanceId, InstanceRegistryEntry registry, String requestedName) {
+    private Map<String, String> buildEnvMap(UUID instanceId, InstanceRegistryEntry registry, String requestedName) {
         Map<String, String> env = new LinkedHashMap<>();
         if (registry.variables() != null) {
             env.putAll(registry.variables());
@@ -159,10 +176,7 @@ public class InstanceStartService {
         if (hasText(registry.displayName())) {
             env.put("INSTANCE_DISPLAY_NAME", registry.displayName().trim());
         }
-        return env.entrySet().stream()
-                .filter(entry -> entry.getKey() != null && entry.getValue() != null)
-                .map(entry -> entry.getKey() + "=" + entry.getValue())
-                .toList();
+        return env;
     }
 
     private Map<String, String> buildLabels(UUID instanceId, InstanceRegistryEntry registry) {
@@ -175,6 +189,16 @@ public class InstanceStartService {
             labels.put("kodama.node-name", config.getNodeName().trim());
         }
         return labels;
+    }
+
+    private List<String> toEnvList(Map<String, String> env) {
+        if (env == null || env.isEmpty()) {
+            return List.of();
+        }
+        return env.entrySet().stream()
+                .filter(entry -> entry.getKey() != null && entry.getValue() != null)
+                .map(entry -> entry.getKey() + "=" + entry.getValue())
+                .toList();
     }
 
     private void removeContainerSafely(String containerId, UUID instanceId, String reason) {

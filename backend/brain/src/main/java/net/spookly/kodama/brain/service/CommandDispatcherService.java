@@ -8,12 +8,15 @@ import java.util.UUID;
 
 import net.spookly.kodama.brain.config.NodeProperties;
 import net.spookly.kodama.brain.domain.instance.Instance;
-import net.spookly.kodama.brain.domain.instance.InstanceTemplateLayer;
 import net.spookly.kodama.brain.domain.node.Node;
 import net.spookly.kodama.brain.domain.template.TemplateVersion;
 import net.spookly.kodama.brain.dto.node.NodeInstanceCommandRequest;
 import net.spookly.kodama.brain.dto.node.NodePrepareInstanceLayer;
 import net.spookly.kodama.brain.dto.node.NodePrepareInstanceRequest;
+import net.spookly.kodama.brain.plugin.BrainPluginRegistry;
+import net.spookly.kodama.brain.plugin.BrainPrepareInstanceContext;
+import net.spookly.kodama.brain.plugin.BrainPrepareInstanceLayer;
+import net.spookly.kodama.brain.plugin.BrainPrepareInstanceVariables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
@@ -33,16 +36,22 @@ public class CommandDispatcherService {
 
     private final RestTemplate restTemplate;
     private final NodeProperties nodeProperties;
+    private final BrainPluginRegistry pluginRegistry;
 
-    public CommandDispatcherService(RestTemplate restTemplate, NodeProperties nodeProperties) {
+    public CommandDispatcherService(
+            RestTemplate restTemplate,
+            NodeProperties nodeProperties,
+            BrainPluginRegistry pluginRegistry
+    ) {
         this.restTemplate = restTemplate;
         this.nodeProperties = nodeProperties;
+        this.pluginRegistry = Objects.requireNonNull(pluginRegistry, "pluginRegistry");
     }
 
     public void sendPrepareInstance(
             Node node,
             Instance instance,
-            List<InstanceTemplateLayer> layers,
+            List<ResolvedTemplateLayer> layers,
             Map<String, String> variables
     ) {
         Objects.requireNonNull(layers, "layers");
@@ -50,13 +59,28 @@ public class CommandDispatcherService {
         List<NodePrepareInstanceLayer> payloadLayers = layers.stream()
                 .map(this::toPrepareLayer)
                 .toList();
-        NodePrepareInstanceRequest payload = new NodePrepareInstanceRequest(
+        String variablesJson = variables == null ? instance.getVariablesJson() : null;
+        BrainPrepareInstanceContext context = new BrainPrepareInstanceContext(
                 instanceId,
                 instance.getName(),
                 instance.getDisplayName(),
                 instance.getPortsJson(),
                 variables,
-                variables == null ? instance.getVariablesJson() : null,
+                variablesJson,
+                layers.stream().map(this::toPluginLayer).toList()
+        );
+        BrainPrepareInstanceVariables resolved = pluginRegistry.resolvePrepareInstanceVariables(
+                context,
+                variables,
+                variablesJson
+        );
+        NodePrepareInstanceRequest payload = new NodePrepareInstanceRequest(
+                instanceId,
+                instance.getName(),
+                instance.getDisplayName(),
+                instance.getPortsJson(),
+                resolved.variables(),
+                resolved.variablesJson(),
                 payloadLayers
         );
         sendCommand(node, instance, "prepare", HttpMethod.POST, buildCommandUri(node, instanceId, "prepare"), payload);
@@ -157,8 +181,8 @@ public class CommandDispatcherService {
                 .toUri();
     }
 
-    private NodePrepareInstanceLayer toPrepareLayer(InstanceTemplateLayer layer) {
-        TemplateVersion version = layer.getTemplateVersion();
+    private NodePrepareInstanceLayer toPrepareLayer(ResolvedTemplateLayer layer) {
+        TemplateVersion version = layer.templateVersion();
         return new NodePrepareInstanceLayer(
                 version.getId(),
                 version.getTemplate().getId(),
@@ -166,7 +190,20 @@ public class CommandDispatcherService {
                 version.getChecksum(),
                 version.getS3Key(),
                 version.getMetadataJson(),
-                layer.getOrderIndex()
+                layer.orderIndex()
+        );
+    }
+
+    private BrainPrepareInstanceLayer toPluginLayer(ResolvedTemplateLayer layer) {
+        TemplateVersion version = layer.templateVersion();
+        return new BrainPrepareInstanceLayer(
+                version.getId(),
+                version.getTemplate().getId(),
+                version.getVersion(),
+                version.getChecksum(),
+                version.getS3Key(),
+                version.getMetadataJson(),
+                layer.orderIndex()
         );
     }
 

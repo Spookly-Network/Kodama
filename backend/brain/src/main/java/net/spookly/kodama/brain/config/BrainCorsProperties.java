@@ -8,12 +8,17 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "brain.web.cors")
 public class BrainCorsProperties {
 
-    private List<String> allowedOrigins = new ArrayList<>(List.of("http://localhost:3000"));
+    private List<String> allowedOrigins = new ArrayList<>();
+
     private List<String> allowedMethods = new ArrayList<>(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-    private List<String> allowedHeaders = new ArrayList<>(List.of("Authorization", "Content-Type", "Accept"));
+
+    private List<String> allowedHeaders = new ArrayList<>(List.of("Authorization", "Content-Type", "X-Node-Token"));
+
     private List<String> exposedHeaders = new ArrayList<>();
+
     private boolean allowCredentials = false;
-    private long maxAgeSeconds = 3600;
+
+    private long maxAgeSeconds = 1800;
 
     public List<String> getAllowedOrigins() {
         return allowedOrigins;

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -35,7 +36,8 @@ public class CreateInstanceRequest {
     @NonNull
     @NotEmpty
     @Valid
-    private List<InstanceTemplateLayerRequest> templateLayers;
+    @JsonAlias("templateAssignments")
+    private List<TemplateAssignmentRequest> templateLayers;
 
     private Map<String, String> variables;
 

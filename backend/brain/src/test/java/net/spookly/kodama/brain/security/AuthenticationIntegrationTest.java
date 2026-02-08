@@ -141,8 +141,7 @@ class AuthenticationIntegrationTest {
                 {
                   "name": "t1",
                   "description": "Template",
-                  "type": "CUSTOM",
-                  "createdBy": "00000000-0000-0000-0000-000000000000"
+                  "type": "CUSTOM"
                 }
                 """;
 
@@ -166,8 +165,7 @@ class AuthenticationIntegrationTest {
                 {
                   "name": "t1",
                   "description": "Template",
-                  "type": "CUSTOM",
-                  "createdBy": "00000000-0000-0000-0000-000000000000"
+                  "type": "CUSTOM"
                 }
                 """;
 
@@ -192,8 +190,9 @@ class AuthenticationIntegrationTest {
                   "name": "instance-1",
                   "templateLayers": [
                     {
+                      "templateId": "00000000-0000-0000-0000-000000000000",
                       "templateVersionId": "00000000-0000-0000-0000-000000000000",
-                      "orderIndex": 0
+                      "priority": 0
                     }
                   ]
                 }
@@ -223,8 +222,9 @@ class AuthenticationIntegrationTest {
                   "name": "instance-1",
                   "templateLayers": [
                     {
+                      "templateId": "00000000-0000-0000-0000-000000000000",
                       "templateVersionId": "00000000-0000-0000-0000-000000000000",
-                      "orderIndex": 0
+                      "priority": 0
                     }
                   ]
                 }
@@ -246,15 +246,14 @@ class AuthenticationIntegrationTest {
                 principal.getAuthorities()
         );
 
-        given(templateService.createTemplate(org.mockito.ArgumentMatchers.any()))
+        given(templateService.createTemplate(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
                 .willReturn(new TemplateDto());
 
         String body = """
                 {
                   "name": "t1",
                   "description": "Template",
-                  "type": "CUSTOM",
-                  "createdBy": "00000000-0000-0000-0000-000000000000"
+                  "type": "CUSTOM"
                 }
                 """;
 
@@ -263,5 +262,10 @@ class AuthenticationIntegrationTest {
                         .content(body)
                         .with(authentication(authenticationToken)))
                 .andExpect(status().isCreated());
+
+        org.mockito.Mockito.verify(templateService).createTemplate(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq(principal.getUsername())
+        );
     }
 }

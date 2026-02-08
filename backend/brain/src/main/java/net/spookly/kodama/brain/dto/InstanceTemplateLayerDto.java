@@ -5,7 +5,8 @@ import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import net.spookly.kodama.brain.domain.instance.InstanceTemplateLayer;
+import net.spookly.kodama.brain.domain.instance.TemplateAssignmentSource;
+import net.spookly.kodama.brain.service.ResolvedTemplateLayer;
 
 @Getter
 @NoArgsConstructor
@@ -13,14 +14,20 @@ import net.spookly.kodama.brain.domain.instance.InstanceTemplateLayer;
 public class InstanceTemplateLayerDto {
 
     private UUID id;
+    private UUID templateId;
     private UUID templateVersionId;
+    private int priority;
     private int orderIndex;
+    private TemplateAssignmentSource source;
 
-    public static InstanceTemplateLayerDto fromEntity(InstanceTemplateLayer layer) {
+    public static InstanceTemplateLayerDto fromResolved(ResolvedTemplateLayer layer) {
         return new InstanceTemplateLayerDto(
-                layer.getId(),
-                layer.getTemplateVersion().getId(),
-                layer.getOrderIndex()
+                layer.assignmentId(),
+                layer.templateId(),
+                layer.templateVersion().getId(),
+                layer.priority(),
+                layer.orderIndex(),
+                layer.source()
         );
     }
 }

@@ -25,7 +25,6 @@ dependencies {
     implementation 'io.jsonwebtoken:jjwt-impl:0.12.5'
     implementation 'io.jsonwebtoken:jjwt-jackson:0.12.5'
 
-
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
@@ -50,4 +49,10 @@ bootJar {
 
 springBoot {
     mainClass = 'net.spookly.kodama.brain.BrainApplication'
+}
+
+tasks {
+    build {
+        dependsOn spotlessApply
+    }
 }

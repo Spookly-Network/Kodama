@@ -98,16 +98,18 @@ Entities:
     * `metadataJson` (optional for arbitrary info)
     * `createdAt`
 
-A **template layer** in an instance links to one specific `TemplateVersion` and has an order index:
+A **template assignment** links an owner to a template with optional pinning and priority:
 
-* `InstanceTemplateLayer`
+* `InstanceTemplateAssignment`
+* `GroupTemplateAssignment`
 
-    * `id`
-    * `instance` (FK)
-    * `templateVersion` (FK)
-    * `orderIndex` (int 0..N, “lower first”).
+Fields:
 
-The “last layer wins” behavior is enforced on Node side, but Brain owns this **ordered list**.
+* `template` (FK, required)
+* `templateVersion` (FK, optional)
+* `priority` (int, non-unique, lower first)
+
+Effective layers are resolved in Brain from instance + group assignments, then ordered deterministically before dispatch to the Node.
 
 ---
 
@@ -158,7 +160,7 @@ Entity:
     * `stoppedAt`
     * `failureReason` (text)
 
-`InstanceTemplateLayer` links to this.
+Instance and group template assignments link to this (`InstanceTemplateAssignment`, `GroupTemplateAssignment`).
 
 For state history: `InstanceEvent`
 
@@ -198,7 +200,11 @@ Rough table overview (no full DDL, just structure):
 * `template_versions`
 * `nodes`
 * `instances`
-* `instance_template_layers`
+* `instance_template_assignments`
+* `group_template_assignments`
+* `instance_groups`
+* `instance_group_memberships`
+* `instance_template_layers` (legacy/backfill source)
 * `instance_events`
 * `users`
 * `roles`
@@ -493,6 +499,12 @@ brain/
         InstanceState.java
         InstanceEvent.java
         InstanceTemplateLayer.java
+        InstanceGroup.java
+        InstanceGroupMembership.java
+        InstanceGroupMembershipId.java
+        InstanceTemplateAssignment.java
+        GroupTemplateAssignment.java
+        TemplateAssignmentSource.java
       user/
         User.java
         RoleEntity.java
@@ -505,6 +517,10 @@ brain/
       InstanceRepository.java
       InstanceEventRepository.java
       InstanceTemplateLayerRepository.java
+      InstanceTemplateAssignmentRepository.java
+      InstanceGroupRepository.java
+      InstanceGroupMembershipRepository.java
+      GroupTemplateAssignmentRepository.java
       UserRepository.java
       RoleRepository.java
 
@@ -512,6 +528,9 @@ brain/
       TemplateService.java
       NodeService.java
       InstanceService.java
+      InstanceGroupService.java
+      TemplateAssignmentService.java
+      TemplateAssignmentResolver.java
       SchedulingService.java
       CommandDispatcherService.java
       UserService.java
@@ -547,7 +566,8 @@ Focus just on the control-plane part of the big roadmap.
 * Set up Spring Boot project (`brain` module).
 * Create base packages and empty entities:
 
-    * `Template`, `TemplateVersion`, `Node`, `Instance`, `InstanceTemplateLayer`, `InstanceEvent`.
+    * `Template`, `TemplateVersion`, `Node`, `Instance`, `InstanceEvent`.
+    * `InstanceTemplateAssignment`, `GroupTemplateAssignment`, `InstanceGroup`, `InstanceGroupMembership`.
 * Add Flyway/Liquibase with first migrations.
 * Implement `TemplateService` + `TemplateController` (simple CRUD).
 * Implement `NodeController` for registration + heartbeat.

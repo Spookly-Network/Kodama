@@ -9,8 +9,8 @@
 ## Endpoints
 
 ### GET /api/instances
-- Returns every persisted instance and its template layers.
-- Response: `200 OK` with `InstanceDto[]`. Instance order is not guaranteed; `templateLayers` are sorted by `orderIndex` ascending.
+- Returns every persisted instance and its resolved template layers.
+- Response: `200 OK` with `InstanceDto[]`. Instance order is not guaranteed; `templateLayers` are sorted by `orderIndex` ascending (computed from assignment priority + deterministic tie-breakers).
 - Errors: default Spring errors only.
 
 ### GET /api/instances/{id}
@@ -32,28 +32,30 @@ Request body (`Content-Type: application/json`):
 | `region` | string | Optional node preference for scheduling. |
 | `tags` | string | Optional node preference; comma-separated tags. |
 | `devModeAllowed` | boolean | Optional node preference; when false, dev-mode nodes are excluded. |
-| `templateLayers` | array of `InstanceTemplateLayerRequest` | Required, non-empty; see below. |
+| `templateLayers` | array of `TemplateAssignmentRequest` | Required, non-empty; see below. |
 | `variables` | object | Optional variables map; serialized to `variablesJson`. Cannot be provided alongside `variablesJson`. |
 | `variablesJson` | string | Optional raw JSON string persisted verbatim. |
 | `portsJson` | string | Optional raw JSON string persisted verbatim. |
 
-`InstanceTemplateLayerRequest`:
-- `templateVersionId` (UUID) or `templateId` (UUID). At least one is required; providing both must match. If only `templateId` is provided, the latest template version is used. Missing templates or versions return `404 Not Found`.
-- `orderIndex` (integer, >= 0, optional). Defaults to list order when omitted. Order indexes must be unique; duplicates return `400 Bad Request`.
+`TemplateAssignmentRequest`:
+- `templateId` (UUID, required). Missing templates return `404 Not Found`.
+- `templateVersionId` (UUID, optional). When provided, it must belong to `templateId`; when omitted, the template must already have at least one version.
+- `priority` (integer, >= 0, optional). Defaults to list order when omitted. Priorities are non-unique.
+- Multiple entries with the same `templateId` are allowed; each becomes its own layer ordered by `priority`.
 
 Behavior:
-- Validates that at least one template layer is provided.
-- Resolves template versions by id or by selecting the latest version for a template id.
+- Validates that at least one template assignment is provided.
+- Validates `templateId` and optional `templateVersionId` references, and ensures templates without an explicit version already have at least one version.
 - Resolves the optional node id.
 - Serializes `variables` into `variablesJson` when provided (rejects requests that provide both).
-- Persists the instance with `state=REQUESTED`, `createdAt`/`updatedAt` set to the current UTC time, and writes template layers in ascending `orderIndex` (explicit or implied from list order).
+- Persists the instance with `state=REQUESTED`, `createdAt`/`updatedAt` set to the current UTC time, and stores assignments with their priority.
 - Records an `InstanceEvent` of type `REQUEST_RECEIVED`.
 - Does not schedule or start the instance; this controller only registers the request.
 
 Responses:
 - `201 Created` with the stored `InstanceDto` (includes generated ids for the instance and each layer).
-- `400 Bad Request` for validation errors (missing layers, duplicate `orderIndex`, blank `name`).
-- `404 Not Found` when the node or any template version is missing.
+- `400 Bad Request` for validation errors (missing assignments, invalid `templateVersionId`, blank `name`).
+- `404 Not Found` when the node or any template reference is missing.
 - `409 Conflict` when an instance with the same `name` already exists.
 
 ## Data contracts
@@ -76,9 +78,14 @@ Fields returned by all endpoints:
 - `templateLayers` (`InstanceTemplateLayerDto[]`)
 
 ### InstanceTemplateLayerDto
-- `id` (`UUID`)
+- `id` (`UUID`) — assignment id
+- `templateId` (`UUID`)
 - `templateVersionId` (`UUID`)
+- `priority` (`int`)
 - `orderIndex` (`int`)
+- `source` (`INSTANCE` or `GROUP`)
+
+`templateLayers` are resolved from direct instance assignments plus group assignments, with direct assignments taking precedence on conflicts.
 
 ## Examples
 
@@ -95,8 +102,16 @@ POST /api/instances
   "tags": "primary,ssd",
   "devModeAllowed": true,
   "templateLayers": [
-    { "templateVersionId": "10000000-0000-0000-0000-000000000001", "orderIndex": 0 },
-    { "templateVersionId": "10000000-0000-0000-0000-000000000002", "orderIndex": 1 }
+    {
+      "templateId": "20000000-0000-0000-0000-000000000001",
+      "templateVersionId": "10000000-0000-0000-0000-000000000001",
+      "priority": 0
+    },
+    {
+      "templateId": "20000000-0000-0000-0000-000000000002",
+      "templateVersionId": "10000000-0000-0000-0000-000000000002",
+      "priority": 1
+    }
   ],
   "variables": { "ENV": "prod", "SEED": "12345" },
   "portsJson": "{ \"game\": 25565 }"
@@ -125,8 +140,22 @@ HTTP/1.1 201 Created
   "stoppedAt": null,
   "failureReason": null,
   "templateLayers": [
-    { "id": "20000000-0000-0000-0000-000000000001", "templateVersionId": "10000000-0000-0000-0000-000000000001", "orderIndex": 0 },
-    { "id": "20000000-0000-0000-0000-000000000002", "templateVersionId": "10000000-0000-0000-0000-000000000002", "orderIndex": 1 }
+    {
+      "id": "20000000-0000-0000-0000-000000000001",
+      "templateId": "20000000-0000-0000-0000-000000000001",
+      "templateVersionId": "10000000-0000-0000-0000-000000000001",
+      "priority": 0,
+      "orderIndex": 0,
+      "source": "INSTANCE"
+    },
+    {
+      "id": "20000000-0000-0000-0000-000000000002",
+      "templateId": "20000000-0000-0000-0000-000000000002",
+      "templateVersionId": "10000000-0000-0000-0000-000000000002",
+      "priority": 1,
+      "orderIndex": 1,
+      "source": "INSTANCE"
+    }
   ]
 }
 ```
