@@ -252,6 +252,12 @@
             />
           </div>
           <div
+            v-if="actionError"
+            class="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+          >
+            {{ actionError }}
+          </div>
+          <div
             v-if="loadError"
             class="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
           >
@@ -269,7 +275,7 @@
 <script setup lang="ts">
 import { Activity, AlertTriangle, Clock, Plus, SquareStack } from "lucide-vue-next"
 import type { Instance, InstanceState } from "#shared/types/Instance"
-import { columns, type InstanceRow } from "~/components/app/instances/columns"
+import { buildColumns, type InstanceRow } from "~/components/app/instances/columns"
 
 type TemplateSummary = {
   id: string
@@ -314,6 +320,7 @@ const brainApi = useBrainApi()
 const instances = ref<Instance[]>([])
 const loading = ref(true)
 const loadError = ref<string | null>(null)
+const actionError = ref<string | null>(null)
 const createDialogOpen = ref(false)
 const createSubmitting = ref(false)
 const createSubmitted = ref(false)
@@ -321,6 +328,7 @@ const createError = ref<string | null>(null)
 const templates = ref<TemplateSummary[]>([])
 const templatesLoading = ref(false)
 const templatesError = ref<string | null>(null)
+const actionSubmitting = reactive<Record<string, boolean>>({})
 let nextLayerKey = 0
 
 const buildLayer = (): CreateInstanceLayer => ({
@@ -422,6 +430,36 @@ const instanceRows = computed<InstanceRow[]>(() =>
   })
 )
 
+const isActionBusy = (instanceId: string) => Boolean(actionSubmitting[instanceId])
+
+const findInstanceById = (instanceId: string) =>
+  instances.value.find((instance) => instance.id === instanceId) ?? null
+
+const applyCreateFormFromInstance = (instance: Instance) => {
+  nextLayerKey = 0
+  createForm.name = instance.name
+  createForm.displayName = instance.displayName
+  createForm.nodeId = instance.nodeId ?? ""
+  createForm.region = instance.region ?? ""
+  createForm.tags = instance.tags ?? ""
+  createForm.devModeAllowed = instance.devModeAllowed ?? false
+
+  const instanceLayers = (instance.templateLayers ?? []).filter((layer) => layer.source === "INSTANCE")
+  if (instanceLayers.length) {
+    createForm.templateLayers = instanceLayers.map((layer) => ({
+      key: nextLayerKey++,
+      templateId: layer.templateId,
+      templateVersionId: layer.templateVersionId,
+      priority: String(layer.priority),
+    }))
+  } else {
+    createForm.templateLayers = [buildLayer()]
+  }
+
+  createSubmitted.value = false
+  createError.value = null
+}
+
 const extractErrorMessage = (error: unknown, fallback: string) => {
   if (!error || typeof error !== "object") return fallback
   const record = error as { data?: { message?: string }; message?: string }
@@ -513,6 +551,43 @@ const buildCreatePayload = (): CreateInstanceRequest => {
   return payload
 }
 
+const submitInstanceAction = async (
+  instanceId: string,
+  action: "start" | "stop" | "destroy",
+  fallbackMessage: string
+) => {
+  if (actionSubmitting[instanceId]) return
+  actionSubmitting[instanceId] = true
+  actionError.value = null
+  try {
+    await brainApi<Instance>(`/api/instances/${instanceId}/${action}`, { method: "POST" })
+    await loadInstances()
+  } catch (error) {
+    actionError.value = extractErrorMessage(error, fallbackMessage)
+  } finally {
+    actionSubmitting[instanceId] = false
+  }
+}
+
+const handleStart = (row: InstanceRow) =>
+  submitInstanceAction(row.id, "start", "Unable to start instance.")
+
+const handleStop = (row: InstanceRow) =>
+  submitInstanceAction(row.id, "stop", "Unable to stop instance.")
+
+const handleDestroy = (row: InstanceRow) => {
+  const confirmed = window.confirm(`Destroy ${row.displayName || row.name}? This cannot be undone.`)
+  if (!confirmed) return
+  return submitInstanceAction(row.id, "destroy", "Unable to destroy instance.")
+}
+
+const handleCopy = (row: InstanceRow) => {
+  const instance = findInstanceById(row.id)
+  if (!instance) return
+  applyCreateFormFromInstance(instance)
+  createDialogOpen.value = true
+}
+
 const loadInstances = async () => {
   loading.value = true
   loadError.value = null
@@ -562,6 +637,14 @@ const submitCreate = async () => {
     createSubmitting.value = false
   }
 }
+
+const columns = buildColumns({
+  onStart: handleStart,
+  onStop: handleStop,
+  onDestroy: handleDestroy,
+  onCopy: handleCopy,
+  isBusy: (row) => isActionBusy(row.id),
+})
 
 watch(createDialogOpen, (open) => {
   if (open && !templates.value.length) {

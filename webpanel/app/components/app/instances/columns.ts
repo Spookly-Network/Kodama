@@ -1,7 +1,8 @@
 import { h } from 'vue'
 import type { ColumnDef } from '@tanstack/vue-table'
 import { Badge } from '#components'
-import type { InstanceState } from "#shared/types/Instance";
+import type { InstanceState } from "#shared/types/Instance"
+import AppInstancesTableActions from "~/components/app/instances/AppInstancesTableActions.vue"
 
 export type InstanceRow = {
     id: string
@@ -23,6 +24,14 @@ export type InstanceRow = {
     failureReason: string | null
 }
 
+export type InstanceActionHandlers = {
+    onStart?: (instance: InstanceRow) => void
+    onStop?: (instance: InstanceRow) => void
+    onDestroy?: (instance: InstanceRow) => void
+    onCopy?: (instance: InstanceRow) => void
+    isBusy?: (instance: InstanceRow) => boolean
+}
+
 const statusStyles: Record<InstanceState, string> = {
     REQUESTED: 'bg-slate-500/10 text-slate-300 border-slate-500/20',
     PREPARING: 'bg-sky-500/10 text-sky-300 border-sky-500/20',
@@ -37,7 +46,7 @@ const statusStyles: Record<InstanceState, string> = {
 
 const devModeStyles = 'bg-amber-500/10 text-amber-300 border-amber-500/20'
 
-export const columns: ColumnDef<InstanceRow>[] = [
+const baseColumns: ColumnDef<InstanceRow>[] = [
     {
         accessorKey: 'displayName',
         header: 'Instance',
@@ -130,3 +139,28 @@ export const columns: ColumnDef<InstanceRow>[] = [
         },
     },
 ]
+
+const buildActionsColumn = (actions: InstanceActionHandlers): ColumnDef<InstanceRow> => ({
+    id: 'actions',
+    enableHiding: false,
+    cell: ({ row }) => {
+        const instance = row.original
+        return h('div', { class: 'relative' }, h(AppInstancesTableActions, {
+            instance,
+            busy: actions.isBusy?.(instance) ?? false,
+            onStart: () => actions.onStart?.(instance),
+            onStop: () => actions.onStop?.(instance),
+            onDestroy: () => actions.onDestroy?.(instance),
+            onCopy: () => actions.onCopy?.(instance),
+        }))
+    },
+})
+
+export const buildColumns = (actions?: InstanceActionHandlers): ColumnDef<InstanceRow>[] => {
+    if (!actions) {
+        return baseColumns
+    }
+    return [...baseColumns, buildActionsColumn(actions)]
+}
+
+export const columns = baseColumns
