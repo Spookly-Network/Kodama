@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.AllArgsConstructor;
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceEvent;
 import net.spookly.kodama.brain.domain.instance.InstanceEventType;
@@ -39,6 +40,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @Transactional
+@AllArgsConstructor
 public class InstanceService {
 
     private final InstanceRepository instanceRepository;
@@ -51,30 +53,7 @@ public class InstanceService {
     private final TemplateVersionRepository templateVersionRepository;
     private final NodeRepository nodeRepository;
     private final TemplateAssignmentResolver templateAssignmentResolver;
-
-    public InstanceService(
-            InstanceRepository instanceRepository,
-            InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository,
-            InstanceEventRepository instanceEventRepository,
-            InstanceStateMachine instanceStateMachine,
-            CommandDispatcherService commandDispatcherService,
-            ObjectMapper objectMapper,
-            TemplateRepository templateRepository,
-            TemplateVersionRepository templateVersionRepository,
-            NodeRepository nodeRepository,
-            TemplateAssignmentResolver templateAssignmentResolver
-    ) {
-        this.instanceRepository = instanceRepository;
-        this.instanceTemplateAssignmentRepository = instanceTemplateAssignmentRepository;
-        this.instanceEventRepository = instanceEventRepository;
-        this.instanceStateMachine = instanceStateMachine;
-        this.commandDispatcherService = commandDispatcherService;
-        this.objectMapper = objectMapper;
-        this.templateRepository = templateRepository;
-        this.templateVersionRepository = templateVersionRepository;
-        this.nodeRepository = nodeRepository;
-        this.templateAssignmentResolver = templateAssignmentResolver;
-    }
+    private final SchedulingService schedulingService;
 
     @Transactional(readOnly = true)
     public List<InstanceDto> listInstances() {
@@ -107,10 +86,15 @@ public class InstanceService {
                 validateAndNormalizeTemplateAssignments(request.getTemplateLayers());
         AssignmentLookup assignmentLookup = resolveAssignmentReferences(assignmentDescriptors);
 
-        Node node = null;
+        Node node;
         if (request.getNodeId() != null) {
             node = nodeRepository.findById(request.getNodeId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Node not found"));
+        } else {
+            node = schedulingService.selectNode(request.getRegion(), request.getTags(), request.getDevModeAllowed());
+            if (node == null) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "No eligible nodes found");
+            }
         }
 
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);

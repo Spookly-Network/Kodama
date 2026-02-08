@@ -50,6 +50,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Import({
         InstanceService.class,
         InstanceStateMachine.class,
+        SchedulingService.class,
         TemplateAssignmentResolver.class,
         InstanceServiceTest.ObjectMapperTestConfig.class
 })
@@ -100,6 +101,14 @@ class InstanceServiceTest {
 
     @Test
     void createInstancePersistsLayersAndRequestedEvent() {
+        createOnlineNode(
+                "node-primary",
+                "eu-west-1",
+                true,
+                "primary,ssd",
+                10,
+                0
+        );
         TemplateVersion version = createTemplateVersion("Base Template", "1.0.0");
 
         TemplateAssignmentRequest assignment = new TemplateAssignmentRequest(
@@ -143,6 +152,7 @@ class InstanceServiceTest {
 
     @Test
     void createInstanceAppliesListOrderWhenOrderIndexMissing() {
+        createOnlineNode("node-ordering");
         TemplateVersion base = createTemplateVersion("Base Template", "1.0.0");
         TemplateVersion overlay = createTemplateVersion("Overlay Template", "1.0.0");
 
@@ -172,6 +182,7 @@ class InstanceServiceTest {
 
     @Test
     void createInstanceUsesLatestTemplateVersionWhenOnlyTemplateIdProvided() {
+        createOnlineNode("node-latest");
         Template template = createTemplate("Template With Versions");
         OffsetDateTime earlier = OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(5);
         TemplateVersion first = templateVersionRepository.save(new TemplateVersion(
@@ -216,6 +227,7 @@ class InstanceServiceTest {
 
     @Test
     void createInstanceAllowsDuplicatePriorities() {
+        createOnlineNode("node-duplicate-priority");
         TemplateVersion base = createTemplateVersion("Priority Base", "1.0.0");
         TemplateVersion overlay = createTemplateVersion("Priority Overlay", "1.0.0");
 
@@ -246,6 +258,7 @@ class InstanceServiceTest {
 
     @Test
     void createInstanceRejectsDuplicateNames() {
+        createOnlineNode("node-duplicate-names");
         TemplateVersion version = createTemplateVersion("Dupe Template", "1.0.0");
         TemplateAssignmentRequest assignment = new TemplateAssignmentRequest(
                 version.getTemplate().getId(),
@@ -315,7 +328,67 @@ class InstanceServiceTest {
     }
 
     @Test
+    void createInstanceSelectsNodeWhenNodeIdMissing() {
+        Node selectedNode = createOnlineNode(
+                "node-low",
+                "eu-west-1",
+                false,
+                "primary,ssd",
+                10,
+                1
+        );
+        createOnlineNode(
+                "node-high",
+                "eu-west-1",
+                false,
+                "primary,ssd",
+                10,
+                5
+        );
+        TemplateVersion version = createTemplateVersion("Schedule Template", "1.0.0");
+
+        TemplateAssignmentRequest assignment = new TemplateAssignmentRequest(
+                version.getTemplate().getId(),
+                version.getId(),
+                0
+        );
+        CreateInstanceRequest request = new CreateInstanceRequest(
+                "scheduled-instance",
+                List.of(assignment)
+        );
+        request.setRegion("eu-west-1");
+        request.setTags("primary,ssd");
+        request.setDevModeAllowed(Boolean.FALSE);
+
+        InstanceDto created = instanceService.createInstance(request);
+        Instance persisted = instanceRepository.findById(created.getId()).orElseThrow();
+        assertThat(persisted.getNode()).isNotNull();
+        assertThat(persisted.getNode().getId()).isEqualTo(selectedNode.getId());
+    }
+
+    @Test
+    void createInstanceRejectsWhenNoEligibleNodesAvailable() {
+        TemplateVersion version = createTemplateVersion("No Node Template", "1.0.0");
+
+        TemplateAssignmentRequest assignment = new TemplateAssignmentRequest(
+                version.getTemplate().getId(),
+                version.getId(),
+                0
+        );
+        CreateInstanceRequest request = new CreateInstanceRequest(
+                "no-node",
+                List.of(assignment)
+        );
+
+        assertThatThrownBy(() -> instanceService.createInstance(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+    }
+
+    @Test
     void createInstanceRejectsVariablesAndVariablesJsonTogether() {
+        createOnlineNode("node-variables");
         TemplateVersion version = createTemplateVersion("Mixed Variables", "1.0.0");
         TemplateAssignmentRequest assignment = new TemplateAssignmentRequest(
                 version.getTemplate().getId(),
@@ -509,6 +582,33 @@ class InstanceServiceTest {
     private Template createTemplate(String name) {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         return templateRepository.save(new Template(name, "desc", TemplateType.CUSTOM, now, REQUESTER_USERNAME));
+    }
+
+    private Node createOnlineNode(String name) {
+        return createOnlineNode(name, "eu-west-1", false, null, 10, 0);
+    }
+
+    private Node createOnlineNode(
+            String name,
+            String region,
+            boolean devMode,
+            String tags,
+            int capacitySlots,
+            int usedSlots
+    ) {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        return nodeRepository.save(new Node(
+                name,
+                region,
+                NodeStatus.ONLINE,
+                devMode,
+                capacitySlots,
+                usedSlots,
+                now,
+                "1.0.0",
+                tags,
+                "http://" + name + ".local"
+        ));
     }
 
     private TemplateVersion createTemplateVersion(String templateName, String version) {

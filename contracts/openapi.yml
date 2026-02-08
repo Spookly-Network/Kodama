@@ -1285,7 +1285,7 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
     Conflict:
-      description: Resource already exists.
+      description: Request conflicts with the current state (for example, the resource already exists or no eligible nodes are available).
       content:
         application/json:
           schema:
