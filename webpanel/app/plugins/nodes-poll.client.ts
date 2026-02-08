@@ -1,9 +1,11 @@
 import {useNodesStore} from "~/store/nodes";
 import {useAuthStore} from "~/store/auth";
+import {useBrainStore} from "~/store/brain";
 
 export default defineNuxtPlugin(() => {
     const auth = useAuthStore()
     const nodes = useNodesStore()
+    const brain = useBrainStore()
 
     let timer: number | undefined
 
@@ -20,7 +22,8 @@ export default defineNuxtPlugin(() => {
 
             if (!timer) {
                 timer = window.setInterval(() => {
-                    nodes.ensureFresh(0) // force refresh on interval
+                  brain.checkAlive()
+                  nodes.ensureFresh(0) // force refresh on interval
                 }, 15_000)
             }
         },

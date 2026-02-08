@@ -21,10 +21,23 @@ import {
   SidebarMenuButton,
   SidebarMenuItem
 } from "~/components/ui/sidebar";
+import {useBrainStore} from "~/store/brain";
 
+const brainStore = useBrainStore()
 const props = withDefaults(defineProps<SidebarProps>(), {
   variant: "inset",
 })
+
+const formatter = new Intl.DateTimeFormat('de-DE', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+});
+
+const lastHeartbeat = computed(() => formatter.format(new Date(brainStore.lastHeartbeat)))
 
 const data = {
   user: {
@@ -135,6 +148,10 @@ const data = {
     },
   ],
 }
+const statusClasses = computed(() => ({
+  'bg-green-500': brainStore.alive,
+  'bg-red-500': !brainStore.alive,
+}))
 </script>
 
 <template>
@@ -142,19 +159,30 @@ const data = {
     <SidebarHeader>
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton size="lg" as-child>
-            <a href="#">
-              <div class="flex aspect-square size-8 items-center justify-center rounded-lg bg-green-500 text-sidebar-primary-foreground">
-                <BrainCircuit class="size-4" />
-              </div>
-              <div class="grid flex-1 text-left text-sm leading-tight">
-                <span class="truncate font-medium">Kodama Webpanel</span>
-                <span class="truncate text-xs">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger as-child>
+                <SidebarMenuButton size="lg" as-child>
+                  <a href="#">
+                    <div :class="statusClasses" class="flex aspect-square size-8 items-center justify-center rounded-lg text-sidebar-primary-foreground">
+                      <BrainCircuit class="size-4" />
+                    </div>
+                    <div class="grid flex-1 text-left text-sm leading-tight">
+                      <span class="truncate font-medium">Kodama Webpanel</span>
+                      <span class="truncate text-xs">
                     v0.0.1-SNAPSHOT.1
                   </span>
-              </div>
-            </a>
-          </SidebarMenuButton>
+                    </div>
+                  </a>
+                </SidebarMenuButton>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Last heartbeat: {{ lastHeartbeat }}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+
         </SidebarMenuItem>
       </SidebarMenu>
     </SidebarHeader>
