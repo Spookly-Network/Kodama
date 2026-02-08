@@ -165,7 +165,7 @@ const statusClasses = computed(() => ({
             <Tooltip>
               <TooltipTrigger as-child>
                 <SidebarMenuButton size="lg" as-child>
-                  <a href="#">
+                  <NuxtLink href="#">
                     <div :class="statusClasses" class="flex aspect-square size-8 items-center justify-center rounded-lg text-sidebar-primary-foreground">
                       <BrainCircuit class="size-4" />
                     </div>
@@ -175,7 +175,7 @@ const statusClasses = computed(() => ({
                     v0.0.1-SNAPSHOT.1
                   </span>
                     </div>
-                  </a>
+                  </NuxtLink>
                 </SidebarMenuButton>
               </TooltipTrigger>
               <TooltipContent>
