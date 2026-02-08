@@ -19,6 +19,7 @@ export default defineNuxtPlugin(() => {
             }
 
             nodes.refresh()
+          brain.checkAlive()
 
             if (!timer) {
                 timer = window.setInterval(() => {

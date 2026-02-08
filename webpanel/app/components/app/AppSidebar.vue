@@ -40,6 +40,7 @@ const formatter = new Intl.DateTimeFormat('de-DE', {
 });
 
 const lastHeartbeat = computed(() => formatter.format(new Date(brainStore.lastHeartbeat)))
+const brainStatusClass = computed(() => brainStore.alive ? 'bg-green-500' : 'bg-red-500')
 
 const data = {
   user: {
@@ -150,10 +151,6 @@ const data = {
     },
   ],
 }
-const statusClasses = computed(() => ({
-  'bg-green-500': brainStore.alive,
-  'bg-red-500': !brainStore.alive,
-}))
 </script>
 
 <template>
@@ -165,8 +162,12 @@ const statusClasses = computed(() => ({
             <Tooltip>
               <TooltipTrigger as-child>
                 <SidebarMenuButton size="lg" as-child>
-                  <NuxtLink href="#">
-                    <div :class="statusClasses" class="flex aspect-square size-8 items-center justify-center rounded-lg text-sidebar-primary-foreground">
+                  <div>
+                    <div v-if="brainStore.alive" class="flex aspect-square size-8 items-center justify-center rounded-lg text-sidebar-primary-foreground bg-green-500">
+                      <BrainCircuit class="size-4" />
+                    </div>
+
+                    <div v-else class="flex aspect-square size-8 items-center justify-center rounded-lg text-sidebar-primary-foreground bg-red-500">
                       <BrainCircuit class="size-4" />
                     </div>
                     <div class="grid flex-1 text-left text-sm leading-tight">
@@ -175,7 +176,7 @@ const statusClasses = computed(() => ({
                     v0.0.1-SNAPSHOT.1
                   </span>
                     </div>
-                  </NuxtLink>
+                  </div>
                 </SidebarMenuButton>
               </TooltipTrigger>
               <TooltipContent>

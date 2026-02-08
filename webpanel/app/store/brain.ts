@@ -1,5 +1,5 @@
 interface PingResponse {
-  status: boolean
+  status: "UP" | "DOWN"
 }
 
 export const useBrainStore = defineStore('brain', () => {
@@ -11,13 +11,13 @@ export const useBrainStore = defineStore('brain', () => {
   async function checkAlive() {
     try {
       const response = await brainApi<PingResponse>('/actuator/health/ping')
-      if (response.status == "UP") {
+      if (response.status === "UP") {
         alive.value = true
-        lastHeartbeat.value = Date.now()
       }
     } catch (e) {
       alive.value = false
     }
+    lastHeartbeat.value = Date.now()
   }
 
   return { alive, checkAlive, lastHeartbeat }
