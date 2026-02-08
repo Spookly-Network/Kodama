@@ -5,6 +5,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
+import lombok.NonNull;
 import net.spookly.kodama.brain.domain.template.Template;
 import net.spookly.kodama.brain.domain.template.TemplateVersion;
 import net.spookly.kodama.brain.dto.CreateTemplateRequest;
@@ -39,12 +40,12 @@ public class TemplateService {
     }
 
     @Transactional(readOnly = true)
-    public TemplateDto getTemplate(UUID id) {
+    public TemplateDto getTemplate(@NonNull UUID id) {
         Template template = getTemplateEntity(id);
         return TemplateDto.fromEntity(template);
     }
 
-    public TemplateDto createTemplate(CreateTemplateRequest request) {
+    public TemplateDto createTemplate(@NonNull CreateTemplateRequest request, @NonNull String createdByUsername) {
         templateRepository.findByName(request.getName()).ifPresent(existing -> {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Template with the same name already exists");
         });
@@ -54,13 +55,13 @@ public class TemplateService {
                 request.getDescription(),
                 request.getType(),
                 OffsetDateTime.now(ZoneOffset.UTC),
-                request.getCreatedBy()
+                createdByUsername
         );
         Template saved = templateRepository.save(template);
         return TemplateDto.fromEntity(saved);
     }
 
-    public TemplateVersionDto addVersion(UUID templateId, CreateTemplateVersionRequest request) {
+    public TemplateVersionDto addVersion(@NonNull UUID templateId, @NonNull CreateTemplateVersionRequest request) {
         Template template = getTemplateEntity(templateId);
 
         templateVersionRepository.findByTemplateAndVersion(template, request.getVersion()).ifPresent(existing -> {
@@ -81,7 +82,7 @@ public class TemplateService {
     }
 
     @Transactional(readOnly = true)
-    public List<TemplateVersionDto> listVersions(UUID templateId) {
+    public List<TemplateVersionDto> listVersions(@NonNull UUID templateId) {
         Template template = getTemplateEntity(templateId);
         return templateVersionRepository.findAllByTemplateOrderByCreatedAtDesc(template)
                 .stream()
@@ -89,7 +90,7 @@ public class TemplateService {
                 .toList();
     }
 
-    private Template getTemplateEntity(UUID id) {
+    private Template getTemplateEntity(@NonNull UUID id) {
         return templateRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Template not found"));
     }

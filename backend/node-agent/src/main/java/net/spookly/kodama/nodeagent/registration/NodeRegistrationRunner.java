@@ -2,6 +2,7 @@ package net.spookly.kodama.nodeagent.registration;
 
 import java.net.URI;
 
+import net.spookly.kodama.nodeagent.config.InstanceProperties;
 import net.spookly.kodama.nodeagent.config.NodeConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,17 +19,20 @@ public class NodeRegistrationRunner implements ApplicationRunner {
     private static final Logger logger = LoggerFactory.getLogger(NodeRegistrationRunner.class);
 
     private final NodeConfig config;
+    private final InstanceProperties instanceProperties;
     private final NodeRegistrationClient registrationClient;
     private final NodeAuthTokenReader tokenReader;
     private final NodeRegistrationState registrationState;
 
     public NodeRegistrationRunner(
             NodeConfig config,
+            InstanceProperties instanceProperties,
             NodeRegistrationClient registrationClient,
             NodeAuthTokenReader tokenReader,
             NodeRegistrationState registrationState
     ) {
         this.config = config;
+        this.instanceProperties = instanceProperties;
         this.registrationClient = registrationClient;
         this.tokenReader = tokenReader;
         this.registrationState = registrationState;
@@ -37,6 +41,7 @@ public class NodeRegistrationRunner implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         config.validate();
+        instanceProperties.validate();
         if (!config.isRegistrationEnabled()) {
             logger.info("Node registration is disabled. Skipping Brain registration.");
             return;

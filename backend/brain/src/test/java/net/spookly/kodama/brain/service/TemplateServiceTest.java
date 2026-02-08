@@ -44,7 +44,7 @@ class TemplateServiceTest {
         registry.add("spring.datasource.driver-class-name", mysql::getDriverClassName);
     }
 
-    private static final UUID CREATOR_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final String CREATOR_USERNAME = "admin";
 
     @Autowired
     private TemplateService templateService;
@@ -58,23 +58,24 @@ class TemplateServiceTest {
     @Test
     void createTemplatePersistsEntity() {
         TemplateDto templateDto = templateService.createTemplate(
-                new CreateTemplateRequest("Base Template", "Base description", TemplateType.CUSTOM, CREATOR_ID)
+                new CreateTemplateRequest("Base Template", "Base description", TemplateType.CUSTOM),
+                CREATOR_USERNAME
         );
 
         Template persisted = templateRepository.findById(templateDto.getId()).orElseThrow();
         assertThat(persisted.getName()).isEqualTo("Base Template");
         assertThat(persisted.getDescription()).isEqualTo("Base description");
-        assertThat(persisted.getCreatedBy()).isEqualTo(CREATOR_ID);
+        assertThat(persisted.getCreatedBy()).isEqualTo(CREATOR_USERNAME);
         assertThat(persisted.getCreatedAt()).isNotNull();
     }
 
     @Test
     void createTemplateRejectsDuplicateNames() {
         CreateTemplateRequest request =
-                new CreateTemplateRequest("Duplicate", "desc", TemplateType.CUSTOM, CREATOR_ID);
-        templateService.createTemplate(request);
+                new CreateTemplateRequest("Duplicate", "desc", TemplateType.CUSTOM);
+        templateService.createTemplate(request, CREATOR_USERNAME);
 
-        assertThatThrownBy(() -> templateService.createTemplate(request))
+        assertThatThrownBy(() -> templateService.createTemplate(request, CREATOR_USERNAME))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
                 .isEqualTo(HttpStatus.CONFLICT);
@@ -83,7 +84,8 @@ class TemplateServiceTest {
     @Test
     void addVersionPersistsTemplateVersion() {
         TemplateDto templateDto = templateService.createTemplate(
-                new CreateTemplateRequest("TemplateWithVersion", "desc", TemplateType.CUSTOM, CREATOR_ID)
+                new CreateTemplateRequest("TemplateWithVersion", "desc", TemplateType.CUSTOM),
+                CREATOR_USERNAME
         );
 
         TemplateVersionDto versionDto = templateService.addVersion(
@@ -100,7 +102,8 @@ class TemplateServiceTest {
     @Test
     void addVersionRejectsDuplicateVersionForTemplate() {
         TemplateDto templateDto = templateService.createTemplate(
-                new CreateTemplateRequest("TemplateDuplicateVersion", "desc", TemplateType.CUSTOM, CREATOR_ID)
+                new CreateTemplateRequest("TemplateDuplicateVersion", "desc", TemplateType.CUSTOM),
+                CREATOR_USERNAME
         );
 
         CreateTemplateVersionRequest versionRequest =

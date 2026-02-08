@@ -43,6 +43,7 @@ const variantStyles: Record<string, string> = {
   fuchsia: 'bg-fuchsia-500/10 text-fuchsia-500',
   pink: 'bg-pink-500/10 text-pink-500',
   rose: 'bg-rose-500/10 text-rose-500',
+  red: 'bg-red-500/10 text-red-500',
 }
 
 const { variant = "primary" } = defineProps<{

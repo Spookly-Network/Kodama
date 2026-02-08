@@ -9,7 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceState;
-import net.spookly.kodama.brain.domain.instance.InstanceTemplateLayer;
+import net.spookly.kodama.brain.service.ResolvedTemplateLayer;
 
 @Getter
 @NoArgsConstructor
@@ -34,9 +34,9 @@ public class InstanceDto {
     private String failureReason;
     private List<InstanceTemplateLayerDto> templateLayers;
 
-    public static InstanceDto fromEntity(Instance instance, List<InstanceTemplateLayer> layers) {
+    public static InstanceDto fromEntity(Instance instance, List<ResolvedTemplateLayer> layers) {
         List<InstanceTemplateLayerDto> layerDtos = layers.stream()
-                .map(InstanceTemplateLayerDto::fromEntity)
+                .map(InstanceTemplateLayerDto::fromResolved)
                 .toList();
 
         return new InstanceDto(

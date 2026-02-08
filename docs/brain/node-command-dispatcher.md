@@ -27,6 +27,7 @@ Body: `NodePrepareInstanceRequest`
   "layers": [
     {
       "templateVersionId": "uuid",
+      "templateId": "uuid",
       "version": "string",
       "checksum": "string",
       "s3Key": "string",
@@ -37,7 +38,7 @@ Body: `NodePrepareInstanceRequest`
 }
 ```
 
-`variables` and `variablesJson` are mutually exclusive. Brain will send `variables` when provided, otherwise it forwards `variablesJson` from the instance record.
+`variables` and `variablesJson` are mutually exclusive. Brain will send `variables` when provided, otherwise it forwards `variablesJson` from the instance record. `orderIndex` is derived from template assignment priority and deterministic tie-breakers.
 
 ### Start
 
@@ -63,6 +64,34 @@ Body: `NodeInstanceCommandRequest`
 `POST /api/instances/{instanceId}/destroy`
 
 Body: `NodeInstanceCommandRequest`
+
+### Purge cache
+
+`POST /api/cache/purge`
+
+Body: optional `TemplateCachePurgeRequest`
+
+```json
+{
+  "templateId": "starter"
+}
+```
+
+When the body is omitted or `templateId` is null, the node purges the entire template cache.
+
+### Dev-mode
+
+`POST /api/node/dev-mode`
+
+Body: `DevModeUpdateRequest`
+
+```json
+{
+  "devMode": true
+}
+```
+
+When enabled, the node bypasses template cache reuse and always re-downloads template tarballs.
 
 ## Configuration
 

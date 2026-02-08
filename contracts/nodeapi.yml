@@ -1,0 +1,166 @@
+title: Kodama Brain ↔ Node Agent API
+version: "0.1.0"
+description: Internal HTTP contract between the Brain and node agents. Not part of the public OpenAPI surface.
+
+auth:
+  commandEndpoints:
+    description: Command endpoints require Brain authentication via token header or client certificate.
+    token:
+      headerName: X-Node-Token
+      source: node-agent.auth.token-path
+    mTls:
+      certificatePath: node-agent.auth.cert-path
+
+endpoints:
+  health:
+    method: GET
+    path: /health
+    summary: Node agent health
+    response:
+      status: ok
+      nodeId: uuid|null
+      nodeName: string|null
+      nodeVersion: string|null
+
+  devMode:
+    get:
+      method: GET
+      path: /api/node/dev-mode
+      summary: Get dev-mode status
+      response:
+        devMode: boolean
+        previousDevMode: boolean
+        changed: boolean
+    post:
+      method: POST
+      path: /api/node/dev-mode
+      summary: Update dev-mode
+      request:
+        devMode: boolean
+      response:
+        devMode: boolean
+        previousDevMode: boolean
+        changed: boolean
+
+  templateCachePurge:
+    method: POST
+    path: /api/cache/purge
+    summary: Purge template cache
+    request:
+      templateId: string|optional
+    response:
+      scope: all|template
+      templateId: string|null
+      deletedFiles: int64
+      deletedDirectories: int64
+      deletedBytes: int64
+
+  instancePrepare:
+    method: POST
+    path: /api/instances/{instanceId}/prepare
+    summary: Prepare instance workspace
+    request:
+      instanceId: uuid
+      name: string|null
+      displayName: string|null
+      portsJson: string|null
+      variables: map<string,string>|null
+      variablesJson: string|null
+      layers:
+        - templateVersionId: uuid
+          templateId: uuid
+          version: string
+          checksum: string
+          s3Key: string
+          metadataJson: string|null
+          orderIndex: int32
+    responses:
+      "200": OK
+      "400": Bad Request
+
+  instanceStart:
+    method: POST
+    path: /api/instances/{instanceId}/start
+    summary: Start instance
+    request:
+      instanceId: uuid
+      name: string|null
+    responses:
+      "200": OK
+      "400": Bad Request
+
+  instanceStop:
+    method: POST
+    path: /api/instances/{instanceId}/stop
+    summary: Stop instance
+    request:
+      instanceId: uuid
+      name: string|null
+    responses:
+      "200": OK
+      "400": Bad Request
+
+  instanceDestroy:
+    method: POST
+    path: /api/instances/{instanceId}/destroy
+    summary: Destroy instance
+    request:
+      instanceId: uuid
+      name: string|null
+    responses:
+      "200": OK
+      "400": Bad Request
+
+  instanceRegistryList:
+    method: GET
+    path: /api/instances/registry
+    summary: List local instance registry entries
+    response:
+      instances:
+        - instanceId: uuid
+          name: string|null
+          displayName: string|null
+          portsJson: string|null
+          variables: map<string,string>|null (redacted in registry listing)
+          layers:
+            - templateVersionId: uuid
+              templateId: uuid
+              version: string
+              checksum: string
+              s3Key: string
+              metadataJson: string|null
+              orderIndex: int32
+          preparedAt: datetime|null
+          containerId: string|null
+          containerStatus: string|null
+          containerStatusUpdatedAt: datetime|null
+          containerExitCode: int32|null
+          containerExitReason: string|null
+          workspacePath: string|null (relative to node-agent.workspace-dir)
+
+callbacks:
+  prepared:
+    method: POST
+    path: /api/nodes/{nodeId}/instances/{instanceId}/prepared
+  running:
+    method: POST
+    path: /api/nodes/{nodeId}/instances/{instanceId}/running
+  stopped:
+    method: POST
+    path: /api/nodes/{nodeId}/instances/{instanceId}/stopped
+  destroyed:
+    method: POST
+    path: /api/nodes/{nodeId}/instances/{instanceId}/destroyed
+  failed:
+    method: POST
+    path: /api/nodes/{nodeId}/instances/{instanceId}/failed
+
+notes:
+  - Dev-mode updates are in-memory only; restart resets to configured defaults.
+  - Start now creates and starts a Docker container for the prepared workspace and records the container id locally.
+  - Stop now resolves the container id from the local registry, stops the container, and updates the registry state to stopped.
+  - The node agent records container exit codes and reasons in the local registry when containers stop.
+  - `GET /api/instances/registry` returns registry entries derived from instance workspaces on disk.
+  - Registry listings omit variables and return workspacePath relative to `node-agent.workspace-dir`.
+  - `node-agent.instance-runtime.stop-timeout-seconds` controls the graceful stop timeout before force-kill (unset uses Docker defaults).
+  - Validation errors return 400 and stop command processing.

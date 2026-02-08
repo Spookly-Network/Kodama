@@ -46,16 +46,20 @@ brain:
       - username: ${BRAIN_ADMIN_USERNAME:admin}
         display-name: ${BRAIN_ADMIN_DISPLAY_NAME:Admin}
         email: ${BRAIN_ADMIN_EMAIL:admin@example.com}
-        password: ${BRAIN_ADMIN_PASSWORD:test123}
+        password: ${BRAIN_ADMIN_PASSWORD:}
         roles: ADMIN
   web:
     cors:
-      allowed-origins: ${BRAIN_CORS_ALLOWED_ORIGINS:http://localhost:3000}
+      allowed-origins: ${BRAIN_CORS_ALLOWED_ORIGINS:}
       allowed-methods: ${BRAIN_CORS_ALLOWED_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
-      allowed-headers: ${BRAIN_CORS_ALLOWED_HEADERS:Authorization,Content-Type,Accept}
+      allowed-headers: ${BRAIN_CORS_ALLOWED_HEADERS:Authorization,Content-Type,X-Node-Token}
       exposed-headers: ${BRAIN_CORS_EXPOSED_HEADERS:}
       allow-credentials: ${BRAIN_CORS_ALLOW_CREDENTIALS:false}
-      max-age-seconds: ${BRAIN_CORS_MAX_AGE_SECONDS:3600}
+      max-age-seconds: ${BRAIN_CORS_MAX_AGE_SECONDS:1800}
+
+plugins:
+  dir: ${PLUGINS_DIR:./plugins}
+  enabled: ${PLUGINS_ENABLED:}
 
 server:
   port: 8080

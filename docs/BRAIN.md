@@ -11,6 +11,7 @@ The Brain is the authoritative source of truth for everything.
 - Tracking instance lifecycle
 - Dispatching commands to nodes
 - Secure API for Webpanel and Node Agents
+- Loading Brain plugins for prepare-time hooks
 
 ---
 
@@ -31,6 +32,12 @@ See `/docs/INSTANCE-LIFECYCLE.md`.
 
 ---
 
+## Plugins
+
+See `/docs/brain/plugins.md`.
+
+---
+
 ## Data Model
 
 Entities:
@@ -39,7 +46,10 @@ Entities:
 - Node
 - Instance
 - InstanceEvent
-- InstanceTemplateLayer
+- InstanceGroup
+- InstanceGroupMembership
+- InstanceTemplateAssignment
+- GroupTemplateAssignment
 - User
 - Role
 

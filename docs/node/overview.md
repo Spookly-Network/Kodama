@@ -9,6 +9,21 @@ The Node Agent is a lightweight Java service that runs on each node and executes
 - Expanded the startup log to include the effective configuration (sans secrets).
 - Added Brain registration on startup and in-memory caching of the assigned node id.
 - Added a heartbeat scheduler that reports node status and usage to the Brain.
+- Added a cache purge endpoint so the Brain can instruct nodes to clear cached templates.
+- Added a dev-mode toggle endpoint so the Brain can force cache bypass on template fetches.
+- Added per-instance workspace layout helpers that create merged/config, logs, and temp folders on demand.
+- Added a template layer merge service that applies cached templates into the merged workspace directory.
+- Added variable substitution over merged workspace text files using Brain-provided values.
+- Added a prepare command handler that assembles templates, applies variable substitution, and calls back to the Brain.
+- Added Docker client configuration and a Docker service for container lifecycle operations.
+- Added a health endpoint for basic node-agent diagnostics.
+- Added start/stop/destroy command handlers that send callbacks to the Brain.
+- Start now launches a Docker container using the prepared workspace and records the container id in the local registry.
+- Stop now resolves the container id from the local registry, stops the container, and records the stopped state.
+- Added a local registry listing endpoint and recorded workspace paths in instance registry entries.
+- Added a container monitor to detect stopped containers and record exit codes in the local registry.
+- Added Brain authentication checks for command endpoints using a shared token or client certificate.
+- Added a plugin loader that can mutate instance start parameters before container launch.
 
 ## How to use / impact
 - Build and run with `./gradlew :node-agent:bootRun` from `backend/`.
@@ -27,8 +42,18 @@ The Node Agent is a lightweight Java service that runs on each node and executes
     - `NODE_AGENT_BASE_URL`
     - `NODE_AGENT_REGISTRATION_ENABLED`
     - `NODE_AGENT_HEARTBEAT_INTERVAL_SECONDS` (override Brain-provided interval)
+    - `NODE_AGENT_HTTP_PORT` (defaults to `8080`)
+    - `NODE_AGENT_HTTP_BIND_ADDRESS` (defaults to `0.0.0.0`)
     - `NODE_AGENT_WORKSPACE_DIR`
     - `NODE_AGENT_DOCKER_HOST`
+    - `NODE_AGENT_DOCKER_*` (Docker client settings; see `docs/node/operations/configuration.md`)
+    - `NODE_AGENT_INSTANCE_RUNTIME_IMAGE`
+    - `NODE_AGENT_INSTANCE_RUNTIME_WORKSPACE_MOUNT_PATH`
+    - `NODE_AGENT_INSTANCE_RUNTIME_WORKING_DIR`
+    - `NODE_AGENT_INSTANCE_RUNTIME_STOP_TIMEOUT_SECONDS`
+    - `NODE_AGENT_INSTANCE_MONITOR_ENABLED`
+    - `NODE_AGENT_INSTANCE_MONITOR_INTERVAL_SECONDS`
+    - `NODE_AGENT_VARIABLE_SUBSTITUTION_MAX_FILE_BYTES`
     - `NODE_AGENT_AUTH_HEADER_NAME`
     - `NODE_AGENT_AUTH_TOKEN_PATH`
     - `NODE_AGENT_AUTH_CERT_PATH`
@@ -37,15 +62,24 @@ The Node Agent is a lightweight Java service that runs on each node and executes
     - `NODE_AGENT_S3_BUCKET`
     - `NODE_AGENT_S3_ACCESS_KEY`
     - `NODE_AGENT_S3_SECRET_KEY`
+    - `PLUGINS_DIR`
+    - `PLUGINS_ENABLED`
 - See `docs/node/operations/configuration.md` for the full mapping.
+- Health check is available at `GET /health` on the configured node-agent HTTP port.
+- Local instance registry listing is available at `GET /api/instances/registry` (Brain auth required) and returns workspace paths relative to `node-agent.workspace-dir`.
 
 ## Edge cases / risks
 - If required configuration is missing, the node agent will exit on startup with a clear error.
 - If Brain registration fails, the node agent will exit on startup and log the error.
 - Heartbeat failures are logged with retries, but do not crash the node agent process.
-- The workspace directory is not created automatically yet.
+- Instance workspaces are created when requested; invalid workspace configuration will fail at request time.
 
 ## Links
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/NodeAgentApplication.java`
 - `backend/node-agent/src/main/resources/application.yml`
+- `contracts/nodeapi.yml`
 - `docs/node/operations/configuration.md`
+- `docs/node/operations/instance-workspaces.md`
+- `docs/node/operations/template-merge.md`
+- `docs/node/operations/instance-commands.md`
+- `docs/node/plugins.md`

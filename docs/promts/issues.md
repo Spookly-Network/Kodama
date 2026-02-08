@@ -9,7 +9,7 @@ it is easy to work on it.
 - When you are done, create a json file with all the issues and upload it to the issues folder.
 
 
-**Start issue counting at #40.**
+**Start issue counting at #131.**
 
 ## Labels:
 - area: Node
@@ -64,4 +64,5 @@ it is easy to work on it.
 - When issue type is "Epic", use the fields from epic template and not from feature template.
 
 ## Output
+Provide them as md files in the docs/issues folder and also as json
 Provide a downloadable zip and md files

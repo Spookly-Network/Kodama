@@ -93,7 +93,9 @@ const props = defineProps<{
 }>()
 
 const sorting = ref<SortingState>([])
-const columnVisibility = ref<VisibilityState>({})
+const columnVisibility = ref<VisibilityState>({
+  id: false
+})
 const columnFilters = ref<ColumnFiltersState>([])
 
 const table = useVueTable({
@@ -107,7 +109,9 @@ const table = useVueTable({
   getFilteredRowModel: getFilteredRowModel(),
   state: {
     get sorting() { return sorting.value },
-    get columnVisibility() { return columnVisibility.value },
+    get columnVisibility() {
+      return columnVisibility.value
+    },
     get columnFilters() { return columnFilters.value },
   },
 })

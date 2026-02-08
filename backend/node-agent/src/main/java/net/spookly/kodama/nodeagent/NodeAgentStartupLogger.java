@@ -1,5 +1,6 @@
 package net.spookly.kodama.nodeagent;
 
+import net.spookly.kodama.nodeagent.config.InstanceProperties;
 import net.spookly.kodama.nodeagent.config.NodeConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,16 +17,19 @@ public class NodeAgentStartupLogger implements ApplicationRunner {
     private static final Logger logger = LoggerFactory.getLogger(NodeAgentStartupLogger.class);
 
     private final NodeConfig config;
+    private final InstanceProperties instanceProperties;
 
-    public NodeAgentStartupLogger(NodeConfig config) {
+    public NodeAgentStartupLogger(NodeConfig config, InstanceProperties instanceProperties) {
         this.config = config;
+        this.instanceProperties = instanceProperties;
     }
 
     @Override
     public void run(ApplicationArguments args) {
         logger.info(
                 "Node agent started. nodeId={}, nodeName={}, nodeVersion={}, region={}, capacitySlots={}, " +
-                        "brainBaseUrl={}, registrationEnabled={}, heartbeatIntervalSeconds={}, dockerHost={}",
+                        "brainBaseUrl={}, registrationEnabled={}, heartbeatIntervalSeconds={}, " +
+                        "instanceMonitorEnabled={}, instanceMonitorIntervalSeconds={}, dockerHost={}, dockerTlsVerify={}",
                 valueOrDash(config.getNodeId()),
                 config.getNodeName(),
                 config.getNodeVersion(),
@@ -34,7 +38,10 @@ public class NodeAgentStartupLogger implements ApplicationRunner {
                 config.getBrainBaseUrl(),
                 config.isRegistrationEnabled(),
                 config.getHeartbeatIntervalSeconds(),
-                valueOrDash(config.getDockerHost())
+                valueOrDash(resolveMonitorEnabled()),
+                valueOrDash(resolveMonitorInterval()),
+                valueOrDash(config.getEffectiveDockerHost()),
+                valueOrDash(config.getDocker().getTlsVerify())
         );
     }
 
@@ -43,5 +50,33 @@ public class NodeAgentStartupLogger implements ApplicationRunner {
             return "-";
         }
         return value;
+    }
+
+    private String valueOrDash(Boolean value) {
+        if (value == null) {
+            return "-";
+        }
+        return value.toString();
+    }
+
+    private String valueOrDash(Integer value) {
+        if (value == null) {
+            return "-";
+        }
+        return value.toString();
+    }
+
+    private Boolean resolveMonitorEnabled() {
+        if (instanceProperties == null || instanceProperties.getInstanceMonitor() == null) {
+            return null;
+        }
+        return instanceProperties.getInstanceMonitor().isEnabled();
+    }
+
+    private Integer resolveMonitorInterval() {
+        if (instanceProperties == null || instanceProperties.getInstanceMonitor() == null) {
+            return null;
+        }
+        return instanceProperties.getInstanceMonitor().getIntervalSeconds();
     }
 }

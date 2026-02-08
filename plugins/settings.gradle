@@ -1,0 +1,10 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+    }
+}
+
+rootProject.name = 'kodoma-plugins'
+
+include 'KodamaHytaleAuthenticator'
+includeBuild('../backend')

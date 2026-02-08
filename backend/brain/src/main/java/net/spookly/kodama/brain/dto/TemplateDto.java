@@ -19,7 +19,7 @@ public class TemplateDto {
     private String description;
     private TemplateType type;
     private OffsetDateTime createdAt;
-    private UUID createdBy;
+    private String createdBy;
 
     public static TemplateDto fromEntity(Template template) {
         return new TemplateDto(

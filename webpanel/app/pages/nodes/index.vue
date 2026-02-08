@@ -2,9 +2,15 @@
     <div class="flex flex-1 flex-col gap-10 p-4 pt-0">
       <div class="grid auto-rows-min gap-4 md:grid-cols-4">
         <AppStatsCard variant="green">
-          <template #icon><Earth/></template>
+          <template #icon><Globe/></template>
           <template #number>{{ amountNodesOnline }}</template>
-          <template #label>Online nodes</template>
+          <template #label>Nodes online</template>
+        </AppStatsCard>
+
+        <AppStatsCard variant="red">
+          <template #icon><GlobeX/></template>
+          <template #number>{{ amountNodesOffline }}</template>
+          <template #label>Nodes offline</template>
         </AppStatsCard>
 
         <AppStatsCard variant="blue">
@@ -18,12 +24,11 @@
           <template #number>{{ amountSlotsOpen }}</template>
           <template #label>Used slots</template>
         </AppStatsCard>
-        <AppStatsCard v-for="i in 1" :key="i" variant="blue"/>
       </div>
       <section class="text-foreground space-y-4">
         <div>
           <h2 class="text-2xl font-semibold">Nodes</h2>
-          <div class="text-muted-foreground">Penis 123</div>
+          <div class="text-muted-foreground">Manage and monitor your compute nodes</div>
         </div>
         <div class="bg-muted/50 min-h-screen flex-1 rounded-xl md:min-h-min border">
           <AppNodesTable :data="rows" :columns="columns"/>
@@ -36,7 +41,7 @@
 <script lang="ts" setup>
 import {columns} from "~/components/app/nodes/columns";
 import {useNodesStore} from "~/store/nodes";
-import {Earth, CircleDashed, CircleDot} from "lucide-vue-next";
+import {Globe, GlobeX, CircleDashed, CircleDot} from "lucide-vue-next";
 
 const nodesStore = useNodesStore()
 // TODO enable when prod
@@ -44,6 +49,10 @@ const nodesStore = useNodesStore()
 
 const amountNodesOnline = computed(() => {
   return Object.values(nodesStore.byId).filter(node => node.status === NodeStatus.ONLINE).length
+})
+
+const amountNodesOffline = computed(() => {
+  return Object.values(nodesStore.byId).filter(node => node.status === NodeStatus.OFFLINE).length
 })
 
 const amountSlotsOpen = computed(() => {

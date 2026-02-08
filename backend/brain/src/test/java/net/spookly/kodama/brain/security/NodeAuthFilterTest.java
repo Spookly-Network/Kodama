@@ -91,4 +91,19 @@ class NodeAuthFilterTest {
         assertNull(SecurityContextHolder.getContext().getAuthentication());
         assertEquals(HttpStatus.OK.value(), response.getStatus());
     }
+
+    @Test
+    void preflightRequestSkipsTokenCheck() throws ServletException, IOException {
+        MockHttpServletRequest request = new MockHttpServletRequest("OPTIONS", "/api/nodes/register");
+        request.addHeader("Origin", "https://panel.example.test");
+        request.addHeader("Access-Control-Request-Method", "POST");
+        request.addHeader("Access-Control-Request-Headers", "X-Node-Token");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(request, response, chain);
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        assertEquals(HttpStatus.OK.value(), response.getStatus());
+    }
 }

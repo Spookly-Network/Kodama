@@ -15,9 +15,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.spookly.kodama.brain.config.NodeProperties;
+import net.spookly.kodama.brain.config.PluginsProperties;
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceState;
-import net.spookly.kodama.brain.domain.instance.InstanceTemplateLayer;
+import net.spookly.kodama.brain.domain.instance.TemplateAssignmentSource;
 import net.spookly.kodama.brain.domain.node.Node;
 import net.spookly.kodama.brain.domain.node.NodeStatus;
 import net.spookly.kodama.brain.domain.template.Template;
@@ -26,6 +27,7 @@ import net.spookly.kodama.brain.domain.template.TemplateVersion;
 import net.spookly.kodama.brain.dto.node.NodeInstanceCommandRequest;
 import net.spookly.kodama.brain.dto.node.NodePrepareInstanceLayer;
 import net.spookly.kodama.brain.dto.node.NodePrepareInstanceRequest;
+import net.spookly.kodama.brain.plugin.BrainPluginRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -42,6 +44,7 @@ class CommandDispatcherServiceTest {
     private MockRestServiceServer server;
     private NodeProperties nodeProperties;
     private CommandDispatcherService dispatcher;
+    private static final String TEMPLATE_CREATOR_USERNAME = "admin";
 
     @BeforeEach
     void setUp() {
@@ -49,21 +52,25 @@ class CommandDispatcherServiceTest {
         server = MockRestServiceServer.bindTo(restTemplate).build();
         nodeProperties = new NodeProperties();
         nodeProperties.setCommandRetryBackoffMillis(0);
-        dispatcher = new CommandDispatcherService(restTemplate, nodeProperties);
+        PluginsProperties pluginsProperties = new PluginsProperties();
+        BrainPluginRegistry registry = new BrainPluginRegistry(pluginsProperties, objectMapper);
+        dispatcher = new CommandDispatcherService(restTemplate, nodeProperties, registry);
     }
 
     @Test
     void sendPrepareInstanceSendsExpectedPayload() throws Exception {
         UUID nodeId = UUID.randomUUID();
         UUID instanceId = UUID.randomUUID();
+        UUID templateId = UUID.randomUUID();
         UUID templateVersionId = UUID.randomUUID();
         Node node = buildNode(nodeId, "http://node-1.internal");
         Instance instance = buildInstance(instanceId, node);
-        InstanceTemplateLayer layer = buildLayer(instance, templateVersionId);
+        ResolvedTemplateLayer layer = buildLayer(instance, templateId, templateVersionId);
 
         Map<String, String> variables = Map.of("WORLD_NAME", "test");
         NodePrepareInstanceLayer expectedLayer = new NodePrepareInstanceLayer(
                 templateVersionId,
+                templateId,
                 "1.0.0",
                 "checksum",
                 "s3://templates/template-1-1.0.0.tar.gz",
@@ -207,15 +214,16 @@ class CommandDispatcherServiceTest {
         return instance;
     }
 
-    private InstanceTemplateLayer buildLayer(Instance instance, UUID templateVersionId) {
+    private ResolvedTemplateLayer buildLayer(Instance instance, UUID templateId, UUID templateVersionId) {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         Template template = new Template(
                 "template-1",
                 "Template 1",
                 TemplateType.CUSTOM,
                 now,
-                UUID.randomUUID()
+                TEMPLATE_CREATOR_USERNAME
         );
+        ReflectionTestUtils.setField(template, "id", templateId);
         TemplateVersion version = new TemplateVersion(
                 template,
                 "1.0.0",
@@ -225,6 +233,13 @@ class CommandDispatcherServiceTest {
                 now
         );
         ReflectionTestUtils.setField(version, "id", templateVersionId);
-        return new InstanceTemplateLayer(instance, version, 0);
+        return new ResolvedTemplateLayer(
+                UUID.randomUUID(),
+                templateId,
+                version,
+                0,
+                0,
+                TemplateAssignmentSource.INSTANCE
+        );
     }
 }

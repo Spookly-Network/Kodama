@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.UUID;
 
 import net.spookly.kodama.brain.domain.template.Template;
 import net.spookly.kodama.brain.domain.template.TemplateType;
@@ -35,6 +34,8 @@ class TemplateRepositoryTest {
         registry.add("spring.datasource.driver-class-name", mysql::getDriverClassName);
     }
 
+    private static final String TEMPLATE_CREATOR_USERNAME = "admin";
+
     @Autowired
     private TemplateRepository templateRepository;
 
@@ -46,7 +47,7 @@ class TemplateRepositoryTest {
         OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC);
 
         Template template =
-                new Template("Base Hytale", "Base server template", TemplateType.CUSTOM, createdAt, UUID.randomUUID());
+                new Template("Base Hytale", "Base server template", TemplateType.CUSTOM, createdAt, TEMPLATE_CREATOR_USERNAME);
         Template savedTemplate = templateRepository.save(template);
 
         TemplateVersion version = new TemplateVersion(

@@ -2,6 +2,8 @@ package net.spookly.kodama.brain.config;
 
 import net.spookly.kodama.brain.security.JwtAuthFilter;
 import net.spookly.kodama.brain.security.NodeAuthFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,12 +17,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 public class SecurityConfig {
+
+    private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
 
     @Bean
     public SecurityFilterChain securityFilterChain(
@@ -32,8 +33,7 @@ public class SecurityConfig {
         http.cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .exceptionHandling(exceptions ->
-                        exceptions.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));
+                .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));
 
         if (!securityProperties.isEnabled()) {
             http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
@@ -73,20 +73,5 @@ public class SecurityConfig {
         FilterRegistrationBean<JwtAuthFilter> registration = new FilterRegistrationBean<>(jwtAuthFilter);
         registration.setEnabled(false);
         return registration;
-    }
-
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource(BrainCorsProperties corsProperties) {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(corsProperties.getAllowedOrigins());
-        configuration.setAllowedMethods(corsProperties.getAllowedMethods());
-        configuration.setAllowedHeaders(corsProperties.getAllowedHeaders());
-        configuration.setExposedHeaders(corsProperties.getExposedHeaders());
-        configuration.setAllowCredentials(corsProperties.isAllowCredentials());
-        configuration.setMaxAge(corsProperties.getMaxAgeSeconds());
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
     }
 }

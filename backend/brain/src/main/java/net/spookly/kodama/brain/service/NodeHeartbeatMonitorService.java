@@ -28,7 +28,7 @@ public class NodeHeartbeatMonitorService {
         this.nodeProperties = nodeProperties;
     }
 
-    @Scheduled(fixedDelayString = "#{@nodeProperties.heartbeatMonitorIntervalSeconds * 1000}")
+    @Scheduled(fixedDelayString = "${node.heartbeat-monitor-interval-seconds:60}000")
     @Transactional
     public void monitorHeartbeats() {
         try {
