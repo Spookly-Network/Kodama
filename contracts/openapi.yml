@@ -493,6 +493,34 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "400":
           $ref: "#/components/responses/BadRequest"
+  /api/nodes/{nodeId}:
+    parameters:
+      - $ref: "#/components/parameters/NodeId"
+    put:
+      tags: [Nodes]
+      summary: Update node metadata
+      description: Update operator-controlled node metadata such as region, capacity, tags, and base URL.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NodeUpdateRequest"
+      responses:
+        "200":
+          description: Node updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Node"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/nodes/{nodeId}/heartbeat:
     parameters:
       - $ref: "#/components/parameters/NodeId"
@@ -955,6 +983,28 @@ components:
         status:
           $ref: "#/components/schemas/NodeStatus"
           description: Optional override; defaults to ONLINE.
+    NodeUpdateRequest:
+      type: object
+      required: [region, capacitySlots, nodeVersion]
+      properties:
+        region:
+          type: string
+        capacitySlots:
+          type: integer
+          format: int32
+          minimum: 1
+        nodeVersion:
+          type: string
+        devMode:
+          type: boolean
+          default: false
+        tags:
+          type: string
+          nullable: true
+        baseUrl:
+          type: string
+          format: uri
+          nullable: true
     NodeHeartbeatRequest:
       type: object
       required: [status, usedSlots]

@@ -12,6 +12,7 @@ import net.spookly.kodama.brain.dto.NodeDto;
 import net.spookly.kodama.brain.dto.NodeHeartbeatRequest;
 import net.spookly.kodama.brain.dto.NodeRegistrationRequest;
 import net.spookly.kodama.brain.dto.NodeRegistrationResponse;
+import net.spookly.kodama.brain.dto.NodeUpdateRequest;
 import net.spookly.kodama.brain.repository.NodeRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -55,6 +56,22 @@ public class NodeService {
                 new ResponseStatusException(HttpStatus.NOT_FOUND, "Node not found"));
         validateHeartbeat(node, request);
         node.updateHeartbeat(request.getStatus(), request.getUsedSlots(), OffsetDateTime.now(ZoneOffset.UTC));
+        return NodeDto.fromEntity(node);
+    }
+
+    public NodeDto updateNode(UUID nodeId, NodeUpdateRequest request) {
+        Node node = nodeRepository.findById(nodeId).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "Node not found"));
+        validateUpdate(node, request);
+        node.updateRegistration(
+                request.getRegion(),
+                request.isDevMode(),
+                request.getCapacitySlots(),
+                request.getNodeVersion(),
+                request.getTags(),
+                node.getStatus(),
+                request.getBaseUrl()
+        );
         return NodeDto.fromEntity(node);
     }
 
@@ -106,6 +123,17 @@ public class NodeService {
         if (request.getUsedSlots() > node.getCapacitySlots()) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "usedSlots cannot be greater than capacitySlots");
+        }
+    }
+
+    private void validateUpdate(Node node, NodeUpdateRequest request) {
+        if (request.getCapacitySlots() < 1) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "capacitySlots must be at least 1");
+        }
+        if (request.getCapacitySlots() < node.getUsedSlots()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "capacitySlots cannot be less than usedSlots");
         }
     }
 }

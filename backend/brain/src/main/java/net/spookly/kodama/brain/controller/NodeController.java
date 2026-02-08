@@ -8,12 +8,14 @@ import net.spookly.kodama.brain.dto.NodeDto;
 import net.spookly.kodama.brain.dto.NodeHeartbeatRequest;
 import net.spookly.kodama.brain.dto.NodeRegistrationRequest;
 import net.spookly.kodama.brain.dto.NodeRegistrationResponse;
+import net.spookly.kodama.brain.dto.NodeUpdateRequest;
 import net.spookly.kodama.brain.service.NodeService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -49,5 +51,14 @@ public class NodeController {
             @PathVariable UUID nodeId,
             @Valid @RequestBody NodeHeartbeatRequest request) {
         return nodeService.heartbeat(nodeId, request);
+    }
+
+    @PutMapping("/{nodeId}")
+    @ResponseStatus(HttpStatus.OK)
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+    public NodeDto updateNode(
+            @PathVariable UUID nodeId,
+            @Valid @RequestBody NodeUpdateRequest request) {
+        return nodeService.updateNode(nodeId, request);
     }
 }

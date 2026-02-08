@@ -14,6 +14,7 @@ import net.spookly.kodama.brain.dto.NodeDto;
 import net.spookly.kodama.brain.dto.NodeHeartbeatRequest;
 import net.spookly.kodama.brain.dto.NodeRegistrationRequest;
 import net.spookly.kodama.brain.dto.NodeRegistrationResponse;
+import net.spookly.kodama.brain.dto.NodeUpdateRequest;
 import net.spookly.kodama.brain.repository.NodeRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -172,6 +173,75 @@ class NodeServiceTest {
         NodeHeartbeatRequest request = new NodeHeartbeatRequest(NodeStatus.ONLINE, 3);
 
         assertThatThrownBy(() -> nodeService.heartbeat(persisted.getId(), request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void updateNodeUpdatesMetadata() {
+        Node node = new Node(
+                "node-5",
+                "eu-central-1",
+                NodeStatus.ONLINE,
+                false,
+                12,
+                3,
+                OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS),
+                "1.0.0",
+                "prod",
+                "http://node-5.internal"
+        );
+        Node persisted = nodeRepository.save(node);
+
+        NodeUpdateRequest request = new NodeUpdateRequest();
+        request.setRegion("eu-west-2");
+        request.setCapacitySlots(18);
+        request.setNodeVersion("1.1.0");
+        request.setDevMode(true);
+        request.setTags("prod,ssd");
+        request.setBaseUrl("http://node-5.updated.internal");
+
+        NodeDto updated = nodeService.updateNode(persisted.getId(), request);
+
+        assertThat(updated.getRegion()).isEqualTo("eu-west-2");
+        assertThat(updated.isDevMode()).isTrue();
+        assertThat(updated.getCapacitySlots()).isEqualTo(18);
+        assertThat(updated.getUsedSlots()).isEqualTo(3);
+        assertThat(updated.getNodeVersion()).isEqualTo("1.1.0");
+        assertThat(updated.getTags()).isEqualTo("prod,ssd");
+        assertThat(updated.getBaseUrl()).isEqualTo("http://node-5.updated.internal");
+
+        Node reloaded = nodeRepository.findById(persisted.getId()).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(NodeStatus.ONLINE);
+        assertThat(reloaded.getUsedSlots()).isEqualTo(3);
+    }
+
+    @Test
+    void updateNodeRejectsCapacityBelowUsedSlots() {
+        Node node = new Node(
+                "node-6",
+                "eu-north-1",
+                NodeStatus.ONLINE,
+                false,
+                6,
+                4,
+                OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS),
+                "1.0.0",
+                null,
+                "http://node-6.internal"
+        );
+        Node persisted = nodeRepository.save(node);
+
+        NodeUpdateRequest request = new NodeUpdateRequest();
+        request.setRegion("eu-north-1");
+        request.setCapacitySlots(2);
+        request.setNodeVersion("1.0.1");
+        request.setDevMode(false);
+        request.setTags(null);
+        request.setBaseUrl("http://node-6.internal");
+
+        assertThatThrownBy(() -> nodeService.updateNode(persisted.getId(), request))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
                         .isEqualTo(HttpStatus.BAD_REQUEST));
