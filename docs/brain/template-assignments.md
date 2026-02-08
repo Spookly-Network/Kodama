@@ -25,8 +25,30 @@ Effective layers are derived with deterministic rules:
 - Duplicate group contributions for the same `templateId` are deduplicated by lowest `priority`, then `groupId` (UUID natural order), then assignment id.
 - Ordering is by `priority` ascending, then source (`INSTANCE` before `GROUP`), then `templateId` (UUID natural order), then assignment id.
 - `orderIndex` is derived from the sorted list to keep node merge order deterministic.
+- Missing templates or template versions during resolve return `404 Not Found`. A `templateVersionId` that does not belong to the provided `templateId` returns `400 Bad Request`.
 
 If a template has no versions at resolve time, resolution fails with `404 Not Found`.
+
+## Example
+Scenario:
+- Instance `I1` belongs to groups `G1` and `G2`.
+- Template `T1` has versions `1.0.0`, `1.1.0`.
+- Template `T2` has version `2.0.0`.
+
+Assignments:
+- Group `G1` assigns `T1` (no version), priority `1`.
+- Group `G2` assigns `T1` (no version), priority `1`.
+- Instance `I1` assigns `T1` version `1.0.0`, priority `0`.
+- Instance `I1` assigns `T2` version `2.0.0`, priority `1`.
+
+Resolution:
+- `T1` from the instance overrides group `T1` (direct wins on conflict).
+- Duplicate group `T1` assignments are deduplicated before merge (priority tie breaks by `groupId`).
+- Ordering uses `priority`, then source, then `templateId` to produce a stable `orderIndex`.
+
+Effective layers for `I1` (by orderIndex):
+1. `T1` version `1.0.0` (source `INSTANCE`, priority `0`).
+2. `T2` version `2.0.0` (source `INSTANCE`, priority `1`).
 
 ## API Surface
 - `POST /api/instances` accepts `templateLayers` as assignment definitions.

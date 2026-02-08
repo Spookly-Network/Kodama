@@ -1068,10 +1068,12 @@ components:
           nullable: true
         templateLayers:
           type: array
+          description: Resolved template layers from direct instance assignments and group assignments.
           items:
             $ref: "#/components/schemas/InstanceTemplateLayer"
     InstanceTemplateLayer:
       type: object
+      description: Resolved template layer after merging instance and group assignments.
       required: [id, templateId, templateVersionId, priority, orderIndex, source]
       properties:
         id:
@@ -1091,6 +1093,7 @@ components:
           type: integer
           format: int32
           minimum: 0
+          description: Deterministic ordering index derived from resolver sorting.
         source:
           $ref: "#/components/schemas/TemplateAssignmentSource"
     CreateInstanceRequest:
@@ -1159,6 +1162,7 @@ components:
           description: Optional priority; defaults to list order position when omitted for `POST /api/instances`, and defaults to 0 for assignment endpoints.
     TemplateAssignment:
       type: object
+      description: Direct instance assignment or group assignment record.
       required: [id, templateId, priority]
       properties:
         id:
