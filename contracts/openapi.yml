@@ -128,6 +128,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        "502":
+          $ref: "#/components/responses/BadGateway"
   /api/instances/{id}:
     parameters:
       - $ref: "#/components/parameters/InstanceId"
@@ -147,6 +149,76 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /api/instances/{id}/start:
+    parameters:
+      - $ref: "#/components/parameters/InstanceId"
+    post:
+      tags: [Instances]
+      summary: Start instance
+      description: Dispatch a prepare or start command depending on the instance state.
+      responses:
+        "200":
+          description: Start command dispatched.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Instance"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+  /api/instances/{id}/stop:
+    parameters:
+      - $ref: "#/components/parameters/InstanceId"
+    post:
+      tags: [Instances]
+      summary: Stop instance
+      description: Dispatch a stop command to the assigned node.
+      responses:
+        "200":
+          description: Stop command dispatched.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Instance"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+  /api/instances/{id}/destroy:
+    parameters:
+      - $ref: "#/components/parameters/InstanceId"
+    post:
+      tags: [Instances]
+      summary: Destroy instance
+      description: Dispatch a destroy command to the assigned node.
+      responses:
+        "200":
+          description: Destroy command dispatched.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Instance"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /api/instances/{id}/template-assignments:
     parameters:
       - $ref: "#/components/parameters/InstanceId"
@@ -1214,6 +1286,12 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     Conflict:
       description: Resource already exists.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    BadGateway:
+      description: Upstream node command failed.
       content:
         application/json:
           schema:

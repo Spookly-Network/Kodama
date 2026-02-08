@@ -33,6 +33,8 @@ import net.spookly.kodama.brain.repository.TemplateVersionRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -43,6 +45,7 @@ public class InstanceService {
     private final InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository;
     private final InstanceEventRepository instanceEventRepository;
     private final InstanceStateMachine instanceStateMachine;
+    private final CommandDispatcherService commandDispatcherService;
     private final ObjectMapper objectMapper;
     private final TemplateRepository templateRepository;
     private final TemplateVersionRepository templateVersionRepository;
@@ -54,6 +57,7 @@ public class InstanceService {
             InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository,
             InstanceEventRepository instanceEventRepository,
             InstanceStateMachine instanceStateMachine,
+            CommandDispatcherService commandDispatcherService,
             ObjectMapper objectMapper,
             TemplateRepository templateRepository,
             TemplateVersionRepository templateVersionRepository,
@@ -64,6 +68,7 @@ public class InstanceService {
         this.instanceTemplateAssignmentRepository = instanceTemplateAssignmentRepository;
         this.instanceEventRepository = instanceEventRepository;
         this.instanceStateMachine = instanceStateMachine;
+        this.commandDispatcherService = commandDispatcherService;
         this.objectMapper = objectMapper;
         this.templateRepository = templateRepository;
         this.templateVersionRepository = templateVersionRepository;
@@ -136,6 +141,70 @@ public class InstanceService {
         List<ResolvedTemplateLayer> resolvedLayers =
                 templateAssignmentResolver.resolveForInstance(savedInstance.getId());
         return InstanceDto.fromEntity(savedInstance, resolvedLayers);
+    }
+
+    public InstanceDto startInstance(UUID id) {
+        Instance instance = loadInstance(id);
+        Node node = requireAssignedNode(instance);
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        InstanceState state = instance.getState();
+
+        if (state == InstanceState.REQUESTED) {
+            List<ResolvedTemplateLayer> layers = templateAssignmentResolver.resolveForInstance(id);
+            dispatchNodeCommand("prepare", () -> commandDispatcherService.sendPrepareInstance(
+                    node,
+                    instance,
+                    layers,
+                    null
+            ));
+            transitionOrConflict(instance, InstanceState.PREPARING, InstanceEventType.PREPARE_DISPATCHED, now);
+        } else if (state == InstanceState.STOPPED) {
+            dispatchNodeCommand("start", () -> commandDispatcherService.sendStartInstance(node, instance));
+            transitionOrConflict(instance, InstanceState.STARTING, InstanceEventType.START_DISPATCHED, now);
+        } else {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Instance cannot be started from state " + state
+            );
+        }
+
+        return InstanceDto.fromEntity(instance, templateAssignmentResolver.resolveForInstance(id));
+    }
+
+    public InstanceDto stopInstance(UUID id) {
+        Instance instance = loadInstance(id);
+        Node node = requireAssignedNode(instance);
+        InstanceState state = instance.getState();
+        if (state != InstanceState.RUNNING) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Instance cannot be stopped from state " + state
+            );
+        }
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        dispatchNodeCommand("stop", () -> commandDispatcherService.sendStopInstance(node, instance));
+        transitionOrConflict(instance, InstanceState.STOPPING, InstanceEventType.STOP_DISPATCHED, now);
+        return InstanceDto.fromEntity(instance, templateAssignmentResolver.resolveForInstance(id));
+    }
+
+    public InstanceDto destroyInstance(UUID id) {
+        Instance instance = loadInstance(id);
+        Node node = requireAssignedNode(instance);
+        InstanceState state = instance.getState();
+        if (state != InstanceState.STOPPED && state != InstanceState.STOPPING) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Instance cannot be destroyed from state " + state
+            );
+        }
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        dispatchNodeCommand("destroy", () -> commandDispatcherService.sendDestroyInstance(node, instance));
+        if (state == InstanceState.STOPPED) {
+            transitionOrConflict(instance, InstanceState.STOPPING, InstanceEventType.DESTROY_DISPATCHED, now);
+        } else {
+            instanceEventRepository.save(new InstanceEvent(instance, now, InstanceEventType.DESTROY_DISPATCHED, null));
+        }
+        return InstanceDto.fromEntity(instance, templateAssignmentResolver.resolveForInstance(id));
     }
 
     public void reportInstancePrepared(UUID nodeId, UUID instanceId) {
@@ -318,6 +387,56 @@ public class InstanceService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Instance is not assigned to the requested node");
         }
         return instance;
+    }
+
+    private Instance loadInstance(UUID instanceId) {
+        return instanceRepository.findById(instanceId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Instance not found"));
+    }
+
+    private Node requireAssignedNode(Instance instance) {
+        Node node = instance.getNode();
+        if (node == null || node.getId() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Instance is not assigned to a node");
+        }
+        return node;
+    }
+
+    private void dispatchNodeCommand(String action, Runnable command) {
+        try {
+            command.run();
+        } catch (ResourceAccessException ex) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Unable to reach node for " + action + " command",
+                    ex
+            );
+        } catch (HttpStatusCodeException ex) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Node rejected " + action + " command: " + ex.getStatusCode(),
+                    ex
+            );
+        } catch (IllegalStateException ex) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    ex.getMessage(),
+                    ex
+            );
+        }
+    }
+
+    private void transitionOrConflict(
+            Instance instance,
+            InstanceState targetState,
+            InstanceEventType eventType,
+            OffsetDateTime timestamp
+    ) {
+        try {
+            instanceStateMachine.transition(instance, targetState, eventType, timestamp);
+        } catch (InvalidInstanceStateTransitionException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
+        }
     }
 
     private record AssignmentDescriptor(UUID templateId, UUID templateVersionId, int priority) {

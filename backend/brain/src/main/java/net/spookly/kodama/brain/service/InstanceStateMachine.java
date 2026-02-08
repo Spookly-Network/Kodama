@@ -68,7 +68,11 @@ public class InstanceStateMachine {
         transitions.put(InstanceState.STARTING, EnumSet.of(InstanceState.RUNNING));
         transitions.put(InstanceState.RUNNING, EnumSet.of(InstanceState.STOPPING));
         transitions.put(InstanceState.STOPPING, EnumSet.of(InstanceState.DESTROYED, InstanceState.STOPPED));
-        transitions.put(InstanceState.STOPPED, EnumSet.of(InstanceState.DESTROYED, InstanceState.STARTING));
+        transitions.put(InstanceState.STOPPED, EnumSet.of(
+                InstanceState.DESTROYED,
+                InstanceState.STARTING,
+                InstanceState.STOPPING
+        ));
 
         for (InstanceState state : InstanceState.values()) {
             if (TERMINAL_STATES.contains(state)) {
