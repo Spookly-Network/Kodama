@@ -22,8 +22,10 @@ import {
   SidebarMenuItem
 } from "~/components/ui/sidebar";
 import {useBrainStore} from "~/store/brain";
+import {useAuthStore} from "~/store/auth";
 
 const brainStore = useBrainStore()
+const authStore = useAuthStore()
 const props = withDefaults(defineProps<SidebarProps>(), {
   variant: "inset",
 })
@@ -41,8 +43,8 @@ const lastHeartbeat = computed(() => formatter.format(new Date(brainStore.lastHe
 
 const data = {
   user: {
-    name: "shadcn",
-    email: "m@example.com",
+    name: "Nutzer",
+    email: authStore.roles[0],
     avatar: "/avatars/shadcn.jpg",
   },
   navMain: [
