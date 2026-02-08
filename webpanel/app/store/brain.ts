@@ -19,5 +19,6 @@ export const useBrainStore = defineStore('brain', () => {
       alive.value = false
     }
   }
+
   return { alive, checkAlive, lastHeartbeat }
 })

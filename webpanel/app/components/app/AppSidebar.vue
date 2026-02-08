@@ -102,8 +102,8 @@ const data = {
       icon: SquareStack,
       items: [
         {
-          title: "General",
-          url: "#",
+          title: "Groups",
+          url: "/instances/groups",
         },
         {
           title: "Team",
