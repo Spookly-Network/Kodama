@@ -24,7 +24,7 @@ dependencies {
 
 bootJar {
     archiveBaseName = 'kodama-node-agent'
-    archiveFileName = 'app.jar'
+    archiveFileName = 'node-app.jar'
     mainClass = 'net.spookly.kodama.nodeagent.NodeAgentApplication'
 }
 
@@ -34,4 +34,10 @@ springBoot {
 
 jar {
     enabled = false
+}
+
+java {
+    build {
+        dependsOn spotlessApply
+    }
 }

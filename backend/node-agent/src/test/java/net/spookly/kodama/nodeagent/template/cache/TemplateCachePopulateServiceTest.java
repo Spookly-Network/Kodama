@@ -25,6 +25,8 @@ import net.spookly.kodama.nodeagent.template.storage.TemplateStorageClient;
 import net.spookly.kodama.nodeagent.template.storage.TemplateTarball;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -103,6 +105,60 @@ class TemplateCachePopulateServiceTest {
     }
 
     @Test
+    void populatesCacheFromZip() throws Exception {
+        byte[] zipBytes = createZip(Map.of(
+                "server.properties", "motd=hello",
+                "config/settings.json", "{\"mode\":\"test\"}"
+        ));
+        String checksum = sha256Hex(zipBytes);
+        InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(zipBytes);
+        NodeConfig config = createConfig();
+        TemplateCacheLayout layout = createLayout(config);
+        TemplateCachePopulateService service = createService(storageClient, layout, config);
+
+        TemplateCacheLookupResult result = service.ensureCachedTemplate(
+                "starter",
+                "2.0.0",
+                checksum,
+                "templates/starter/2.0.0.zip"
+        );
+
+        assertThat(result.isCacheHit()).isTrue();
+        assertThat(Files.readString(result.contentsDir().resolve("server.properties")))
+                .isEqualTo("motd=hello");
+        assertThat(Files.readString(result.contentsDir().resolve("config/settings.json")))
+                .isEqualTo("{\"mode\":\"test\"}");
+    }
+
+    @Test
+    void preservesExecutablePermissionsFromZip() throws Exception {
+        Assumptions.assumeTrue(FileSystems.getDefault().supportedFileAttributeViews().contains("posix"));
+        byte[] zipBytes = createZipWithModes(Map.of(
+                "bin/start.sh", new ZipEntrySpec("#!/bin/sh\necho ok\n", 0755)
+        ));
+        String checksum = sha256Hex(zipBytes);
+        InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(zipBytes);
+        NodeConfig config = createConfig();
+        TemplateCacheLayout layout = createLayout(config);
+        TemplateCachePopulateService service = createService(storageClient, layout, config);
+
+        TemplateCacheLookupResult result = service.ensureCachedTemplate(
+                "starter",
+                "2.0.1",
+                checksum,
+                "templates/starter/2.0.1.zip"
+        );
+
+        Path scriptPath = result.contentsDir().resolve("bin/start.sh");
+        Set<PosixFilePermission> permissions = Files.getPosixFilePermissions(scriptPath);
+        assertThat(permissions).contains(
+                PosixFilePermission.OWNER_EXECUTE,
+                PosixFilePermission.GROUP_EXECUTE,
+                PosixFilePermission.OTHERS_EXECUTE
+        );
+    }
+
+    @Test
     void rejectsTarballExceedingMaxExtractedBytes() throws Exception {
         byte[] tarballBytes = createTarball(Map.of(
                 "server.properties", "motd=hello"
@@ -119,6 +175,27 @@ class TemplateCachePopulateServiceTest {
                 "1.2.5",
                 checksum,
                 "templates/starter/1.2.5.tar"
+        )).isInstanceOf(TemplateCacheException.class)
+                .hasMessageContaining("max extracted bytes");
+    }
+
+    @Test
+    void rejectsZipExceedingMaxExtractedBytes() throws Exception {
+        byte[] zipBytes = createZip(Map.of(
+                "server.properties", "motd=hello"
+        ));
+        String checksum = sha256Hex(zipBytes);
+        InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(zipBytes);
+        NodeConfig config = createConfig();
+        config.getTemplateCacheLimits().setMaxExtractedBytes(4);
+        TemplateCacheLayout layout = createLayout(config);
+        TemplateCachePopulateService service = createService(storageClient, layout, config);
+
+        assertThatThrownBy(() -> service.ensureCachedTemplate(
+                "starter",
+                "2.0.2",
+                checksum,
+                "templates/starter/2.0.2.zip"
         )).isInstanceOf(TemplateCacheException.class)
                 .hasMessageContaining("max extracted bytes");
     }
@@ -142,6 +219,29 @@ class TemplateCachePopulateServiceTest {
                 "1.2.6",
                 checksum,
                 "templates/starter/1.2.6.tar"
+        )).isInstanceOf(TemplateCacheException.class)
+                .hasMessageContaining("max entry count");
+    }
+
+    @Test
+    void rejectsZipExceedingMaxEntries() throws Exception {
+        byte[] zipBytes = createZip(Map.of(
+                "one.txt", "1",
+                "two.txt", "2",
+                "three.txt", "3"
+        ));
+        String checksum = sha256Hex(zipBytes);
+        InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(zipBytes);
+        NodeConfig config = createConfig();
+        config.getTemplateCacheLimits().setMaxEntries(2);
+        TemplateCacheLayout layout = createLayout(config);
+        TemplateCachePopulateService service = createService(storageClient, layout, config);
+
+        assertThatThrownBy(() -> service.ensureCachedTemplate(
+                "starter",
+                "2.0.3",
+                checksum,
+                "templates/starter/2.0.3.zip"
         )).isInstanceOf(TemplateCacheException.class)
                 .hasMessageContaining("max entry count");
     }
@@ -197,6 +297,34 @@ class TemplateCachePopulateServiceTest {
     private record TarEntrySpec(String contents, int mode) {
     }
 
+    private byte[] createZip(Map<String, String> files) throws IOException {
+        Map<String, ZipEntrySpec> entries = new HashMap<>();
+        for (Map.Entry<String, String> entry : files.entrySet()) {
+            entries.put(entry.getKey(), new ZipEntrySpec(entry.getValue(), 0644));
+        }
+        return createZipWithModes(entries);
+    }
+
+    private byte[] createZipWithModes(Map<String, ZipEntrySpec> files) throws IOException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        try (ZipArchiveOutputStream zipOutput = new ZipArchiveOutputStream(outputStream)) {
+            for (Map.Entry<String, ZipEntrySpec> entry : files.entrySet()) {
+                byte[] content = entry.getValue().contents().getBytes(StandardCharsets.UTF_8);
+                ZipArchiveEntry zipEntry = new ZipArchiveEntry(entry.getKey());
+                zipEntry.setUnixMode(entry.getValue().mode());
+                zipEntry.setSize(content.length);
+                zipOutput.putArchiveEntry(zipEntry);
+                zipOutput.write(content);
+                zipOutput.closeArchiveEntry();
+            }
+            zipOutput.finish();
+        }
+        return outputStream.toByteArray();
+    }
+
+    private record ZipEntrySpec(String contents, int mode) {
+    }
+
     private String sha256Hex(byte[] data) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -214,11 +342,11 @@ class TemplateCachePopulateServiceTest {
 
     private static class InMemoryTemplateStorageClient implements TemplateStorageClient {
 
-        private final byte[] tarballBytes;
+        private final byte[] archiveBytes;
         private int fetchCount;
 
-        private InMemoryTemplateStorageClient(byte[] tarballBytes) {
-            this.tarballBytes = tarballBytes;
+        private InMemoryTemplateStorageClient(byte[] archiveBytes) {
+            this.archiveBytes = archiveBytes;
         }
 
         @Override
@@ -228,8 +356,8 @@ class TemplateCachePopulateServiceTest {
                     templateId,
                     version,
                     s3Key,
-                    tarballBytes.length,
-                    new ByteArrayInputStream(tarballBytes)
+                    archiveBytes.length,
+                    new ByteArrayInputStream(archiveBytes)
             );
         }
 

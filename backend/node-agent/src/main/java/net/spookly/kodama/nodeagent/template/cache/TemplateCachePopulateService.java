@@ -35,6 +35,8 @@ import net.spookly.kodama.nodeagent.template.storage.TemplateStorageClient;
 import net.spookly.kodama.nodeagent.template.storage.TemplateTarball;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,7 +120,7 @@ public class TemplateCachePopulateService {
 
             DownloadResult downloadResult = downloadTarball(paths, s3Key, tarballFile);
             validateDownload(paths, downloadResult, checksum);
-            extractTarball(s3Key, tarballFile, tempContentsDir);
+            extractArchive(s3Key, tarballFile, tempContentsDir);
 
             writeChecksum(tempVersionRoot.resolve(TemplateCacheLayout.CHECKSUM_FILENAME), checksum);
             writeMetadata(
@@ -176,7 +178,7 @@ public class TemplateCachePopulateService {
     private void validateDownload(TemplateCachePaths paths, DownloadResult downloadResult, String expectedChecksum) {
         if (downloadResult.contentLength() > 0 && downloadResult.bytesWritten() != downloadResult.contentLength()) {
             throw new TemplateCacheException(
-                    "Template tarball length mismatch for templateId=" + paths.templateId()
+                    "Template archive length mismatch for templateId=" + paths.templateId()
                             + " version=" + paths.version()
                             + " expected=" + downloadResult.contentLength()
                             + " actual=" + downloadResult.bytesWritten()
@@ -185,7 +187,7 @@ public class TemplateCachePopulateService {
         String normalizedExpected = expectedChecksum.trim().toLowerCase(Locale.ROOT);
         if (!downloadResult.checksum().equals(normalizedExpected)) {
             throw new TemplateCacheException(
-                    "Template tarball checksum mismatch for templateId=" + paths.templateId()
+                    "Template archive checksum mismatch for templateId=" + paths.templateId()
                             + " version=" + paths.version()
             );
         }
@@ -206,6 +208,15 @@ public class TemplateCachePopulateService {
             builder.append(Character.forDigit(value & 0xF, 16));
         }
         return builder.toString();
+    }
+
+    private void extractArchive(String s3Key, Path tarballFile, Path destinationDir) throws IOException {
+        String lowerKey = s3Key.toLowerCase(Locale.ROOT);
+        if (lowerKey.endsWith(".zip")) {
+            extractZip(tarballFile, destinationDir);
+            return;
+        }
+        extractTarball(s3Key, tarballFile, destinationDir);
     }
 
     private void extractTarball(String s3Key, Path tarballFile, Path destinationDir) throws IOException {
@@ -262,6 +273,66 @@ public class TemplateCachePopulateService {
         }
     }
 
+    private void extractZip(Path tarballFile, Path destinationDir) throws IOException {
+        try (InputStream fileInputStream = Files.newInputStream(tarballFile);
+             BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream);
+             ZipArchiveInputStream zipInputStream = new ZipArchiveInputStream(bufferedInputStream)) {
+
+            long maxExtractedBytes = cacheLimits.getMaxExtractedBytes();
+            long maxEntries = cacheLimits.getMaxEntries();
+            long extractedBytes = 0;
+            long entryCount = 0;
+            Map<Path, Integer> directoryModes = new HashMap<>();
+
+            ZipArchiveEntry entry;
+            while ((entry = zipInputStream.getNextZipEntry()) != null) {
+                entryCount++;
+                if (entryCount > maxEntries) {
+                    throw new TemplateCacheException("Template archive exceeds max entry count of " + maxEntries);
+                }
+                if (entry.isUnixSymlink()) {
+                    throw new TemplateCacheException("Template archive contains unsupported link entry: " + entry.getName());
+                }
+                if (entry.isDirectory()) {
+                    Path dirPath = resolveEntryPath(destinationDir, entry.getName());
+                    Files.createDirectories(dirPath);
+                    int mode = entry.getUnixMode();
+                    if (mode != 0) {
+                        directoryModes.put(dirPath, mode);
+                    }
+                    continue;
+                }
+
+                Path entryPath = resolveEntryPath(destinationDir, entry.getName());
+                Files.createDirectories(entryPath.getParent());
+                long entrySize = entry.getSize();
+                if (entrySize > 0 && extractedBytes + entrySize > maxExtractedBytes) {
+                    throw new TemplateCacheException(
+                            "Template archive exceeds max extracted bytes of " + maxExtractedBytes
+                                    + " while extracting " + entry.getName()
+                    );
+                }
+                try (OutputStream outputStream = new BufferedOutputStream(
+                        Files.newOutputStream(entryPath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+                )) {
+                    extractedBytes = copyEntryWithLimit(
+                            zipInputStream,
+                            outputStream,
+                            extractedBytes,
+                            maxExtractedBytes,
+                            entry.getName()
+                    );
+                }
+                int mode = entry.getUnixMode();
+                if (mode != 0) {
+                    applyPermissions(entryPath, mode);
+                }
+            }
+
+            applyDirectoryPermissions(directoryModes);
+        }
+    }
+
     private InputStream wrapIfGzip(String s3Key, BufferedInputStream bufferedInputStream) throws IOException {
         if (isGzipTarball(s3Key, bufferedInputStream)) {
             return new GzipCompressorInputStream(bufferedInputStream);
@@ -296,7 +367,7 @@ public class TemplateCachePopulateService {
     }
 
     private long copyEntryWithLimit(
-            TarArchiveInputStream tarInputStream,
+            InputStream inputStream,
             OutputStream outputStream,
             long extractedBytes,
             long maxExtractedBytes,
@@ -304,7 +375,7 @@ public class TemplateCachePopulateService {
     ) throws IOException {
         byte[] buffer = new byte[8192];
         int read;
-        while ((read = tarInputStream.read(buffer)) != -1) {
+        while ((read = inputStream.read(buffer)) != -1) {
             outputStream.write(buffer, 0, read);
             extractedBytes += read;
             if (extractedBytes > maxExtractedBytes) {

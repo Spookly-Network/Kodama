@@ -91,7 +91,7 @@ Body: `DevModeUpdateRequest`
 }
 ```
 
-When enabled, the node bypasses template cache reuse and always re-downloads template tarballs.
+When enabled, the node bypasses template cache reuse and always re-downloads template archives.
 
 ## Configuration
 

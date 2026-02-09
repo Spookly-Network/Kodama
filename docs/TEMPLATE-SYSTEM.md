@@ -6,7 +6,7 @@ The template system defines how servers are built using multiple versioned layer
 
 ## 1. Storage
 
-All templates are stored as `.tar` archives in an S3 bucket.  
+All templates are stored as `.tar` (optionally `.tar.gz`/`.tgz`) or `.zip` archives in an S3 bucket.  
 The Brain stores only metadata:
 
 - Template ID

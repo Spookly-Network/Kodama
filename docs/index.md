@@ -70,7 +70,7 @@ Nicht-Ziele (zumindest erstmal):
 ### 2.2 Wichtige Domänenbegriffe
 
 - **Template**  
-  Paket (Tarball) mit Dateien und Template-Metadaten, die einen Teil der Serverwelt beschreiben  
+  Paket (Archiv, z. B. `.tar`/`.tar.gz`/`.zip`) mit Dateien und Template-Metadaten, die einen Teil der Serverwelt beschreiben  
   Beispiele: „Base-Hytale“, „Lobby-Gamemode“, „Map-Template-XYZ“.
 
 - **Template-Layer**  
@@ -92,8 +92,8 @@ Nicht-Ziele (zumindest erstmal):
 ### 3.1 Template-Lebenszyklus
 
 1. Template wird erstellt (lokal, zentral, egal wo)  
-2. Template wird als **Tarball** gepackt  
-3. Tarball wird in **S3** hochgeladen  
+2. Template wird als **Archiv** gepackt  
+3. Archiv wird in **S3** hochgeladen  
 4. Brain bekommt einen Datensatz:  
    - Template-ID  
    - Version  
@@ -117,7 +117,7 @@ Nicht-Ziele (zumindest erstmal):
   - type (master, gamemode, map, custom)
   - meta (Beschreibung, Tags, etc.)
 
-Tarball selbst:
+Archiv selbst:
   liegt in S3 unter s3_key
 ```
 
@@ -220,7 +220,7 @@ Node erhält Template {id, version, checksum}.
 
 1. Prüfe, ob Cache-Verzeichnis für diese Kombination existiert.
 2. Wenn nicht:
-      lade Tarball von S3, speichere im Cache, entpacke.
+      lade Archiv von S3, speichere im Cache, entpacke.
    Wenn doch:
       vergleiche gespeicherte Checksumme mit erwarteter.
 3. Wenn Checksumme abweicht:
