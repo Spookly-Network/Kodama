@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+import net.spookly.kodama.brain.config.BrainSecurityProperties;
 import net.spookly.kodama.brain.config.NodeProperties;
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.node.Node;
@@ -37,14 +38,17 @@ public class CommandDispatcherService {
     private final RestTemplate restTemplate;
     private final NodeProperties nodeProperties;
     private final BrainPluginRegistry pluginRegistry;
+    private final BrainSecurityProperties securityProperties;
 
     public CommandDispatcherService(
             RestTemplate restTemplate,
             NodeProperties nodeProperties,
-            BrainPluginRegistry pluginRegistry
+            BrainPluginRegistry pluginRegistry,
+            BrainSecurityProperties brainSecurityProperties
     ) {
         this.restTemplate = restTemplate;
         this.nodeProperties = nodeProperties;
+        this.securityProperties = brainSecurityProperties;
         this.pluginRegistry = Objects.requireNonNull(pluginRegistry, "pluginRegistry");
     }
 
@@ -142,6 +146,9 @@ public class CommandDispatcherService {
     private HttpEntity<?> createRequest(Object payload) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+
+        //TODO: Replace basic token auth
+        headers.set(securityProperties.getNode().getHeaderName(), securityProperties.getNode().getToken());
         return payload == null ? new HttpEntity<>(headers) : new HttpEntity<>(payload, headers);
     }
 

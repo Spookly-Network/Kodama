@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.spookly.kodama.brain.config.BrainSecurityProperties;
 import net.spookly.kodama.brain.config.NodeProperties;
 import net.spookly.kodama.brain.config.PluginsProperties;
 import net.spookly.kodama.brain.domain.instance.Instance;
@@ -107,7 +108,8 @@ class InstanceServiceTest {
             return new CommandDispatcherService(
                     new RestTemplate(),
                     new NodeProperties(),
-                    new BrainPluginRegistry(new PluginsProperties(), objectMapper)
+                    new BrainPluginRegistry(new PluginsProperties(), objectMapper),
+                    new BrainSecurityProperties()
             );
         }
     }
