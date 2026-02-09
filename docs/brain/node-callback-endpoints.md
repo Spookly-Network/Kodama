@@ -8,6 +8,7 @@ Base path: `/api/nodes/{nodeId}/instances/{instanceId}`
 
 - `POST /prepared`
   - Updates instance state to `STARTING`.
+  - If the instance is still `REQUESTED`, the Brain records `PREPARE_DISPATCHED` then transitions `REQUESTED` → `PREPARING` → `STARTING`.
   - Logs `PREPARE_COMPLETED` event.
 - `POST /running`
   - Updates instance state to `RUNNING`.

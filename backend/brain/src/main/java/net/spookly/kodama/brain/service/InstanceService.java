@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceEvent;
 import net.spookly.kodama.brain.domain.instance.InstanceEventType;
@@ -50,6 +51,7 @@ public class InstanceService {
     private final InstanceEventRepository instanceEventRepository;
     private final InstanceStateMachine instanceStateMachine;
     private final CommandDispatcherService commandDispatcherService;
+    private final EntityManager entityManager;
     private final ObjectMapper objectMapper;
     private final TemplateRepository templateRepository;
     private final TemplateVersionRepository templateVersionRepository;
@@ -63,6 +65,7 @@ public class InstanceService {
             InstanceEventRepository instanceEventRepository,
             InstanceStateMachine instanceStateMachine,
             CommandDispatcherService commandDispatcherService,
+            EntityManager entityManager,
             ObjectMapper objectMapper,
             TemplateRepository templateRepository,
             TemplateVersionRepository templateVersionRepository,
@@ -75,6 +78,7 @@ public class InstanceService {
         this.instanceEventRepository = instanceEventRepository;
         this.instanceStateMachine = instanceStateMachine;
         this.commandDispatcherService = commandDispatcherService;
+        this.entityManager = Objects.requireNonNull(entityManager, "entityManager");
         this.objectMapper = objectMapper;
         this.templateRepository = templateRepository;
         this.templateVersionRepository = templateVersionRepository;
@@ -178,8 +182,17 @@ public class InstanceService {
                     layers,
                     null
             ));
-            logger.info("Instance {} has been prepared on node {}", id, node.getId());
-            transitionOrConflict(instance, InstanceState.PREPARING, InstanceEventType.PREPARE_DISPATCHED, now);
+            // Node callbacks can arrive before the prepare dispatch completes; reload to avoid overwriting.
+            refreshInstanceState(instance);
+            if (instance.getState() == InstanceState.REQUESTED) {
+                transitionOrConflict(instance, InstanceState.PREPARING, InstanceEventType.PREPARE_DISPATCHED, now);
+            } else {
+                logger.info(
+                        "Instance {} advanced to state {} before prepare dispatch transition",
+                        id,
+                        instance.getState()
+                );
+            }
         } else if (state == InstanceState.STOPPED) {
             dispatchNodeCommand("start", () -> commandDispatcherService.sendStartInstance(node, instance));
             transitionOrConflict(instance, InstanceState.STARTING, InstanceEventType.START_DISPATCHED, now);
@@ -232,6 +245,15 @@ public class InstanceService {
     public void reportInstancePrepared(UUID nodeId, UUID instanceId) {
         Instance instance = loadInstanceForNode(nodeId, instanceId);
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        if (instance.getState() == InstanceState.REQUESTED) {
+            OffsetDateTime dispatchedAt = now.minusNanos(1_000);
+            instanceStateMachine.transition(
+                    instance,
+                    InstanceState.PREPARING,
+                    InstanceEventType.PREPARE_DISPATCHED,
+                    dispatchedAt
+            );
+        }
         instanceStateMachine.transition(instance, InstanceState.STARTING, InstanceEventType.PREPARE_COMPLETED, now);
     }
 
@@ -471,6 +493,13 @@ public class InstanceService {
             );
             throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
         }
+    }
+
+    private void refreshInstanceState(Instance instance) {
+        if (instance == null) {
+            return;
+        }
+        entityManager.refresh(instance);
     }
 
     private record AssignmentDescriptor(UUID templateId, UUID templateVersionId, int priority) {

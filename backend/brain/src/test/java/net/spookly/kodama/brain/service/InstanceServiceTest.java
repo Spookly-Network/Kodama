@@ -465,6 +465,48 @@ class InstanceServiceTest {
     }
 
     @Test
+    void reportPreparedFromRequestedTransitionsToStarting() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Node node = nodeRepository.save(new Node(
+                "node-fast-callback",
+                "eu-west-1",
+                NodeStatus.ONLINE,
+                false,
+                4,
+                1,
+                now,
+                "1.0.0",
+                null,
+                "http://node.fast"
+        ));
+        Instance instance = instanceRepository.save(new Instance(
+                "instance-fast-callback",
+                "Fast Callback Instance",
+                InstanceState.REQUESTED,
+                REQUESTER_ID,
+                node,
+                null,
+                null,
+                null,
+                null,
+                null,
+                now,
+                now
+        ));
+
+        instanceService.reportInstancePrepared(node.getId(), instance.getId());
+
+        Instance persisted = instanceRepository.findById(instance.getId()).orElseThrow();
+        assertThat(persisted.getState()).isEqualTo(InstanceState.STARTING);
+
+        List<InstanceEvent> events =
+                instanceEventRepository.findAllByInstanceIdOrderByTimestampAsc(instance.getId());
+        assertThat(events).isNotEmpty();
+        assertThat(events).extracting(InstanceEvent::getType)
+                .contains(InstanceEventType.PREPARE_DISPATCHED, InstanceEventType.PREPARE_COMPLETED);
+    }
+
+    @Test
     void reportPreparedRejectsMismatchedNode() {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         Node node = nodeRepository.save(new Node(
