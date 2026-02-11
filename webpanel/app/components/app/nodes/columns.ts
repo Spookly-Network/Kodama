@@ -63,9 +63,7 @@ const baseColumns: ColumnDef<NodeRow>[] = [
         cell: ({ row }) => {
             const node = row.original
             return h('div', { class: 'space-y-2' }, [
-                h(AppStatusBadge, { variant: node.status }, { default: () => node.status }),
-                h('div', { class: 'text-xs text-muted-foreground' }, `Heartbeat ${node.heartbeatAgoLabel}`),
-                h('div', { class: 'text-xs text-muted-foreground' }, node.heartbeatLabel),
+                h(AppStatusBadge, { variant: node.status, tooltipText: `Heartbeat ${node.heartbeatAgoLabel}`}, { default: () => node.status }),
             ])
         },
     },
@@ -83,9 +81,11 @@ const baseColumns: ColumnDef<NodeRow>[] = [
         cell: ({ row }) => {
             const node = row.original
             return h('div', { class: 'space-y-2 min-w-[160px]' }, [
-                h('div', { class: 'font-medium' }, `${node.usedSlots} / ${node.capacitySlots}`),
+              h('div', { class: 'flex items-center justify-between'}, [
+                  h('div', { class: 'font-medium' }, `${node.usedSlots} / ${node.capacitySlots}`),
+                  h('div', { class: 'text-xs text-muted-foreground' }, `${node.usagePercent}% used`),
+              ]),
                 h(Progress, { modelValue: node.usagePercent, class: 'h-2' }),
-                h('div', { class: 'text-xs text-muted-foreground' }, `${node.usagePercent}% used`),
             ])
         },
     },

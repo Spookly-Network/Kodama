@@ -59,43 +59,11 @@ const data = {
       title: "Templates",
       url: "/templates",
       icon: Package,
-      items: [
-        {
-          title: "Genesis",
-          url: "#",
-        },
-        {
-          title: "Explorer",
-          url: "#",
-        },
-        {
-          title: "Quantum",
-          url: "#",
-        },
-      ],
     },
     {
       title: "Blueprints",
       url: "#",
       icon: BookDashed,
-      items: [
-        {
-          title: "Groups",
-          url: "#",
-        },
-        {
-          title: "Get Started",
-          url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
-        },
-      ],
     },
     {
       title: "Instances",
@@ -105,18 +73,6 @@ const data = {
         {
           title: "Groups",
           url: "/instances/groups",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
         },
       ],
     },

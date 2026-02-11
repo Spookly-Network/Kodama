@@ -112,13 +112,13 @@ export const useNodesStore = defineStore('nodes', () => {
 
     async function refresh() {
         if (loading.value) return
-        loading.value = true
+        // loading.value = true
         try {
             const nodes = await brainApi<NodeDto[]>('/api/nodes')
             upsertMany(nodes)
             lastLoadedAt.value = Date.now()
         } finally {
-            loading.value = false
+            // loading.value = false
         }
     }
 

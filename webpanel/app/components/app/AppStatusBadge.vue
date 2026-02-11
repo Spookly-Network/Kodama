@@ -1,13 +1,31 @@
 <template>
-  <Badge :class="statusStyles[variant]">
-    <slot></slot>
-  </Badge>
+  <template v-if="tooltipText">
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger>
+            <Badge :class="statusStyles[variant]">
+              <slot></slot>
+            </Badge>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{{tooltipText}}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  </template>
+  <template v-else>
+    <Badge :class="statusStyles[variant]">
+      <slot></slot>
+    </Badge>
+  </template>
+
+
 </template>
 
 <script setup lang="ts">
 import {Badge} from "~/components/ui/badge";
 
-const { variant = 'ONLINE' } = defineProps<{ variant?: keyof typeof statusStyles }>()
+const { variant = 'ONLINE' } = defineProps<{ variant?: keyof typeof statusStyles, tooltipText?: string }>()
 </script>
 
 <script lang="ts">

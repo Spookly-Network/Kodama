@@ -27,7 +27,7 @@ const canStart = computed(() =>
 )
 const canStop = computed(() => hasNode.value && props.instance.state === "RUNNING")
 const canDestroy = computed(() =>
-  hasNode.value && (props.instance.state === "STOPPED" || props.instance.state === "STOPPING")
+  hasNode.value && (props.instance.state === "STOPPED" || props.instance.state === "STOPPING" || props.instance.state === "FAILED")
 )
 </script>
 

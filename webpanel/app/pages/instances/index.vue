@@ -40,7 +40,7 @@
                 Create instance
               </Button>
             </DialogTrigger>
-            <DialogContent class="sm:max-w-3xl">
+            <DialogContent class="sm:max-w-3xl max-h-10/12 overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create instance</DialogTitle>
                 <DialogDescription>
@@ -94,6 +94,31 @@
                       :disabled="createSubmitting"
                     />
                   </Field>
+
+                  <Field>
+                    <FieldLabel for="instance-ports">Ports</FieldLabel>
+                    <Input
+                      id="instance-ports"
+                      v-model="createForm.portsJson"
+                      autocomplete="off"
+                      placeholder="prod,ssd,low-latency"
+                      :disabled="createSubmitting"
+                    />
+                    <FieldDescription>Ports Json (optional).</FieldDescription>
+                  </Field>
+
+                  <Field>
+                    <FieldLabel for="instance-variables">Variables</FieldLabel>
+                    <Input
+                      id="instance-variables"
+                      v-model="createForm.variablesJson"
+                      autocomplete="off"
+                      placeholder="prod,ssd,low-latency"
+                      :disabled="createSubmitting"
+                    />
+                    <FieldDescription>Ports variables (optional).</FieldDescription>
+                  </Field>
+
                   <Field class="sm:col-span-2">
                     <FieldLabel for="instance-tags">Tags</FieldLabel>
                     <Input
@@ -296,6 +321,8 @@ type CreateInstanceRequest = {
   tags?: string | null
   devModeAllowed?: boolean | null
   templateLayers: TemplateAssignmentRequest[]
+  portsJson?: string | null
+  variablesJson?: string | null
 }
 
 type CreateInstanceLayer = {
@@ -313,6 +340,8 @@ type CreateInstanceForm = {
   tags: string
   devModeAllowed: boolean
   templateLayers: CreateInstanceLayer[]
+  portsJson: string
+  variablesJson: string
 }
 
 const brainApi = useBrainApi()
@@ -344,6 +373,8 @@ const createForm = reactive<CreateInstanceForm>({
   nodeId: "",
   region: "",
   tags: "",
+  portsJson: "{}",
+  variablesJson: "{}",
   devModeAllowed: false,
   templateLayers: [buildLayer()],
 })
@@ -405,7 +436,7 @@ const parseTags = (value: string | null) => {
 }
 
 const instanceRows = computed<InstanceRow[]>(() =>
-  instances.value.map((instance) => {
+  instances.value.filter((instance) => instance.state !== "DESTROYED").map((instance) => {
     const templateLayers = instance.templateLayers ?? []
     const groupLayerCount = templateLayers.filter((layer) => layer.source === "GROUP").length
     return {
@@ -427,7 +458,7 @@ const instanceRows = computed<InstanceRow[]>(() =>
       stoppedAtLabel: formatOptionalDate(instance.stoppedAt ?? null),
       failureReason: instance.failureReason ?? null,
     }
-  })
+  }).sort((a, b) => a.name.localeCompare(b.name))
 )
 
 const isActionBusy = (instanceId: string) => Boolean(actionSubmitting[instanceId])
@@ -442,6 +473,8 @@ const applyCreateFormFromInstance = (instance: Instance) => {
   createForm.nodeId = instance.nodeId ?? ""
   createForm.region = instance.region ?? ""
   createForm.tags = instance.tags ?? ""
+  createForm.portsJson = instance.portsJson ?? ""
+  createForm.variablesJson = instance.variablesJson ?? ""
   createForm.devModeAllowed = instance.devModeAllowed ?? false
 
   const instanceLayers = (instance.templateLayers ?? []).filter((layer) => layer.source === "INSTANCE")
@@ -473,6 +506,7 @@ const resetCreateForm = () => {
   createForm.nodeId = ""
   createForm.region = ""
   createForm.tags = ""
+  createForm.portsJson = ""
   createForm.devModeAllowed = false
   createForm.templateLayers = [buildLayer()]
   createSubmitted.value = false
@@ -523,6 +557,8 @@ const buildCreatePayload = (): CreateInstanceRequest => {
   const payload: CreateInstanceRequest = {
     name: createForm.name.trim(),
     displayName: createForm.displayName.trim(),
+    portsJson: createForm.portsJson.trim(),
+    variablesJson: createForm.variablesJson.trim(),
     templateLayers: createForm.templateLayers.map((layer) => {
       const assignment: TemplateAssignmentRequest = {
         templateId: layer.templateId.trim(),
