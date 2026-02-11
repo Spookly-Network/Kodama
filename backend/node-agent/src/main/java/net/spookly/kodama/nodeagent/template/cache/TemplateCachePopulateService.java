@@ -21,6 +21,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -36,7 +37,7 @@ import net.spookly.kodama.nodeagent.template.storage.TemplateTarball;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
-import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
+import org.apache.commons.compress.archivers.zip.ZipFile;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -274,18 +275,16 @@ public class TemplateCachePopulateService {
     }
 
     private void extractZip(Path tarballFile, Path destinationDir) throws IOException {
-        try (InputStream fileInputStream = Files.newInputStream(tarballFile);
-             BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream);
-             ZipArchiveInputStream zipInputStream = new ZipArchiveInputStream(bufferedInputStream)) {
-
+        try (ZipFile zipFile = new ZipFile(tarballFile.toFile(), StandardCharsets.UTF_8.name())) {
             long maxExtractedBytes = cacheLimits.getMaxExtractedBytes();
             long maxEntries = cacheLimits.getMaxEntries();
             long extractedBytes = 0;
             long entryCount = 0;
             Map<Path, Integer> directoryModes = new HashMap<>();
 
-            ZipArchiveEntry entry;
-            while ((entry = zipInputStream.getNextZipEntry()) != null) {
+            Enumeration<ZipArchiveEntry> entries = zipFile.getEntries();
+            while (entries.hasMoreElements()) {
+                ZipArchiveEntry entry = entries.nextElement();
                 entryCount++;
                 if (entryCount > maxEntries) {
                     throw new TemplateCacheException("Template archive exceeds max entry count of " + maxEntries);
@@ -312,11 +311,12 @@ public class TemplateCachePopulateService {
                                     + " while extracting " + entry.getName()
                     );
                 }
-                try (OutputStream outputStream = new BufferedOutputStream(
-                        Files.newOutputStream(entryPath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
-                )) {
+                try (InputStream entryStream = zipFile.getInputStream(entry);
+                     OutputStream outputStream = new BufferedOutputStream(
+                             Files.newOutputStream(entryPath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+                     )) {
                     extractedBytes = copyEntryWithLimit(
-                            zipInputStream,
+                            entryStream,
                             outputStream,
                             extractedBytes,
                             maxExtractedBytes,
