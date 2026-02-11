@@ -33,7 +33,7 @@ node-agent:
   heartbeat-interval-seconds: ${NODE_AGENT_HEARTBEAT_INTERVAL_SECONDS:0}
   docker-host: ${NODE_AGENT_DOCKER_HOST:}
   docker:
-    host: ${NODE_AGENT_DOCKER_HOST:}
+    host: ${NODE_AGENT_DOCKER_HOST:unix:///var/run/docker.sock}
     tls-verify: ${NODE_AGENT_DOCKER_TLS_VERIFY:}
     cert-path: ${NODE_AGENT_DOCKER_CERT_PATH:}
     api-version: ${NODE_AGENT_DOCKER_API_VERSION:}

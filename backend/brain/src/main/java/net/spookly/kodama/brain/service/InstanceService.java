@@ -226,7 +226,7 @@ public class InstanceService {
         Instance instance = loadInstance(id);
         Node node = requireAssignedNode(instance);
         InstanceState state = instance.getState();
-        if (state != InstanceState.STOPPED && state != InstanceState.STOPPING) {
+        if (state != InstanceState.STOPPED && state != InstanceState.STOPPING && state != InstanceState.FAILED) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Instance cannot be destroyed from state " + state
@@ -253,6 +253,7 @@ public class InstanceService {
                     InstanceEventType.PREPARE_DISPATCHED,
                     dispatchedAt
             );
+            logger.warn("Instance {} had state Requested when sending prepared", instanceId);
         }
         instanceStateMachine.transition(instance, InstanceState.STARTING, InstanceEventType.PREPARE_COMPLETED, now);
     }
