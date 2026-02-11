@@ -1,0 +1,367 @@
+[
+  {
+    "id": "#148",
+    "title": "[Epic] Blueprint-driven instance creation",
+    "summary": "Introduce reusable blueprints that define how instances are created and prepared.",
+    "goal": "Instances can be created from a blueprint reference with override support, while nodes allocate ports and run install/start commands based on blueprint data.",
+    "context": "Instance creation currently requires explicit data per request. Blueprints provide editable defaults (templates, ports, runtime config) without versioning.",
+    "scope": "- Brain blueprint CRUD with soft delete and core fields.\n- Blueprint attachments: template assignments, port definitions, group links.\n- Instance creation via blueprint reference with override replacement semantics.\n- Node prepare/start updates: port allocation, install script, start command.\n- Scheduling and heartbeat updates for slotsRequired usage.\n- Contracts, tests, and documentation updates.",
+    "tasks": "- [ ] #149\n- [ ] #150\n- [ ] #151\n- [ ] #152\n- [ ] #153\n- [ ] #154\n- [ ] #155\n- [ ] #156\n- [ ] #157\n- [ ] #158\n- [ ] #159\n- [ ] #160\n- [ ] #161\n- [ ] #162\n- [ ] #163\n- [ ] #164\n- [ ] #165",
+    "notes": "- Plan: `docs/plan/blueprints/plan.md`.",
+    "labels": [
+      "area: Brain",
+      "area: Node",
+      "area: instance",
+      "prio: high"
+    ],
+    "type": "Epic",
+    "parent": "",
+    "blockedby": [],
+    "milestone": "Blueprints v1"
+  },
+  {
+    "id": "#149",
+    "title": "[Architecture] Blueprint data model and contracts",
+    "summary": "Define the canonical blueprint data model, override semantics, and Brain-Node payload changes.",
+    "problem": "Blueprints add new fields (ports, scripts, slots) that must align across Brain, Node, and contracts. Without a shared contract we risk inconsistent behavior and incomplete API coverage.",
+    "proposal": "- Blueprint core fields: name, permanent, slotsRequired, containerImage, installScript (optional), startCommand (exec form array), variablesJson (optional), deletedAt.\n- Override semantics: request fields replace blueprint values when provided.\n- Port definition shape: name, protocol, containerPort, hostRange {min,max,step}; no fixed host ports in blueprint.\n- Node prepare payload includes resolved runtime fields and port definitions.\n- Prepared callback includes allocated ports for Brain to persist as portsJson.\n- Install script runs once before start command; /bin/sh is available.\n- Slots are counted for STARTING, RUNNING, STOPPING; default slotsRequired is 1.\n- Blueprint deletion is soft and blocks new instance creation only.",
+    "impact": "- Brain: new entities, services, controllers, instance create flow, scheduling changes.\n- Node: port allocator, registry schema, start logic, heartbeat usedSlots.\n- Contracts: openapi.yml and nodeapi.yml updates.\n- Docs: brain, node, instance workflow updates.",
+    "acceptance": "- The decisions above are documented and approved for implementation.\n- Payload shapes and defaults are explicit and consistent with `docs/plan/blueprints/plan.md`.\n- Any remaining open questions are tracked as follow-up issues.",
+    "notes": "- Parent epic: #148",
+    "labels": [
+      "area: Brain",
+      "area: Node",
+      "area: instance",
+      "prio: high"
+    ],
+    "type": "Architecture",
+    "parent": "#148",
+    "blockedby": [],
+    "milestone": "Blueprints v1"
+  },
+  {
+    "id": "#150",
+    "title": "[Feature] Brain: blueprint persistence and migrations",
+    "summary": "Add database tables and entities for blueprints, blueprint attachments, and instance override fields.",
+    "details": "Blueprints are stored as normal entities with soft delete. Instances store blueprintId plus override fields for runtime configuration.",
+    "scope": "- Flyway migration adds: blueprints, blueprint_template_assignments, blueprint_port_definitions, blueprint_group_links, and instance override columns.\n- Unique constraint on blueprint name.\n- Indexes on blueprintId in all attachment tables.\n- JPA entities and repositories for new tables.\n- Default slotsRequired to 1 when null during persistence.",
+    "acceptance": "- Migration runs on MySQL and creates the expected schema and indexes.\n- Entities can be persisted and queried without manual fixes.\n- Soft delete field is available for API logic.",
+    "notes": "- Parent epic: #148",
+    "labels": [
+      "area: Brain",
+      "area: instance",
+      "prio: high"
+    ],
+    "type": "Feature",
+    "parent": "#148",
+    "blockedby": [],
+    "milestone": "Blueprints v1"
+  },
+  {
+    "id": "#151",
+    "title": "[Feature] Brain: blueprint CRUD API",
+    "summary": "Expose REST endpoints to create, list, update, and soft-delete blueprints.",
+    "details": "Provide CRUD with validation and consistent DTOs for blueprint metadata and runtime defaults.",
+    "scope": "- Endpoints: GET/POST/GET by id/PUT/DELETE /api/blueprints.\n- Validate required name, slotsRequired >= 1, containerImage, and startCommand.\n- installScript and variablesJson optional.\n- List endpoint excludes deleted entries.\n- Delete sets deletedAt.",
+    "acceptance": "- CRUD endpoints return expected payloads and status codes.\n- Duplicate name returns 409.\n- Invalid fields return 400 with clear errors.\n- Tests cover create, update, delete, and validation errors.",
+    "notes": "- Parent epic: #148",
+    "labels": [
+      "area: Brain",
+      "area: instance",
+      "prio: high"
+    ],
+    "type": "Feature",
+    "parent": "#148",
+    "blockedby": [
+      "#150"
+    ],
+    "milestone": "Blueprints v1"
+  },
+  {
+    "id": "#152",
+    "title": "[Feature] Brain: blueprint template assignments API",
+    "summary": "Add endpoints to manage template assignments attached to blueprints.",
+    "details": "Blueprints define template layers for instance creation using the same assignment model as instances/groups.",
+    "scope": "- Endpoints: GET/POST/DELETE /api/blueprints/{id}/template-assignments.\n- Validate templateId exists and templateVersionId matches when provided.\n- Priority is non-negative; duplicates allowed.\n- Responses mirror existing assignment DTOs.",
+    "acceptance": "- Assignments can be created, listed, and removed.\n- Validation errors return 400/404 consistent with existing assignment endpoints.\n- Tests cover assignment lifecycle and template/version validation.",
+    "notes": "- Parent epic: #148",
+    "labels": [
+      "area: Brain",
+      "area: template-system",
+      "prio: medium"
+    ],
+    "type": "Feature",
+    "parent": "#148",
+    "blockedby": [
+      "#150"
+    ],
+    "milestone": "Blueprints v1"
+  },
+  {
+    "id": "#153",
+    "title": "[Feature] Brain: blueprint port definitions API",
+    "summary": "Add endpoints to manage blueprint port definitions and validate host range configuration.",
+    "details": "Port definitions describe how nodes allocate host ports for containers created from a blueprint.",
+    "scope": "- Endpoints: GET/POST/DELETE /api/blueprints/{id}/ports.\n- Validate name uniqueness, protocol (tcp/udp), containerPort range, and hostRange min/max/step.\n- Persist port definitions for use during prepare.",
+    "acceptance": "- Port definitions can be added, listed, and removed.\n- Invalid ranges or protocols return 400 with clear errors.\n- Tests cover validation and persistence.",
+    "notes": "- Parent epic: #148",
+    "labels": [
+      "area: Brain",
+      "area: instance",
+      "prio: medium"
+    ],
+    "type": "Feature",
+    "parent": "#148",
+    "blockedby": [
+      "#150"
+    ],
+    "milestone": "Blueprints v1"
+  },
+  {
+    "id": "#154",
+    "title": "[Feature] Brain: blueprint group links API",
+    "summary": "Add endpoints to manage blueprint-to-group links for instance creation.",
+    "details": "Blueprint group links define which instance groups should be applied when creating instances from a blueprint.",
+    "scope": "- Endpoints: GET/PUT/DELETE /api/blueprints/{id}/groups.\n- Validate groupId exists.\n- PUT and DELETE are idempotent.\n- Store links in blueprint_group_links table.",
+    "acceptance": "- Links can be added, listed, and removed.\n- Invalid groupId returns 404.\n- Tests cover idempotent behavior and validation.",
+    "notes": "- Parent epic: #148",
+    "labels": [
+      "area: Brain",
+      "area: instance",
+      "prio: medium"
+    ],
+    "type": "Feature",
+    "parent": "#148",
+    "blockedby": [
+      "#150"
+    ],
+    "milestone": "Blueprints v1"
+  },
+  {
+    "id": "#155",
+    "title": "[Feature] Brain: instance creation from blueprint with overrides",
+    "summary": "Extend instance creation to accept a blueprint reference and apply override semantics.",
+    "details": "When blueprintId is provided, the Brain resolves effective fields from the blueprint, applies overrides from the request, and persists blueprintId plus override fields on the instance.",
+    "scope": "- Extend CreateInstanceRequest with blueprintId and override fields (templates, ports, groups, variables, runtime fields).\n- If blueprintId is present, templateLayers is optional and replaces blueprint assignments when provided.\n- portDefinitions and groupIds overrides replace blueprint values.\n- Reject creation if blueprint is deleted.\n- Persist blueprintId and override fields.\n- Default slotsRequired to 1 when missing.\n- Keep legacy non-blueprint flow unchanged.",
+    "acceptance": "- Instance creation succeeds with blueprintId only and uses blueprint defaults.\n- Overrides replace blueprint values and persist on the instance.\n- Deleted blueprint rejects new instance creation with a clear error.\n- Tests cover override replacement and backwards compatibility.",
+    "notes": "- Parent epic: #148",
+    "labels": [
+      "area: Brain",
+      "area: instance",
+      "prio: high"
+    ],
+    "type": "Feature",
+    "parent": "#148",
+    "blockedby": [
+      "#150"
+    ],
+    "milestone": "Blueprints v1"
+  },
+  {
+    "id": "#156",
+    "title": "[Task] Brain: node prepare payload and prepared callback ports",
+    "summary": "Send resolved runtime fields to the node during prepare and persist allocated ports from the prepared callback.",
+    "details": "The node needs container image, install script, start command, slotsRequired, and port definitions to prepare correctly. The Brain must accept allocated ports from the node and store them in portsJson.",
+    "scope": "- Extend NodePrepareInstanceRequest with containerImage, installScript, startCommand, slotsRequired, and portDefinitions.\n- Update command dispatcher to populate these fields.\n- Update prepared callback endpoint to accept portsJson in the body.\n- Persist portsJson on the instance when callback is received.\n- Preserve existing behavior when portsJson is absent.",
+    "acceptance": "- Node prepare payload contains resolved runtime fields.\n- Prepared callback can include portsJson and it is persisted.\n- Existing callbacks without body still succeed.",
+    "notes": "- Parent epic: #148",
+    "labels": [
+      "area: Brain",
+      "area: Node",
+      "prio: high"
+    ],
+    "type": "Task",
+    "parent": "#148",
+    "blockedby": [
+      "#155"
+    ],
+    "milestone": "Blueprints v1"
+  },
+  {
+    "id": "#157",
+    "title": "[Feature] Brain: scheduling uses slotsRequired",
+    "summary": "Use slotsRequired when selecting nodes and validating capacity.",
+    "details": "Instances reserve multiple slots based on blueprint or override. Scheduling must account for this when choosing nodes.",
+    "scope": "- Store effective slotsRequired on instance (default 1).\n- Require usedSlots + slotsRequired <= capacitySlots during scheduling.\n- Keep existing filters and deterministic tie-breakers.\n- Update conflict message when capacity is insufficient.\n- Include slotsRequired in InstanceDto.",
+    "acceptance": "- Instances with slotsRequired > 1 are rejected when capacity is insufficient.\n- Scheduling remains deterministic.\n- Tests cover slotsRequired behavior and default value.",
+    "notes": "- Parent epic: #148",
+    "labels": [
+      "area: Brain",
+      "area: instance",
+      "prio: high"
+    ],
+    "type": "Feature",
+    "parent": "#148",
+    "blockedby": [
+      "#155"
+    ],
+    "milestone": "Blueprints v1"
+  },
+  {
+    "id": "#158",
+    "title": "[Task] Node: registry runtime fields for blueprints",
+    "summary": "Extend the node instance registry to store blueprint runtime fields and install completion status.",
+    "details": "The registry must persist resolved runtime configuration so start/stop and heartbeat logic can use it consistently.",
+    "scope": "- Extend instance.json schema with containerImage, installScript, startCommand, slotsRequired, allocatedPorts, and installCompleted.\n- Update InstanceRegistryEntry and registry service read/write logic.\n- Keep backward compatibility for existing registry entries.",
+    "acceptance": "- Registry entries include new fields and can be read/written without errors.\n- Existing entries without new fields still load with defaults.",
+    "notes": "- Parent epic: #148",
+    "labels": [
+      "area: Node",
+      "area: instance",
+      "prio: medium"
+    ],
+    "type": "Task",
+    "parent": "#148",
+    "blockedby": [],
+    "milestone": "Blueprints v1"
+  },
+  {
+    "id": "#159",
+    "title": "[Feature] Node: port allocation and reservation on prepare",
+    "summary": "Allocate host ports from blueprint ranges during prepare and reserve them until destroy.",
+    "details": "Ports are allocated per node from configured ranges and persisted to avoid conflicts across restarts.",
+    "scope": "- Port allocation service picks lowest available port per range with step.\n- Reserve ports in registry and include portsJson.\n- Avoid conflicts by scanning existing registry entries.\n- Prepare flow allocates ports, writes portsJson, injects PORT and PORT_<NAME> variables, and includes portsJson in prepared callback.\n- Allocation errors fail prepare and trigger /failed callback.",
+    "acceptance": "- Ports are allocated deterministically and reserved until destroy.\n- Prepared callback sends portsJson with host and container ports.\n- Conflicting allocations are prevented even after node restart.",
+    "notes": "- Parent epic: #148",
+    "labels": [
+      "area: Node",
+      "area: instance",
+      "prio: high"
+    ],
+    "type": "Feature",
+    "parent": "#148",
+    "blockedby": [
+      "#158",
+      "#156"
+    ],
+    "milestone": "Blueprints v1"
+  },
+  {
+    "id": "#160",
+    "title": "[Feature] Node: install script and start command execution",
+    "summary": "Run the blueprint install script once before the start command and use registry values for container image and start command.",
+    "details": "Install script must always run before the first container start; start command uses exec form compatible with Docker.",
+    "scope": "- Run installScript via /bin/sh -c before start command when installCompleted is false.\n- Mark installCompleted after successful run (registry field or sentinel file).\n- Use containerImage and startCommand from registry; do not rely on variables for image.\n- Fail start if startCommand or containerImage is missing.\n- Preserve plugin hook behavior for env/labels/command.",
+    "acceptance": "- Install script runs exactly once per instance before first start.\n- Start uses registry containerImage and startCommand.\n- Failures report /failed and do not mark installCompleted.",
+    "notes": "- Parent epic: #148",
+    "labels": [
+      "area: Node",
+      "area: instance",
+      "prio: high"
+    ],
+    "type": "Feature",
+    "parent": "#148",
+    "blockedby": [
+      "#158",
+      "#156"
+    ],
+    "milestone": "Blueprints v1"
+  },
+  {
+    "id": "#161",
+    "title": "[Task] Node: support new portsJson array format in port bindings",
+    "summary": "Parse the new portsJson array format (hostPort + containerPort + protocol) while keeping legacy map support.",
+    "details": "Node start currently expects portsJson as a map of name to containerPort. With allocated host ports we need an array form.",
+    "scope": "- If portsJson is a JSON array, parse entries with name, protocol, containerPort, hostPort and use hostPort directly.\n- If portsJson is a JSON object, keep legacy behavior.\n- Validate port numbers and protocol values.\n- Keep deterministic ordering.",
+    "acceptance": "- Array format works for multi-port mappings.\n- Legacy object format still works without changes.\n- Invalid formats return a clear error.",
+    "notes": "- Parent epic: #148",
+    "labels": [
+      "area: Node",
+      "area: instance",
+      "prio: medium"
+    ],
+    "type": "Task",
+    "parent": "#148",
+    "blockedby": [
+      "#159"
+    ],
+    "milestone": "Blueprints v1"
+  },
+  {
+    "id": "#162",
+    "title": "[Task] Node: heartbeat usedSlots from registry",
+    "summary": "Report usedSlots based on local registry entries and slotsRequired.",
+    "details": "Slots should count instances in STARTING, RUNNING, and STOPPING. The node must compute usedSlots from registry data.",
+    "scope": "- Add slotsRequired to registry entries.\n- Track containerStatus transitions for starting and stopping.\n- Compute usedSlots as sum of slotsRequired for entries with status starting/running/stopping.\n- Default slotsRequired to 1 when missing.\n- Update heartbeat sender to use computed value.",
+    "acceptance": "- usedSlots reflects active instances with correct slot counts.\n- No negative or over-capacity values are reported.\n- Tests cover status transitions and default slotsRequired.",
+    "notes": "- Parent epic: #148",
+    "labels": [
+      "area: Node",
+      "area: instance",
+      "prio: medium"
+    ],
+    "type": "Task",
+    "parent": "#148",
+    "blockedby": [
+      "#158"
+    ],
+    "milestone": "Blueprints v1"
+  },
+  {
+    "id": "#163",
+    "title": "[Task] Brain tests: blueprint resolution and overrides",
+    "summary": "Add unit tests for blueprint-based instance creation and override replacement rules.",
+    "details": "We need deterministic tests to ensure blueprint defaults and overrides resolve correctly.",
+    "scope": "- Tests for blueprint defaults, override replacement, deleted blueprint rejection, and slotsRequired default.\n- Use existing service tests or create new focused tests.",
+    "acceptance": "- Tests pass and cover core resolution paths.\n- No test relies on external services or timing.",
+    "notes": "- Parent epic: #148",
+    "labels": [
+      "area: Brain",
+      "area: instance",
+      "prio: medium"
+    ],
+    "type": "Task",
+    "parent": "#148",
+    "blockedby": [
+      "#155",
+      "#157"
+    ],
+    "milestone": "Blueprints v1"
+  },
+  {
+    "id": "#164",
+    "title": "[Task] Node tests: port allocation and install/start flow",
+    "summary": "Add tests for port allocation, reservation, and install/start behavior.",
+    "details": "We need confidence that the node allocates ports deterministically and runs install scripts once.",
+    "scope": "- Port allocator tests for deterministic allocation and conflict avoidance.\n- Install/start tests for one-time install and registry-based start command.\n- Keep tests fast with unit tests and lightweight fakes.",
+    "acceptance": "- Tests cover allocation, reservation, and install/start behavior.\n- Tests are deterministic and pass in CI.",
+    "notes": "- Parent epic: #148",
+    "labels": [
+      "area: Node",
+      "area: instance",
+      "prio: medium"
+    ],
+    "type": "Task",
+    "parent": "#148",
+    "blockedby": [
+      "#159",
+      "#160"
+    ],
+    "milestone": "Blueprints v1"
+  },
+  {
+    "id": "#165",
+    "title": "[Documentation] Blueprint docs and contract updates",
+    "summary": "Update documentation and contracts to reflect blueprint-driven instance creation.",
+    "details": "Blueprints change the API surface and node command payloads. Contracts and module docs must reflect the new behavior.",
+    "scope": "- Update /contracts/openapi.yml for blueprint CRUD, attachments, and instance create overrides.\n- Update /contracts/nodeapi.yml for prepare payload and prepared callback ports.\n- Update docs/INSTANCE-CONTROLLER.md, docs/brain/node-command-dispatcher.md, docs/node/operations/instance-commands.md, docs/node/operations/instance-registry.md, docs/brain/scheduling-service.md, docs/NODE-FLOW.md, and add a blueprint doc under docs/brain or docs/instance.",
+    "acceptance": "- Contracts and docs match implemented behavior.\n- Examples include blueprintId, port definitions, and portsJson array format.",
+    "notes": "- Parent epic: #148",
+    "labels": [
+      "area: Brain",
+      "area: Node",
+      "area: instance",
+      "prio: low"
+    ],
+    "type": "Documentation",
+    "parent": "#148",
+    "blockedby": [
+      "#155",
+      "#156",
+      "#157",
+      "#159",
+      "#160"
+    ],
+    "milestone": "Blueprints v1"
+  }
+]
