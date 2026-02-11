@@ -63,7 +63,18 @@ endpoints:
       instanceId: uuid
       name: string|null
       displayName: string|null
+      containerImage: string|null
+      installScript: string|null
+      startCommand: list<string>|null
       portsJson: string|null
+      ports:
+        - name: string
+          protocol: tcp|udp
+          containerPort: int32
+          hostRange:
+            min: int32
+            max: int32
+            step: int32
       variables: map<string,string>|null
       variablesJson: string|null
       layers:
@@ -142,6 +153,8 @@ callbacks:
   prepared:
     method: POST
     path: /api/nodes/{nodeId}/instances/{instanceId}/prepared
+    request:
+      portsJson: string|null
   running:
     method: POST
     path: /api/nodes/{nodeId}/instances/{instanceId}/running

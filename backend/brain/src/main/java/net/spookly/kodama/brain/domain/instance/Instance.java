@@ -18,6 +18,7 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import net.spookly.kodama.brain.domain.blueprint.Blueprint;
 import net.spookly.kodama.brain.domain.node.Node;
 import org.hibernate.annotations.UuidGenerator;
 
@@ -50,6 +51,10 @@ public class Instance {
     @JoinColumn(name = "node_id")
     private Node node;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "blueprint_id")
+    private Blueprint blueprint;
+
     @Column(name = "requested_region")
     private String region;
 
@@ -67,6 +72,31 @@ public class Instance {
     @Lob
     @Column(columnDefinition = "TEXT")
     private String variablesJson;
+
+    @Column(name = "permanent_override")
+    private Boolean permanentOverride;
+
+    @Column(name = "slots_required_override")
+    private Integer slotsRequiredOverride;
+
+    @Column(name = "container_image_override")
+    private String containerImageOverride;
+
+    @Lob
+    @Column(name = "install_script_override", columnDefinition = "TEXT")
+    private String installScriptOverride;
+
+    @Lob
+    @Column(name = "start_command_override_json", columnDefinition = "TEXT")
+    private String startCommandOverrideJson;
+
+    @Lob
+    @Column(name = "variables_override_json", columnDefinition = "TEXT")
+    private String variablesOverrideJson;
+
+    @Lob
+    @Column(name = "port_definitions_override_json", columnDefinition = "TEXT")
+    private String portDefinitionsOverrideJson;
 
     @Column(nullable = false)
     private OffsetDateTime createdAt;
