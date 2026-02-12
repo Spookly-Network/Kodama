@@ -9,6 +9,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -33,7 +34,7 @@ public class Blueprint {
     private boolean permanent;
 
     @Column(name = "slots_required", nullable = false)
-    private int slotsRequired;
+    private Integer slotsRequired;
 
     @Column(name = "container_image", nullable = false)
     private String containerImage;
@@ -62,7 +63,7 @@ public class Blueprint {
     public Blueprint(
             String name,
             boolean permanent,
-            int slotsRequired,
+            Integer slotsRequired,
             String containerImage,
             String installScript,
             String startCommandJson,
@@ -79,5 +80,12 @@ public class Blueprint {
         this.variablesJson = variablesJson;
         this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
         this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt");
+    }
+
+    @PrePersist
+    private void applyDefaultsOnPersist() {
+        if (slotsRequired == null) {
+            slotsRequired = 1;
+        }
     }
 }

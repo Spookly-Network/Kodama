@@ -7,6 +7,9 @@ Define the canonical blueprint data model and Brain ↔ Node payload shapes for 
 - Standardized blueprint core fields and defaults (slots required defaults to 1).
 - Defined override semantics: request fields replace blueprint values when provided.
 - Established port definition shape (name, protocol, containerPort, hostRange).
+- Added Brain persistence model for `blueprints`, `blueprint_template_assignments`,
+  `blueprint_port_definitions`, and `blueprint_group_links` plus instance override columns.
+- Added repository layer coverage for blueprint entities and attachment entities.
 - Added prepare/start payload fields for resolved runtime values and port definitions.
 - Added prepared callback payload with allocated ports (portsJson).
 - Clarified soft delete behavior for blueprints (deletedAt, block new creates only).
