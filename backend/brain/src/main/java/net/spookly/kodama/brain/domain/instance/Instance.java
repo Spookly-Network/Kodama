@@ -73,30 +73,26 @@ public class Instance {
     @Column(columnDefinition = "TEXT")
     private String variablesJson;
 
-    @Column(name = "permanent_override")
-    private Boolean permanentOverride;
+    @Column
+    private Boolean permanent;
 
-    @Column(name = "slots_required_override")
-    private Integer slotsRequiredOverride;
+    @Column(name = "slots_required")
+    private Integer slotsRequired;
 
-    @Column(name = "container_image_override")
-    private String containerImageOverride;
-
-    @Lob
-    @Column(name = "install_script_override", columnDefinition = "TEXT")
-    private String installScriptOverride;
+    @Column(name = "container_image")
+    private String containerImage;
 
     @Lob
-    @Column(name = "start_command_override_json", columnDefinition = "TEXT")
-    private String startCommandOverrideJson;
+    @Column(name = "install_script", columnDefinition = "TEXT")
+    private String installScript;
 
     @Lob
-    @Column(name = "variables_override_json", columnDefinition = "TEXT")
-    private String variablesOverrideJson;
+    @Column(name = "start_command_json", columnDefinition = "TEXT")
+    private String startCommandJson;
 
     @Lob
-    @Column(name = "port_definitions_override_json", columnDefinition = "TEXT")
-    private String portDefinitionsOverrideJson;
+    @Column(name = "port_definitions_json", columnDefinition = "TEXT")
+    private String portDefinitionsJson;
 
     @Column(nullable = false)
     private OffsetDateTime createdAt;

@@ -70,13 +70,12 @@ CREATE INDEX idx_blueprint_group_links_group_id
 
 ALTER TABLE instances
     ADD COLUMN blueprint_id BINARY(16) NULL,
-    ADD COLUMN permanent_override TINYINT(1) NULL,
-    ADD COLUMN slots_required_override INT NULL,
-    ADD COLUMN container_image_override VARCHAR(255) NULL,
-    ADD COLUMN install_script_override TEXT NULL,
-    ADD COLUMN start_command_override_json TEXT NULL,
-    ADD COLUMN variables_override_json TEXT NULL,
-    ADD COLUMN port_definitions_override_json TEXT NULL,
+    ADD COLUMN permanent TINYINT(1) NULL,
+    ADD COLUMN slots_required INT NULL,
+    ADD COLUMN container_image VARCHAR(255) NULL,
+    ADD COLUMN install_script TEXT NULL,
+    ADD COLUMN start_command_json TEXT NULL,
+    ADD COLUMN port_definitions_json TEXT NULL,
     ADD CONSTRAINT fk_instances_blueprint FOREIGN KEY (blueprint_id) REFERENCES blueprints (id);
 
 CREATE INDEX idx_instances_blueprint_id ON instances (blueprint_id);
