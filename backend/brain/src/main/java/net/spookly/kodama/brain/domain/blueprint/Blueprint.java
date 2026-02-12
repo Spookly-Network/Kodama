@@ -1,0 +1,83 @@
+package net.spookly.kodama.brain.domain.blueprint;
+
+import java.time.OffsetDateTime;
+import java.util.Objects;
+import java.util.UUID;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.UuidGenerator;
+
+@Entity
+@Table(name = "blueprints")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Blueprint {
+
+    @Id
+    @GeneratedValue
+    @UuidGenerator
+    private UUID id;
+
+    @Column(nullable = false, unique = true)
+    private String name;
+
+    @Column(nullable = false)
+    private boolean permanent;
+
+    @Column(name = "slots_required", nullable = false)
+    private int slotsRequired;
+
+    @Column(name = "container_image", nullable = false)
+    private String containerImage;
+
+    @Lob
+    @Column(name = "install_script", columnDefinition = "TEXT")
+    private String installScript;
+
+    @Lob
+    @Column(name = "start_command_json", columnDefinition = "TEXT", nullable = false)
+    private String startCommandJson;
+
+    @Lob
+    @Column(name = "variables_json", columnDefinition = "TEXT")
+    private String variablesJson;
+
+    @Column(name = "deleted_at")
+    private OffsetDateTime deletedAt;
+
+    @Column(name = "created_at", nullable = false)
+    private OffsetDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
+
+    public Blueprint(
+            String name,
+            boolean permanent,
+            int slotsRequired,
+            String containerImage,
+            String installScript,
+            String startCommandJson,
+            String variablesJson,
+            OffsetDateTime createdAt,
+            OffsetDateTime updatedAt
+    ) {
+        this.name = Objects.requireNonNull(name, "name");
+        this.permanent = permanent;
+        this.slotsRequired = slotsRequired;
+        this.containerImage = Objects.requireNonNull(containerImage, "containerImage");
+        this.installScript = installScript;
+        this.startCommandJson = Objects.requireNonNull(startCommandJson, "startCommandJson");
+        this.variablesJson = variablesJson;
+        this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
+        this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt");
+    }
+}

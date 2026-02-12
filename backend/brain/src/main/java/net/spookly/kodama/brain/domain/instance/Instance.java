@@ -18,6 +18,7 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import net.spookly.kodama.brain.domain.blueprint.Blueprint;
 import net.spookly.kodama.brain.domain.node.Node;
 import org.hibernate.annotations.UuidGenerator;
 
@@ -50,6 +51,10 @@ public class Instance {
     @JoinColumn(name = "node_id")
     private Node node;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "blueprint_id")
+    private Blueprint blueprint;
+
     @Column(name = "requested_region")
     private String region;
 
@@ -67,6 +72,27 @@ public class Instance {
     @Lob
     @Column(columnDefinition = "TEXT")
     private String variablesJson;
+
+    @Column
+    private Boolean permanent;
+
+    @Column(name = "slots_required")
+    private Integer slotsRequired;
+
+    @Column(name = "container_image")
+    private String containerImage;
+
+    @Lob
+    @Column(name = "install_script", columnDefinition = "TEXT")
+    private String installScript;
+
+    @Lob
+    @Column(name = "start_command_json", columnDefinition = "TEXT")
+    private String startCommandJson;
+
+    @Lob
+    @Column(name = "port_definitions_json", columnDefinition = "TEXT")
+    private String portDefinitionsJson;
 
     @Column(nullable = false)
     private OffsetDateTime createdAt;
