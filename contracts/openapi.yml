@@ -1540,10 +1540,12 @@ components:
           type: integer
           format: int32
           minimum: 1
+          maximum: 65535
         max:
           type: integer
           format: int32
           minimum: 1
+          maximum: 65535
         step:
           type: integer
           format: int32

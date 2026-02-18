@@ -15,10 +15,21 @@ Define the canonical blueprint data model and Brain ↔ Node payload shapes for 
   - `GET /api/blueprints/{id}/template-assignments`
   - `POST /api/blueprints/{id}/template-assignments`
   - `DELETE /api/blueprints/{id}/template-assignments/{assignmentId}`
+- Implemented blueprint port definition endpoints:
+  - `GET /api/blueprints/{id}/ports`
+  - `POST /api/blueprints/{id}/ports`
+  - `DELETE /api/blueprints/{id}/ports/{portId}`
 - Added request validation for blueprint CRUD:
   - required: `name`, `containerImage`, `startCommand`
   - optional: `installScript`, `variablesJson`
   - constraint: `slotsRequired >= 1` when provided
+- Added validation for blueprint port definitions:
+  - `name` is required and unique per blueprint
+  - uniqueness is enforced atomically by DB constraint on `(blueprint_id, name)`
+  - `protocol` must be `tcp` or `udp`
+  - `containerPort` and `hostRange.min/max` must be between `1` and `65535`
+  - `hostRange.step` must be `>= 1`
+  - `hostRange.min <= hostRange.max`
 - Defined override semantics: request fields replace blueprint values when provided.
 - Established port definition shape (name, protocol, containerPort, hostRange).
 - Added Brain persistence model for `blueprints`, `blueprint_template_assignments`,
