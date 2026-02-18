@@ -83,6 +83,7 @@ class InstanceRepositoryTest {
         assertThat(persisted.getDevModeAllowed()).isTrue();
         assertThat(persisted.getPortsJson()).contains("gamePort");
         assertThat(persisted.getVariablesJson()).contains("SEED");
+        assertThat(persisted.getSlotsRequired()).isNull();
         assertThat(persisted.getStartedAt()).isNull();
         assertThat(persisted.getStoppedAt()).isNull();
         assertThat(persisted.getFailureReason()).isNull();
@@ -120,11 +121,13 @@ class InstanceRepositoryTest {
 
         List<InstanceEvent> events =
                 instanceEventRepository.findByInstanceOrderByTimestampAsc(savedInstance);
+        Instance persistedInstance = instanceRepository.findById(savedInstance.getId()).orElseThrow();
 
         assertThat(persistedEvent.getInstance().getId()).isEqualTo(savedInstance.getId());
         assertThat(persistedEvent.getType()).isEqualTo(InstanceEventType.REQUEST_RECEIVED);
         assertThat(persistedEvent.getPayloadJson()).contains("user-request");
         assertThat(events).hasSize(1);
         assertThat(events.get(0).getId()).isEqualTo(savedEvent.getId());
+        assertThat(persistedInstance.getSlotsRequired()).isNull();
     }
 }

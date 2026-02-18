@@ -199,4 +199,5 @@ public class Instance {
         this.state = Objects.requireNonNull(state, "state");
         this.updatedAt = Objects.requireNonNull(timestamp, "timestamp");
     }
+
 }
