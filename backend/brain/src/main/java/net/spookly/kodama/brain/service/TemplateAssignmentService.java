@@ -3,6 +3,8 @@ package net.spookly.kodama.brain.service;
 import java.util.List;
 import java.util.UUID;
 
+import net.spookly.kodama.brain.domain.blueprint.Blueprint;
+import net.spookly.kodama.brain.domain.blueprint.BlueprintTemplateAssignment;
 import net.spookly.kodama.brain.domain.instance.GroupTemplateAssignment;
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceGroup;
@@ -11,6 +13,8 @@ import net.spookly.kodama.brain.domain.template.Template;
 import net.spookly.kodama.brain.domain.template.TemplateVersion;
 import net.spookly.kodama.brain.dto.TemplateAssignmentDto;
 import net.spookly.kodama.brain.dto.TemplateAssignmentRequest;
+import net.spookly.kodama.brain.repository.BlueprintRepository;
+import net.spookly.kodama.brain.repository.BlueprintTemplateAssignmentRepository;
 import net.spookly.kodama.brain.repository.GroupTemplateAssignmentRepository;
 import net.spookly.kodama.brain.repository.InstanceGroupRepository;
 import net.spookly.kodama.brain.repository.InstanceRepository;
@@ -26,27 +30,64 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional
 public class TemplateAssignmentService {
 
+    private final BlueprintTemplateAssignmentRepository blueprintTemplateAssignmentRepository;
     private final InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository;
     private final GroupTemplateAssignmentRepository groupTemplateAssignmentRepository;
+    private final BlueprintRepository blueprintRepository;
     private final InstanceRepository instanceRepository;
     private final InstanceGroupRepository instanceGroupRepository;
     private final TemplateRepository templateRepository;
     private final TemplateVersionRepository templateVersionRepository;
 
     public TemplateAssignmentService(
+            BlueprintTemplateAssignmentRepository blueprintTemplateAssignmentRepository,
             InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository,
             GroupTemplateAssignmentRepository groupTemplateAssignmentRepository,
+            BlueprintRepository blueprintRepository,
             InstanceRepository instanceRepository,
             InstanceGroupRepository instanceGroupRepository,
             TemplateRepository templateRepository,
             TemplateVersionRepository templateVersionRepository
     ) {
+        this.blueprintTemplateAssignmentRepository = blueprintTemplateAssignmentRepository;
         this.instanceTemplateAssignmentRepository = instanceTemplateAssignmentRepository;
         this.groupTemplateAssignmentRepository = groupTemplateAssignmentRepository;
+        this.blueprintRepository = blueprintRepository;
         this.instanceRepository = instanceRepository;
         this.instanceGroupRepository = instanceGroupRepository;
         this.templateRepository = templateRepository;
         this.templateVersionRepository = templateVersionRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public List<TemplateAssignmentDto> listBlueprintAssignments(UUID blueprintId) {
+        ensureBlueprintExists(blueprintId);
+        return blueprintTemplateAssignmentRepository.findAllByBlueprintId(blueprintId).stream()
+                .map(TemplateAssignmentDto::fromEntity)
+                .toList();
+    }
+
+    public TemplateAssignmentDto addBlueprintAssignment(UUID blueprintId, TemplateAssignmentRequest request) {
+        Blueprint blueprint = loadBlueprint(blueprintId);
+        AssignmentTarget target = resolveAssignmentTarget(request);
+        BlueprintTemplateAssignment assignment = new BlueprintTemplateAssignment(
+                blueprint,
+                target.template(),
+                target.templateVersion(),
+                target.priority()
+        );
+        BlueprintTemplateAssignment saved = blueprintTemplateAssignmentRepository.save(assignment);
+        return TemplateAssignmentDto.fromEntity(saved);
+    }
+
+    public void removeBlueprintAssignment(UUID blueprintId, UUID assignmentId) {
+        ensureBlueprintExists(blueprintId);
+        BlueprintTemplateAssignment assignment = blueprintTemplateAssignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found"));
+        if (!assignment.getBlueprint().getId().equals(blueprintId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found");
+        }
+        blueprintTemplateAssignmentRepository.delete(assignment);
     }
 
     @Transactional(readOnly = true)
@@ -146,6 +187,17 @@ public class TemplateAssignmentService {
     private void ensureInstanceExists(UUID instanceId) {
         if (!instanceRepository.existsById(instanceId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Instance not found");
+        }
+    }
+
+    private Blueprint loadBlueprint(UUID blueprintId) {
+        return blueprintRepository.findByIdAndDeletedAtIsNull(blueprintId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blueprint not found"));
+    }
+
+    private void ensureBlueprintExists(UUID blueprintId) {
+        if (blueprintRepository.findByIdAndDeletedAtIsNull(blueprintId).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Blueprint not found");
         }
     }
 

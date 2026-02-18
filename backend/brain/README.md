@@ -31,3 +31,9 @@ Validation: `name`, `type`, `s3Key`, `version`, and `checksum` must be provided.
 - `DELETE /api/instance-groups/{groupId}/template-assignments/{assignmentId}` — remove a group assignment.
 
 Validation: at least one template assignment with required `templateId`. Duplicate instance names return HTTP 409. Unknown nodes, templates, or template versions return HTTP 404. `variables` and `variablesJson` are mutually exclusive.
+
+## Blueprint API
+
+- `GET /api/blueprints/{id}/template-assignments` — list blueprint assignments.
+- `POST /api/blueprints/{id}/template-assignments` — add a blueprint assignment.
+- `DELETE /api/blueprints/{id}/template-assignments/{assignmentId}` — remove a blueprint assignment.

@@ -1,11 +1,12 @@
 # Template Assignments
 
 ## Purpose
-Template assignments replace the legacy `instance_template_layers` table and allow templates to be attached directly to instances and to groups. Effective template layers are resolved by merging instance and group assignments.
+Template assignments replace the legacy `instance_template_layers` table and allow templates to be attached directly to instances, groups, and blueprints. Effective template layers are resolved by merging instance and group assignments.
 
 ## Data Model
 - `instance_template_assignments` (direct instance assignments)
 - `group_template_assignments` (group assignments)
+- `blueprint_template_assignments` (blueprint defaults for instance creation)
 
 Fields:
 - `template_id` (required)
@@ -72,6 +73,9 @@ Final order (with `orderIndex`) uses priority, source, then `templateId` orderin
 - `GET /api/instance-groups/{groupId}/template-assignments` — list group assignments.
 - `POST /api/instance-groups/{groupId}/template-assignments` — add group assignment.
 - `DELETE /api/instance-groups/{groupId}/template-assignments/{assignmentId}` — remove group assignment.
+- `GET /api/blueprints/{id}/template-assignments` — list blueprint assignments.
+- `POST /api/blueprints/{id}/template-assignments` — add blueprint assignment.
+- `DELETE /api/blueprints/{id}/template-assignments/{assignmentId}` — remove blueprint assignment.
 
 ## Migration Notes
 Flyway migration `V12__create_instance_group_and_assignment_tables.sql` backfills legacy `instance_template_layers` into `instance_template_assignments` with `priority = order_index`.

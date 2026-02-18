@@ -11,6 +11,10 @@ Define the canonical blueprint data model and Brain ↔ Node payload shapes for 
   - `GET /api/blueprints/{id}`
   - `PUT /api/blueprints/{id}`
   - `DELETE /api/blueprints/{id}` (soft delete via `deletedAt`)
+- Implemented blueprint template assignment endpoints:
+  - `GET /api/blueprints/{id}/template-assignments`
+  - `POST /api/blueprints/{id}/template-assignments`
+  - `DELETE /api/blueprints/{id}/template-assignments/{assignmentId}`
 - Added request validation for blueprint CRUD:
   - required: `name`, `containerImage`, `startCommand`
   - optional: `installScript`, `variablesJson`
