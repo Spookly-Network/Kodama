@@ -23,6 +23,7 @@ Define the canonical blueprint data model and Brain ↔ Node payload shapes for 
 - Added prepare/start payload fields for resolved runtime values and port definitions.
 - Added prepared callback payload with allocated ports (portsJson).
 - Clarified soft delete behavior for blueprints (deletedAt, block new creates only).
+- Ensured duplicate-name races at write time map to `409 Conflict` (DB unique constraint translation).
 
 ## How to use / impact
 - Blueprints are normal entities with no versioning.
