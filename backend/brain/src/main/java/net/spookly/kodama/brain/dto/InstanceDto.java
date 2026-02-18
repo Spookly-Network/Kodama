@@ -21,6 +21,7 @@ public class InstanceDto {
     private String displayName;
     private InstanceState state;
     private UUID nodeId;
+    private UUID blueprintId;
     private UUID requestedBy;
     private String region;
     private String tags;
@@ -45,6 +46,7 @@ public class InstanceDto {
                 instance.getDisplayName(),
                 instance.getState(),
                 instance.getNode() == null ? null : instance.getNode().getId(),
+                instance.getBlueprint() == null ? null : instance.getBlueprint().getId(),
                 instance.getRequestedByUserId(),
                 instance.getRegion(),
                 instance.getTags(),

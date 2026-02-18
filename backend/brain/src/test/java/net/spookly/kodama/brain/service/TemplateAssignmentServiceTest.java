@@ -38,7 +38,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=validate")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import(TemplateAssignmentService.class)
+@Import({TemplateAssignmentService.class, TemplateService.class})
 class TemplateAssignmentServiceTest {
 
     @Container

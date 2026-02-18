@@ -6,22 +6,23 @@ import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@RequiredArgsConstructor
 public class CreateInstanceRequest {
 
-    @NonNull
     @NotBlank
     private String name;
 
     private String displayName;
+
+    private UUID blueprintId;
 
     private UUID requestedBy;
 
@@ -33,8 +34,22 @@ public class CreateInstanceRequest {
 
     private Boolean devModeAllowed;
 
-    @NonNull
-    @NotEmpty
+    private Boolean permanent;
+
+    @Min(1)
+    private Integer slotsRequired;
+
+    private String containerImage;
+
+    private String installScript;
+
+    private List<@NotBlank String> startCommand;
+
+    @Valid
+    private List<PortDefinitionRequest> portDefinitions;
+
+    private List<@NotNull UUID> groupIds;
+
     @Valid
     @JsonAlias("templateAssignments")
     private List<TemplateAssignmentRequest> templateLayers;
@@ -44,4 +59,9 @@ public class CreateInstanceRequest {
     private String variablesJson;
 
     private String portsJson;
+
+    public CreateInstanceRequest(String name, List<TemplateAssignmentRequest> templateLayers) {
+        this.name = name;
+        this.templateLayers = templateLayers;
+    }
 }

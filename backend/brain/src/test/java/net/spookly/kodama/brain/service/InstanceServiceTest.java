@@ -9,12 +9,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.spookly.kodama.brain.domain.blueprint.Blueprint;
+import net.spookly.kodama.brain.domain.blueprint.BlueprintGroupLink;
+import net.spookly.kodama.brain.domain.blueprint.BlueprintPortDefinition;
+import net.spookly.kodama.brain.domain.blueprint.BlueprintTemplateAssignment;
+import net.spookly.kodama.brain.domain.blueprint.PortProtocol;
 import net.spookly.kodama.brain.config.BrainSecurityProperties;
 import net.spookly.kodama.brain.config.NodeProperties;
 import net.spookly.kodama.brain.config.PluginsProperties;
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceEvent;
+import net.spookly.kodama.brain.domain.instance.InstanceGroup;
+import net.spookly.kodama.brain.domain.instance.InstanceGroupMembership;
 import net.spookly.kodama.brain.domain.instance.InstanceEventType;
 import net.spookly.kodama.brain.domain.instance.InstanceState;
 import net.spookly.kodama.brain.domain.instance.InstanceTemplateAssignment;
@@ -25,9 +34,16 @@ import net.spookly.kodama.brain.domain.template.TemplateType;
 import net.spookly.kodama.brain.domain.template.TemplateVersion;
 import net.spookly.kodama.brain.dto.CreateInstanceRequest;
 import net.spookly.kodama.brain.dto.InstanceDto;
+import net.spookly.kodama.brain.dto.PortDefinitionRequest;
 import net.spookly.kodama.brain.dto.TemplateAssignmentRequest;
+import net.spookly.kodama.brain.repository.BlueprintGroupLinkRepository;
+import net.spookly.kodama.brain.repository.BlueprintPortDefinitionRepository;
+import net.spookly.kodama.brain.repository.BlueprintRepository;
+import net.spookly.kodama.brain.repository.BlueprintTemplateAssignmentRepository;
 import net.spookly.kodama.brain.plugin.BrainPluginRegistry;
 import net.spookly.kodama.brain.repository.InstanceEventRepository;
+import net.spookly.kodama.brain.repository.InstanceGroupMembershipRepository;
+import net.spookly.kodama.brain.repository.InstanceGroupRepository;
 import net.spookly.kodama.brain.repository.InstanceRepository;
 import net.spookly.kodama.brain.repository.InstanceTemplateAssignmentRepository;
 import net.spookly.kodama.brain.repository.NodeRepository;
@@ -54,6 +70,13 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({
         InstanceService.class,
+        InstanceCreationPreparationService.class,
+        BlueprintService.class,
+        TemplateAssignmentService.class,
+        BlueprintPortDefinitionService.class,
+        BlueprintGroupLinkService.class,
+        TemplateService.class,
+        InstanceGroupService.class,
         InstanceStateMachine.class,
         SchedulingService.class,
         TemplateAssignmentResolver.class,
@@ -95,6 +118,27 @@ class InstanceServiceTest {
 
     @Autowired
     private NodeRepository nodeRepository;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private BlueprintRepository blueprintRepository;
+
+    @Autowired
+    private BlueprintTemplateAssignmentRepository blueprintTemplateAssignmentRepository;
+
+    @Autowired
+    private BlueprintPortDefinitionRepository blueprintPortDefinitionRepository;
+
+    @Autowired
+    private BlueprintGroupLinkRepository blueprintGroupLinkRepository;
+
+    @Autowired
+    private InstanceGroupRepository instanceGroupRepository;
+
+    @Autowired
+    private InstanceGroupMembershipRepository instanceGroupMembershipRepository;
 
     @TestConfiguration
     static class ObjectMapperTestConfig {
@@ -424,6 +468,224 @@ class InstanceServiceTest {
     }
 
     @Test
+    void createInstanceWithBlueprintUsesBlueprintDefaults() throws Exception {
+        createOnlineNode("node-blueprint-defaults");
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        TemplateVersion version = createTemplateVersion("Blueprint Base Layer", "1.0.0");
+        InstanceGroup blueprintGroup = instanceGroupRepository.save(new InstanceGroup(
+                "bp-default-group",
+                "group from blueprint",
+                now,
+                now
+        ));
+        Blueprint blueprint = createBlueprint(
+                "bp-defaults",
+                false,
+                2,
+                "ghcr.io/spookly/hytale:default",
+                "echo install defaults",
+                List.of("./start-default.sh"),
+                "{\"MODE\":\"default\"}",
+                now
+        );
+        blueprintTemplateAssignmentRepository.save(new BlueprintTemplateAssignment(
+                blueprint,
+                version.getTemplate(),
+                version,
+                3
+        ));
+        blueprintPortDefinitionRepository.save(new BlueprintPortDefinition(
+                blueprint,
+                "game",
+                PortProtocol.TCP,
+                25565,
+                30000,
+                30100,
+                1
+        ));
+        blueprintGroupLinkRepository.save(new BlueprintGroupLink(blueprint, blueprintGroup));
+
+        CreateInstanceRequest request = new CreateInstanceRequest();
+        request.setName("instance-blueprint-defaults");
+        request.setBlueprintId(blueprint.getId());
+
+        InstanceDto created = instanceService.createInstance(request);
+
+        Instance persisted = instanceRepository.findById(created.getId()).orElseThrow();
+        assertThat(persisted.getBlueprint()).isNotNull();
+        assertThat(persisted.getBlueprint().getId()).isEqualTo(blueprint.getId());
+        assertThat(persisted.getPermanent()).isFalse();
+        assertThat(persisted.getSlotsRequired()).isEqualTo(2);
+        assertThat(persisted.getContainerImage()).isEqualTo("ghcr.io/spookly/hytale:default");
+        assertThat(persisted.getInstallScript()).isEqualTo("echo install defaults");
+        assertThat(persisted.getVariablesJson()).isEqualTo("{\"MODE\":\"default\"}");
+        assertThat(objectMapper.readValue(persisted.getStartCommandJson(), new TypeReference<List<String>>() {
+        })).containsExactly("./start-default.sh");
+
+        List<Map<String, Object>> portDefinitions = objectMapper.readValue(
+                persisted.getPortDefinitionsJson(),
+                new TypeReference<>() {
+                }
+        );
+        assertThat(portDefinitions).hasSize(1);
+        assertThat(portDefinitions.getFirst()).containsEntry("name", "game");
+
+        List<InstanceTemplateAssignment> assignments =
+                instanceTemplateAssignmentRepository.findAllByInstanceId(created.getId());
+        assertThat(assignments).hasSize(1);
+        assertThat(assignments.getFirst().getTemplate().getId()).isEqualTo(version.getTemplate().getId());
+        assertThat(assignments.getFirst().getPriority()).isEqualTo(3);
+
+        List<InstanceGroupMembership> memberships = instanceGroupMembershipRepository.findAllByInstanceId(created.getId());
+        assertThat(memberships).hasSize(1);
+        assertThat(memberships.getFirst().getGroup().getId()).isEqualTo(blueprintGroup.getId());
+    }
+
+    @Test
+    void createInstanceWithBlueprintOverridesReplaceDefaults() throws Exception {
+        createOnlineNode("node-blueprint-overrides");
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        TemplateVersion blueprintVersion = createTemplateVersion("Blueprint Layer", "1.0.0");
+        TemplateVersion overrideVersion = createTemplateVersion("Override Layer", "2.0.0");
+
+        InstanceGroup blueprintGroup = instanceGroupRepository.save(new InstanceGroup(
+                "bp-override-group",
+                "default group",
+                now,
+                now
+        ));
+        InstanceGroup overrideGroup = instanceGroupRepository.save(new InstanceGroup(
+                "bp-override-group-new",
+                "override group",
+                now,
+                now
+        ));
+
+        Blueprint blueprint = createBlueprint(
+                "bp-overrides",
+                false,
+                1,
+                "ghcr.io/spookly/hytale:blueprint",
+                "echo install blueprint",
+                List.of("./start-blueprint.sh"),
+                "{\"MODE\":\"blueprint\"}",
+                now
+        );
+        blueprintTemplateAssignmentRepository.save(new BlueprintTemplateAssignment(
+                blueprint,
+                blueprintVersion.getTemplate(),
+                blueprintVersion,
+                0
+        ));
+        blueprintPortDefinitionRepository.save(new BlueprintPortDefinition(
+                blueprint,
+                "query",
+                PortProtocol.UDP,
+                25566,
+                31000,
+                31100,
+                1
+        ));
+        blueprintGroupLinkRepository.save(new BlueprintGroupLink(blueprint, blueprintGroup));
+
+        CreateInstanceRequest request = new CreateInstanceRequest();
+        request.setName("instance-blueprint-overrides");
+        request.setBlueprintId(blueprint.getId());
+        request.setPermanent(Boolean.TRUE);
+        request.setSlotsRequired(6);
+        request.setContainerImage("ghcr.io/spookly/hytale:override");
+        request.setInstallScript("echo install override");
+        request.setStartCommand(List.of("./start-override.sh", "--safe-mode"));
+        request.setVariables(Map.of("MODE", "override"));
+        request.setTemplateLayers(List.of(new TemplateAssignmentRequest(
+                overrideVersion.getTemplate().getId(),
+                overrideVersion.getId(),
+                4
+        )));
+        request.setPortDefinitions(List.of(new PortDefinitionRequest(
+                "game",
+                "tcp",
+                25565,
+                new PortDefinitionRequest.HostRangeRequest(32000, 32100, 1)
+        )));
+        request.setGroupIds(List.of(overrideGroup.getId()));
+
+        InstanceDto created = instanceService.createInstance(request);
+
+        Instance persisted = instanceRepository.findById(created.getId()).orElseThrow();
+        assertThat(persisted.getBlueprint()).isNotNull();
+        assertThat(persisted.getBlueprint().getId()).isEqualTo(blueprint.getId());
+        assertThat(persisted.getPermanent()).isTrue();
+        assertThat(persisted.getSlotsRequired()).isEqualTo(6);
+        assertThat(persisted.getContainerImage()).isEqualTo("ghcr.io/spookly/hytale:override");
+        assertThat(persisted.getInstallScript()).isEqualTo("echo install override");
+        assertThat(objectMapper.readValue(persisted.getStartCommandJson(), new TypeReference<List<String>>() {
+        })).containsExactly("./start-override.sh", "--safe-mode");
+        assertThat(persisted.getVariablesJson()).contains("\"MODE\":\"override\"");
+
+        List<Map<String, Object>> portDefinitions = objectMapper.readValue(
+                persisted.getPortDefinitionsJson(),
+                new TypeReference<>() {
+                }
+        );
+        assertThat(portDefinitions).hasSize(1);
+        assertThat(portDefinitions.getFirst()).containsEntry("name", "game");
+        assertThat(portDefinitions.getFirst()).containsEntry("protocol", "tcp");
+
+        List<InstanceTemplateAssignment> assignments =
+                instanceTemplateAssignmentRepository.findAllByInstanceId(created.getId());
+        assertThat(assignments).hasSize(1);
+        assertThat(assignments.getFirst().getTemplate().getId()).isEqualTo(overrideVersion.getTemplate().getId());
+        assertThat(assignments.getFirst().getPriority()).isEqualTo(4);
+
+        List<InstanceGroupMembership> memberships = instanceGroupMembershipRepository.findAllByInstanceId(created.getId());
+        assertThat(memberships).hasSize(1);
+        assertThat(memberships.getFirst().getGroup().getId()).isEqualTo(overrideGroup.getId());
+    }
+
+    @Test
+    void createInstanceRejectsDeletedBlueprint() throws Exception {
+        createOnlineNode("node-blueprint-deleted");
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Blueprint blueprint = createBlueprint(
+                "bp-deleted",
+                false,
+                1,
+                "ghcr.io/spookly/hytale:deleted",
+                null,
+                List.of("./start.sh"),
+                null,
+                now
+        );
+        blueprint.softDelete(now.plusMinutes(1));
+        blueprintRepository.flush();
+
+        CreateInstanceRequest request = new CreateInstanceRequest();
+        request.setName("instance-blueprint-deleted");
+        request.setBlueprintId(blueprint.getId());
+
+        assertThatThrownBy(() -> instanceService.createInstance(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException statusException = (ResponseStatusException) ex;
+                    assertThat(statusException.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(statusException.getReason()).contains("deleted");
+                });
+    }
+
+    @Test
+    void createInstanceWithoutBlueprintStillRequiresTemplateLayers() {
+        createOnlineNode("node-legacy-validation");
+        CreateInstanceRequest request = new CreateInstanceRequest();
+        request.setName("legacy-requires-template-layers");
+
+        assertThatThrownBy(() -> instanceService.createInstance(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
     void reportPreparedUpdatesStateAndLogsEvent() {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         Node node = nodeRepository.save(new Node(
@@ -634,6 +896,29 @@ class InstanceServiceTest {
                 instanceEventRepository.findAllByInstanceIdOrderByTimestampAsc(instance.getId());
         assertThat(events).isNotEmpty();
         assertThat(events.getLast().getType()).isEqualTo(InstanceEventType.DESTROY_COMPLETED);
+    }
+
+    private Blueprint createBlueprint(
+            String name,
+            boolean permanent,
+            Integer slotsRequired,
+            String containerImage,
+            String installScript,
+            List<String> startCommand,
+            String variablesJson,
+            OffsetDateTime now
+    ) throws JsonProcessingException {
+        return blueprintRepository.save(new Blueprint(
+                name,
+                permanent,
+                slotsRequired,
+                containerImage,
+                installScript,
+                objectMapper.writeValueAsString(startCommand),
+                variablesJson,
+                now,
+                now
+        ));
     }
 
     private Template createTemplate(String name) {

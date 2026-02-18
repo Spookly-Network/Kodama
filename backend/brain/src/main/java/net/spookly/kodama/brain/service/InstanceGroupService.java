@@ -2,8 +2,12 @@ package net.spookly.kodama.brain.service;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceGroup;
@@ -68,6 +72,34 @@ public class InstanceGroupService {
                 .map(InstanceGroupMembership::getGroup)
                 .map(InstanceGroupDto::fromEntity)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<InstanceGroup> loadGroupsById(List<UUID> groupIds) {
+        if (groupIds == null || groupIds.isEmpty()) {
+            return List.of();
+        }
+
+        LinkedHashSet<UUID> deduplicatedIds = new LinkedHashSet<>();
+        for (UUID groupId : groupIds) {
+            if (groupId == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "groupId is required");
+            }
+            deduplicatedIds.add(groupId);
+        }
+
+        Map<UUID, InstanceGroup> groupsById = instanceGroupRepository.findAllById(deduplicatedIds).stream()
+                .collect(Collectors.toMap(InstanceGroup::getId, group -> group));
+
+        List<InstanceGroup> orderedGroups = new ArrayList<>();
+        for (UUID groupId : deduplicatedIds) {
+            InstanceGroup group = groupsById.get(groupId);
+            if (group == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: " + groupId);
+            }
+            orderedGroups.add(group);
+        }
+        return orderedGroups;
     }
 
     public void addMembership(UUID instanceId, UUID groupId) {

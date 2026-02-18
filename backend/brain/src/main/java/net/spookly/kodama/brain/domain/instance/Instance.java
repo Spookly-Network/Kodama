@@ -143,6 +143,24 @@ public class Instance {
 //        this.failureReason = failureReason;
     }
 
+    public void applyBlueprintAndRuntime(
+            Blueprint blueprint,
+            Boolean permanent,
+            Integer slotsRequired,
+            String containerImage,
+            String installScript,
+            String startCommandJson,
+            String portDefinitionsJson
+    ) {
+        this.blueprint = blueprint;
+        this.permanent = permanent;
+        this.slotsRequired = slotsRequired;
+        this.containerImage = containerImage;
+        this.installScript = installScript;
+        this.startCommandJson = startCommandJson;
+        this.portDefinitionsJson = portDefinitionsJson;
+    }
+
     public void markPrepared(OffsetDateTime timestamp) {
         updateLifecycle(InstanceState.PREPARED, timestamp);
         this.failureReason = null;

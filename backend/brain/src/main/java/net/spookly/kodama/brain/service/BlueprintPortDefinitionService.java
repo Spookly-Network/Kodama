@@ -9,6 +9,7 @@ import net.spookly.kodama.brain.domain.blueprint.BlueprintPortDefinition;
 import net.spookly.kodama.brain.domain.blueprint.PortProtocol;
 import net.spookly.kodama.brain.dto.BlueprintPortDefinitionDto;
 import net.spookly.kodama.brain.dto.BlueprintPortDefinitionRequest;
+import net.spookly.kodama.brain.dto.PortDefinitionRequest;
 import net.spookly.kodama.brain.repository.BlueprintPortDefinitionRepository;
 import net.spookly.kodama.brain.repository.BlueprintRepository;
 import org.hibernate.exception.ConstraintViolationException;
@@ -43,6 +44,23 @@ public class BlueprintPortDefinitionService {
         ensureBlueprintExists(blueprintId);
         return blueprintPortDefinitionRepository.findAllByBlueprintId(blueprintId).stream()
                 .map(BlueprintPortDefinitionDto::fromEntity)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PortDefinitionRequest> listPortDefinitionRequests(UUID blueprintId) {
+        ensureBlueprintExists(blueprintId);
+        return blueprintPortDefinitionRepository.findAllByBlueprintId(blueprintId).stream()
+                .map(definition -> new PortDefinitionRequest(
+                        definition.getName(),
+                        definition.getProtocol().name().toLowerCase(Locale.ROOT),
+                        definition.getContainerPort(),
+                        new PortDefinitionRequest.HostRangeRequest(
+                                definition.getHostRangeMin(),
+                                definition.getHostRangeMax(),
+                                definition.getHostRangeStep()
+                        )
+                ))
                 .toList();
     }
 

@@ -16,13 +16,10 @@ import net.spookly.kodama.brain.domain.instance.GroupTemplateAssignment;
 import net.spookly.kodama.brain.domain.instance.InstanceGroupMembership;
 import net.spookly.kodama.brain.domain.instance.InstanceTemplateAssignment;
 import net.spookly.kodama.brain.domain.instance.TemplateAssignmentSource;
-import net.spookly.kodama.brain.domain.template.Template;
 import net.spookly.kodama.brain.domain.template.TemplateVersion;
 import net.spookly.kodama.brain.repository.GroupTemplateAssignmentRepository;
 import net.spookly.kodama.brain.repository.InstanceGroupMembershipRepository;
 import net.spookly.kodama.brain.repository.InstanceTemplateAssignmentRepository;
-import net.spookly.kodama.brain.repository.TemplateRepository;
-import net.spookly.kodama.brain.repository.TemplateVersionRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,28 +41,21 @@ public class TemplateAssignmentResolver {
             .thenComparing(TemplateAssignmentCandidate::templateId)
             .thenComparing(TemplateAssignmentCandidate::assignmentId, Comparator.nullsLast(Comparator.naturalOrder()));
 
-    private static final Comparator<TemplateVersion> LATEST_VERSION_ORDER = Comparator
-            .comparing(TemplateVersion::getCreatedAt)
-            .thenComparing(TemplateVersion::getId);
-
     private final InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository;
     private final GroupTemplateAssignmentRepository groupTemplateAssignmentRepository;
     private final InstanceGroupMembershipRepository instanceGroupMembershipRepository;
-    private final TemplateRepository templateRepository;
-    private final TemplateVersionRepository templateVersionRepository;
+    private final TemplateService templateService;
 
     public TemplateAssignmentResolver(
             InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository,
             GroupTemplateAssignmentRepository groupTemplateAssignmentRepository,
             InstanceGroupMembershipRepository instanceGroupMembershipRepository,
-            TemplateRepository templateRepository,
-            TemplateVersionRepository templateVersionRepository
+            TemplateService templateService
     ) {
         this.instanceTemplateAssignmentRepository = instanceTemplateAssignmentRepository;
         this.groupTemplateAssignmentRepository = groupTemplateAssignmentRepository;
         this.instanceGroupMembershipRepository = instanceGroupMembershipRepository;
-        this.templateRepository = templateRepository;
-        this.templateVersionRepository = templateVersionRepository;
+        this.templateService = templateService;
     }
 
     public List<ResolvedTemplateLayer> resolveForInstance(UUID instanceId) {
@@ -231,44 +221,16 @@ public class TemplateAssignmentResolver {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
-        Map<UUID, TemplateVersion> versionsById = templateVersionRepository.findAllById(templateVersionIds).stream()
-                .collect(Collectors.toMap(TemplateVersion::getId, version -> version));
-
-        if (versionsById.size() != templateVersionIds.size()) {
-            Set<UUID> missingIds = new HashSet<>(templateVersionIds);
-            missingIds.removeAll(versionsById.keySet());
-            UUID missing = missingIds.stream().findFirst().orElse(null);
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
-                    "Template version not found" + (missing == null ? "" : ": " + missing));
-        }
+        Map<UUID, TemplateVersion> versionsById = templateService.loadTemplateVersionsById(templateVersionIds);
 
         Set<UUID> templateIdsWithoutVersion = candidates.stream()
                 .filter(candidate -> candidate.templateVersionId() == null)
                 .map(TemplateAssignmentCandidate::templateId)
                 .collect(Collectors.toSet());
 
-        Map<UUID, Template> templatesById = templateRepository.findAllById(templateIdsWithoutVersion).stream()
-                .collect(Collectors.toMap(Template::getId, template -> template));
-
-        if (templatesById.size() != templateIdsWithoutVersion.size()) {
-            Set<UUID> missingIds = new HashSet<>(templateIdsWithoutVersion);
-            missingIds.removeAll(templatesById.keySet());
-            UUID missing = missingIds.stream().findFirst().orElse(null);
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
-                    "Template not found" + (missing == null ? "" : ": " + missing));
-        }
-
         Map<UUID, TemplateVersion> latestVersions = templateIdsWithoutVersion.isEmpty()
                 ? Map.of()
-                : selectLatestVersions(templateVersionRepository.findLatestForTemplateIds(templateIdsWithoutVersion));
-
-        if (!templateIdsWithoutVersion.isEmpty() && latestVersions.size() != templateIdsWithoutVersion.size()) {
-            Set<UUID> missingIds = new HashSet<>(templateIdsWithoutVersion);
-            missingIds.removeAll(latestVersions.keySet());
-            UUID missing = missingIds.stream().findFirst().orElse(null);
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
-                    "Template has no versions" + (missing == null ? "" : ": " + missing));
-        }
+                : templateService.loadLatestTemplateVersionsByTemplateIds(templateIdsWithoutVersion);
 
         Map<UUID, TemplateVersion> resolved = new HashMap<>();
         for (TemplateAssignmentCandidate candidate : candidates) {
@@ -285,18 +247,6 @@ public class TemplateAssignmentResolver {
             resolved.put(candidate.assignmentId(), version);
         }
         return resolved;
-    }
-
-    private Map<UUID, TemplateVersion> selectLatestVersions(List<TemplateVersion> versions) {
-        Map<UUID, TemplateVersion> latestByTemplate = new HashMap<>();
-        for (TemplateVersion version : versions) {
-            UUID templateId = version.getTemplate().getId();
-            TemplateVersion current = latestByTemplate.get(templateId);
-            if (current == null || LATEST_VERSION_ORDER.compare(version, current) > 0) {
-                latestByTemplate.put(templateId, version);
-            }
-        }
-        return latestByTemplate;
     }
 
     private TemplateAssignmentCandidate toCandidate(InstanceTemplateAssignment assignment) {
