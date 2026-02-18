@@ -169,6 +169,6 @@ class BlueprintRepositoryTest {
         Instance saved = instanceRepository.save(instance);
         Instance persisted = instanceRepository.findById(saved.getId()).orElseThrow();
 
-        assertThat(persisted.getSlotsRequired()).isEqualTo(1);
+        assertThat(persisted.getSlotsRequired()).isNull();
     }
 }

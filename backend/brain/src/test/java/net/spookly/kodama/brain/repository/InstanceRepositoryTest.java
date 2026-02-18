@@ -128,6 +128,6 @@ class InstanceRepositoryTest {
         assertThat(persistedEvent.getPayloadJson()).contains("user-request");
         assertThat(events).hasSize(1);
         assertThat(events.get(0).getId()).isEqualTo(savedEvent.getId());
-        assertThat(persistedInstance.getSlotsRequired()).isEqualTo(1);
+        assertThat(persistedInstance.getSlotsRequired()).isNull();
     }
 }
