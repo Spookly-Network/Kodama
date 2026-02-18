@@ -8,6 +8,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
+import net.spookly.kodama.brain.domain.blueprint.Blueprint;
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceGroup;
 import net.spookly.kodama.brain.domain.instance.InstanceState;
@@ -16,6 +17,7 @@ import net.spookly.kodama.brain.domain.template.TemplateType;
 import net.spookly.kodama.brain.domain.template.TemplateVersion;
 import net.spookly.kodama.brain.dto.TemplateAssignmentDto;
 import net.spookly.kodama.brain.dto.TemplateAssignmentRequest;
+import net.spookly.kodama.brain.repository.BlueprintRepository;
 import net.spookly.kodama.brain.repository.InstanceGroupRepository;
 import net.spookly.kodama.brain.repository.InstanceRepository;
 import net.spookly.kodama.brain.repository.TemplateRepository;
@@ -61,6 +63,9 @@ class TemplateAssignmentServiceTest {
 
     @Autowired
     private InstanceGroupRepository instanceGroupRepository;
+
+    @Autowired
+    private BlueprintRepository blueprintRepository;
 
     @Autowired
     private TemplateRepository templateRepository;
@@ -267,8 +272,116 @@ class TemplateAssignmentServiceTest {
                 .isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
+    @Test
+    void addBlueprintAssignmentPersistsAndListsAssignments() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Blueprint blueprint = createBlueprint("blueprint-assignments", now);
+        Template template = createTemplate("Blueprint Template", now);
+        TemplateVersion templateVersion = createTemplateVersion(template, "1.0.0", now);
+
+        TemplateAssignmentRequest request = new TemplateAssignmentRequest();
+        request.setTemplateId(template.getId());
+        request.setTemplateVersionId(templateVersion.getId());
+        request.setPriority(4);
+
+        TemplateAssignmentDto created = templateAssignmentService.addBlueprintAssignment(blueprint.getId(), request);
+
+        assertThat(created.getId()).isNotNull();
+        assertThat(created.getTemplateId()).isEqualTo(template.getId());
+        assertThat(created.getTemplateVersionId()).isEqualTo(templateVersion.getId());
+        assertThat(created.getPriority()).isEqualTo(4);
+
+        List<TemplateAssignmentDto> assignments = templateAssignmentService.listBlueprintAssignments(blueprint.getId());
+        assertThat(assignments).hasSize(1);
+        assertThat(assignments.getFirst().getId()).isEqualTo(created.getId());
+    }
+
+    @Test
+    void removeBlueprintAssignmentDeletesAssignment() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Blueprint blueprint = createBlueprint("blueprint-remove", now);
+        Template template = createTemplate("Blueprint Template Remove", now);
+        TemplateVersion templateVersion = createTemplateVersion(template, "1.0.0", now);
+
+        TemplateAssignmentRequest request = new TemplateAssignmentRequest(
+                template.getId(),
+                templateVersion.getId(),
+                1
+        );
+        TemplateAssignmentDto created = templateAssignmentService.addBlueprintAssignment(blueprint.getId(), request);
+
+        templateAssignmentService.removeBlueprintAssignment(blueprint.getId(), created.getId());
+
+        assertThat(templateAssignmentService.listBlueprintAssignments(blueprint.getId())).isEmpty();
+    }
+
+    @Test
+    void addBlueprintAssignmentRejectsMissingTemplateVersion() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Blueprint blueprint = createBlueprint("blueprint-missing-version", now);
+        Template template = createTemplate("Blueprint Template Missing Version", now);
+
+        TemplateAssignmentRequest request = new TemplateAssignmentRequest();
+        request.setTemplateId(template.getId());
+        request.setTemplateVersionId(UUID.fromString("00000000-0000-0000-0000-000000000912"));
+        request.setPriority(0);
+
+        assertThatThrownBy(() -> templateAssignmentService.addBlueprintAssignment(blueprint.getId(), request))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void addBlueprintAssignmentRejectsMissingTemplate() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Blueprint blueprint = createBlueprint("blueprint-missing-template", now);
+
+        TemplateAssignmentRequest request = new TemplateAssignmentRequest();
+        request.setTemplateId(UUID.fromString("00000000-0000-0000-0000-000000000913"));
+        request.setPriority(0);
+
+        assertThatThrownBy(() -> templateAssignmentService.addBlueprintAssignment(blueprint.getId(), request))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void addBlueprintAssignmentRejectsMismatchedTemplateVersion() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Blueprint blueprint = createBlueprint("blueprint-mismatch", now);
+        Template template = createTemplate("Blueprint Template A", now);
+        Template otherTemplate = createTemplate("Blueprint Template B", now);
+        TemplateVersion otherVersion = createTemplateVersion(otherTemplate, "1.0.0", now);
+
+        TemplateAssignmentRequest request = new TemplateAssignmentRequest();
+        request.setTemplateId(template.getId());
+        request.setTemplateVersionId(otherVersion.getId());
+        request.setPriority(0);
+
+        assertThatThrownBy(() -> templateAssignmentService.addBlueprintAssignment(blueprint.getId(), request))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
     private Template createTemplate(String name, OffsetDateTime now) {
         return templateRepository.save(new Template(name, "desc", TemplateType.CUSTOM, now, REQUESTER_USERNAME));
+    }
+
+    private Blueprint createBlueprint(String name, OffsetDateTime now) {
+        return blueprintRepository.save(new Blueprint(
+                name,
+                false,
+                1,
+                "ghcr.io/spookly/hytale:latest",
+                null,
+                "[\"./run.sh\"]",
+                null,
+                now,
+                now
+        ));
     }
 
     private Instance createInstance(String name, OffsetDateTime now) {
