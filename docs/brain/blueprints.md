@@ -19,6 +19,10 @@ Define the canonical blueprint data model and Brain ↔ Node payload shapes for 
   - `GET /api/blueprints/{id}/ports`
   - `POST /api/blueprints/{id}/ports`
   - `DELETE /api/blueprints/{id}/ports/{portId}`
+- Implemented blueprint group link endpoints:
+  - `GET /api/blueprints/{id}/groups`
+  - `PUT /api/blueprints/{id}/groups/{groupId}`
+  - `DELETE /api/blueprints/{id}/groups/{groupId}`
 - Added request validation for blueprint CRUD:
   - required: `name`, `containerImage`, `startCommand`
   - optional: `installScript`, `variablesJson`
@@ -44,6 +48,8 @@ Define the canonical blueprint data model and Brain ↔ Node payload shapes for 
 - Blueprints are normal entities with no versioning.
 - Instance creation can reference a blueprint with optional overrides; overrides replace blueprint values (no merge).
 - Ports are defined as ranges; nodes allocate host ports from ranges and return allocations in portsJson.
+- Blueprint group links are validated against existing instance groups.
+- Blueprint group link `PUT` and `DELETE` operations are idempotent.
 - Install script runs once before start command; the start command is an exec-form array.
 - Slots are counted for instances in STARTING, RUNNING, and STOPPING; default slotsRequired is 1.
 
