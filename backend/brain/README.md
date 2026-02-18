@@ -37,3 +37,6 @@ Validation: at least one template assignment with required `templateId`. Duplica
 - `GET /api/blueprints/{id}/template-assignments` — list blueprint assignments.
 - `POST /api/blueprints/{id}/template-assignments` — add a blueprint assignment.
 - `DELETE /api/blueprints/{id}/template-assignments/{assignmentId}` — remove a blueprint assignment.
+- `GET /api/blueprints/{id}/ports` — list blueprint port definitions.
+- `POST /api/blueprints/{id}/ports` — add a blueprint port definition.
+- `DELETE /api/blueprints/{id}/ports/{portId}` — remove a blueprint port definition.
