@@ -1,6 +1,7 @@
 package net.spookly.kodama.brain.service;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import net.spookly.kodama.brain.domain.blueprint.Blueprint;
@@ -11,6 +12,8 @@ import net.spookly.kodama.brain.dto.InstanceGroupDto;
 import net.spookly.kodama.brain.repository.BlueprintGroupLinkRepository;
 import net.spookly.kodama.brain.repository.BlueprintRepository;
 import net.spookly.kodama.brain.repository.InstanceGroupRepository;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +22,9 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @Transactional
 public class BlueprintGroupLinkService {
+
+    private static final String GROUP_LINK_PRIMARY_KEY_CONSTRAINT = "pk_blueprint_group_links";
+    private static final String GROUP_LINK_PRIMARY_INDEX = "blueprint_group_links.primary";
 
     private final BlueprintRepository blueprintRepository;
     private final InstanceGroupRepository instanceGroupRepository;
@@ -50,7 +56,14 @@ public class BlueprintGroupLinkService {
         if (blueprintGroupLinkRepository.existsById(linkId)) {
             return;
         }
-        blueprintGroupLinkRepository.save(new BlueprintGroupLink(blueprint, group));
+        try {
+            blueprintGroupLinkRepository.saveAndFlush(new BlueprintGroupLink(blueprint, group));
+        } catch (DataIntegrityViolationException ex) {
+            if (isDuplicateGroupLinkViolation(ex)) {
+                return;
+            }
+            throw ex;
+        }
     }
 
     public void removeGroupLink(UUID blueprintId, UUID groupId) {
@@ -83,5 +96,29 @@ public class BlueprintGroupLinkService {
         if (!instanceGroupRepository.existsById(groupId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found");
         }
+    }
+
+    private boolean isDuplicateGroupLinkViolation(Throwable ex) {
+        for (Throwable current = ex; current != null; current = current.getCause()) {
+            if (current instanceof ConstraintViolationException constraintViolationException) {
+                String constraintName = constraintViolationException.getConstraintName();
+                if (constraintName != null && constraintName.toLowerCase(Locale.ROOT)
+                        .contains(GROUP_LINK_PRIMARY_KEY_CONSTRAINT)) {
+                    return true;
+                }
+            }
+
+            String message = current.getMessage();
+            if (message != null) {
+                String normalizedMessage = message.toLowerCase(Locale.ROOT);
+                if (normalizedMessage.contains(GROUP_LINK_PRIMARY_KEY_CONSTRAINT)
+                        || normalizedMessage.contains(GROUP_LINK_PRIMARY_INDEX)
+                        || (normalizedMessage.contains("duplicate entry")
+                        && normalizedMessage.contains("primary"))) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
