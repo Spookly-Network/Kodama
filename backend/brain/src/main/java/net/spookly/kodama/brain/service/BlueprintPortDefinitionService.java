@@ -11,6 +11,8 @@ import net.spookly.kodama.brain.dto.BlueprintPortDefinitionDto;
 import net.spookly.kodama.brain.dto.BlueprintPortDefinitionRequest;
 import net.spookly.kodama.brain.repository.BlueprintPortDefinitionRepository;
 import net.spookly.kodama.brain.repository.BlueprintRepository;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,8 @@ public class BlueprintPortDefinitionService {
 
     private static final int MIN_PORT = 1;
     private static final int MAX_PORT = 65_535;
+    private static final String DUPLICATE_PORT_NAME_CONSTRAINT = "uq_blueprint_port_definitions_blueprint_name";
+    private static final String DUPLICATE_PORT_NAME_MESSAGE = "Port definition name already exists for blueprint";
 
     private final BlueprintRepository blueprintRepository;
     private final BlueprintPortDefinitionRepository blueprintPortDefinitionRepository;
@@ -58,11 +62,6 @@ public class BlueprintPortDefinitionService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "hostRange.min must be <= hostRange.max");
         }
 
-        if (blueprintPortDefinitionRepository.existsByBlueprintIdAndNameIgnoreCase(blueprintId, name)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Port definition name already exists for blueprint");
-        }
-
         BlueprintPortDefinition portDefinition = new BlueprintPortDefinition(
                 blueprint,
                 name,
@@ -73,7 +72,7 @@ public class BlueprintPortDefinitionService {
                 hostRangeStep
         );
 
-        BlueprintPortDefinition saved = blueprintPortDefinitionRepository.save(portDefinition);
+        BlueprintPortDefinition saved = saveAndFlush(portDefinition);
         return BlueprintPortDefinitionDto.fromEntity(saved);
     }
 
@@ -151,5 +150,38 @@ public class BlueprintPortDefinitionService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " must be >= 1");
         }
         return value;
+    }
+
+    private BlueprintPortDefinition saveAndFlush(BlueprintPortDefinition portDefinition) {
+        try {
+            return blueprintPortDefinitionRepository.saveAndFlush(portDefinition);
+        } catch (DataIntegrityViolationException ex) {
+            throw translateWriteConstraintViolation(ex);
+        }
+    }
+
+    private RuntimeException translateWriteConstraintViolation(DataIntegrityViolationException ex) {
+        if (isDuplicatePortNameViolation(ex)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, DUPLICATE_PORT_NAME_MESSAGE, ex);
+        }
+        return ex;
+    }
+
+    private boolean isDuplicatePortNameViolation(Throwable ex) {
+        for (Throwable current = ex; current != null; current = current.getCause()) {
+            if (current instanceof ConstraintViolationException constraintViolationException) {
+                String constraintName = constraintViolationException.getConstraintName();
+                if (constraintName != null
+                        && constraintName.toLowerCase(Locale.ROOT).contains(DUPLICATE_PORT_NAME_CONSTRAINT)) {
+                    return true;
+                }
+            }
+            String message = current.getMessage();
+            if (message != null
+                    && message.toLowerCase(Locale.ROOT).contains(DUPLICATE_PORT_NAME_CONSTRAINT)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

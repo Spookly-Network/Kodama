@@ -87,8 +87,12 @@ class BlueprintPortDefinitionServiceTest {
                 request("GAME", "udp", 25566, 30101, 30200, 1)
         ))
                 .isInstanceOf(ResponseStatusException.class)
-                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
-                .isEqualTo(HttpStatus.BAD_REQUEST);
+                .satisfies(ex -> {
+                    ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+                    assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(responseStatusException.getReason())
+                            .isEqualTo("Port definition name already exists for blueprint");
+                });
     }
 
     @Test

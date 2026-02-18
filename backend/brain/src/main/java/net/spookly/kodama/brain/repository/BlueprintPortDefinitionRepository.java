@@ -13,17 +13,6 @@ public interface BlueprintPortDefinitionRepository
         extends JpaRepository<@NonNull BlueprintPortDefinition, @NonNull UUID> {
 
     @Query("""
-            select (count(p) > 0)
-            from BlueprintPortDefinition p
-            where p.blueprint.id = :blueprintId
-              and lower(p.name) = lower(:name)
-            """)
-    boolean existsByBlueprintIdAndNameIgnoreCase(
-            @Param("blueprintId") UUID blueprintId,
-            @Param("name") String name
-    );
-
-    @Query("""
             select p
             from BlueprintPortDefinition p
             where p.blueprint.id = :blueprintId
