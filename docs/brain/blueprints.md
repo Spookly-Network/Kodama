@@ -5,6 +5,16 @@ Define the canonical blueprint data model and Brain ↔ Node payload shapes for 
 
 ## What changed
 - Standardized blueprint core fields and defaults (slots required defaults to 1).
+- Implemented Brain blueprint CRUD endpoints:
+  - `GET /api/blueprints` (non-deleted entries only)
+  - `POST /api/blueprints`
+  - `GET /api/blueprints/{id}`
+  - `PUT /api/blueprints/{id}`
+  - `DELETE /api/blueprints/{id}` (soft delete via `deletedAt`)
+- Added request validation for blueprint CRUD:
+  - required: `name`, `containerImage`, `startCommand`
+  - optional: `installScript`, `variablesJson`
+  - constraint: `slotsRequired >= 1` when provided
 - Defined override semantics: request fields replace blueprint values when provided.
 - Established port definition shape (name, protocol, containerPort, hostRange).
 - Added Brain persistence model for `blueprints`, `blueprint_template_assignments`,

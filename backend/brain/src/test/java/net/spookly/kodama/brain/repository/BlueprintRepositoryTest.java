@@ -74,7 +74,7 @@ class BlueprintRepositoryTest {
         Template template = templateRepository.save(new Template(
                 "runtime-base",
                 "runtime base template",
-                TemplateType.SERVER,
+                TemplateType.CUSTOM,
                 now,
                 "system"
         ));

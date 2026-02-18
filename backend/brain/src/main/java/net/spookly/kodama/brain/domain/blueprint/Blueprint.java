@@ -88,4 +88,30 @@ public class Blueprint {
             slotsRequired = 1;
         }
     }
+
+    public void update(
+            String name,
+            boolean permanent,
+            Integer slotsRequired,
+            String containerImage,
+            String installScript,
+            String startCommandJson,
+            String variablesJson,
+            OffsetDateTime updatedAt
+    ) {
+        this.name = Objects.requireNonNull(name, "name");
+        this.permanent = permanent;
+        this.slotsRequired = slotsRequired == null ? 1 : slotsRequired;
+        this.containerImage = Objects.requireNonNull(containerImage, "containerImage");
+        this.installScript = installScript;
+        this.startCommandJson = Objects.requireNonNull(startCommandJson, "startCommandJson");
+        this.variablesJson = variablesJson;
+        this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt");
+    }
+
+    public void softDelete(OffsetDateTime deletedAt) {
+        OffsetDateTime timestamp = Objects.requireNonNull(deletedAt, "deletedAt");
+        this.deletedAt = timestamp;
+        this.updatedAt = timestamp;
+    }
 }
