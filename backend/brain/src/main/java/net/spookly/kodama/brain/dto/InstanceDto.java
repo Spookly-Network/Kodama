@@ -26,6 +26,7 @@ public class InstanceDto {
     private String region;
     private String tags;
     private Boolean devModeAllowed;
+    private Integer slotsRequired;
     private String portsJson;
     private String variablesJson;
     private OffsetDateTime createdAt;
@@ -51,6 +52,7 @@ public class InstanceDto {
                 instance.getRegion(),
                 instance.getTags(),
                 instance.getDevModeAllowed(),
+                instance.getSlotsRequired(),
                 instance.getPortsJson(),
                 instance.getVariablesJson(),
                 instance.getCreatedAt(),

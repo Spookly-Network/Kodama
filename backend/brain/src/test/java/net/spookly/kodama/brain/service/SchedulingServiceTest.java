@@ -24,7 +24,8 @@ class SchedulingServiceTest {
                 List.of(offline, full, available),
                 null,
                 null,
-                null
+                null,
+                1
         );
 
         assertThat(selected).isEqualTo(available);
@@ -39,7 +40,8 @@ class SchedulingServiceTest {
                 List.of(euNode, usNode),
                 "us-east-1",
                 null,
-                null
+                null,
+                1
         );
 
         assertThat(selected).isEqualTo(usNode);
@@ -54,7 +56,8 @@ class SchedulingServiceTest {
                 List.of(withTags, missingTag),
                 null,
                 "primary, ssd",
-                null
+                null,
+                1
         );
 
         assertThat(selected).isEqualTo(withTags);
@@ -69,14 +72,16 @@ class SchedulingServiceTest {
                 List.of(devNode, prodNode),
                 null,
                 null,
-                true
+                true,
+                1
         );
 
         Node prodSelected = schedulingService.selectNodeFromCandidates(
                 List.of(devNode, prodNode),
                 null,
                 null,
-                false
+                false,
+                1
         );
 
         assertThat(devSelected).isEqualTo(devNode);
@@ -92,7 +97,8 @@ class SchedulingServiceTest {
                 List.of(busy, idle),
                 null,
                 null,
-                null
+                null,
+                1
         );
 
         assertThat(selected).isEqualTo(idle);
@@ -107,7 +113,8 @@ class SchedulingServiceTest {
                 List.of(later, earlier),
                 null,
                 null,
-                null
+                null,
+                1
         );
 
         assertThat(selected).isEqualTo(earlier);
@@ -122,10 +129,51 @@ class SchedulingServiceTest {
                 List.of(offline, full),
                 null,
                 null,
-                null
+                null,
+                1
         );
 
         assertThat(selected).isNull();
+    }
+
+    @Test
+    void selectNodeRequiresAggregateCapacityForRequestedSlots() {
+        Node lowerUsedButTooSmall = buildNode("node-a", "eu-west-1", NodeStatus.ONLINE, false, 4, 3, null);
+        Node eligible = buildNode("node-b", "eu-west-1", NodeStatus.ONLINE, false, 6, 4, null);
+
+        Node selected = schedulingService.selectNodeFromCandidates(
+                List.of(lowerUsedButTooSmall, eligible),
+                null,
+                null,
+                null,
+                2
+        );
+
+        assertThat(selected).isEqualTo(eligible);
+    }
+
+    @Test
+    void selectNodeReturnsNullWhenOnlyCapacityIsInsufficient() {
+        Node first = buildNode("node-a", "eu-west-1", NodeStatus.ONLINE, false, 4, 3, "primary");
+        Node second = buildNode("node-b", "eu-west-1", NodeStatus.ONLINE, false, 8, 7, "primary");
+
+        Node selected = schedulingService.selectNodeFromCandidates(
+                List.of(first, second),
+                "eu-west-1",
+                "primary",
+                false,
+                2
+        );
+
+        boolean hasEligibleByFilters = schedulingService.hasEligibleNodesFromCandidates(
+                List.of(first, second),
+                "eu-west-1",
+                "primary",
+                false
+        );
+
+        assertThat(selected).isNull();
+        assertThat(hasEligibleByFilters).isTrue();
     }
 
     private Node buildNode(
