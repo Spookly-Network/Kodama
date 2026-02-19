@@ -133,6 +133,96 @@ class InstancePortAllocationServiceTest {
     }
 
     @Test
+    void allocateAllowsSameHostPortForDifferentProtocolsInSingleRequest() throws Exception {
+        ObjectMapper objectMapper = objectMapper();
+        InstanceWorkspaceLayout layout = workspaceLayout();
+        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper, layout);
+
+        InstancePortAllocationService service = new InstancePortAllocationService(registryService, objectMapper);
+        NodePreparePortDefinition tcpDefinition = new NodePreparePortDefinition(
+                "game-tcp",
+                "tcp",
+                25565,
+                new NodePreparePortDefinition.HostRange(30000, 30000, 1)
+        );
+        NodePreparePortDefinition udpDefinition = new NodePreparePortDefinition(
+                "game-udp",
+                "udp",
+                25565,
+                new NodePreparePortDefinition.HostRange(30000, 30000, 1)
+        );
+
+        InstancePortAllocationService.PortAllocationResult result = service.allocate(
+                UUID.randomUUID(),
+                List.of(tcpDefinition, udpDefinition)
+        );
+
+        assertThat(result.injectedVariables())
+                .containsEntry("PORT", "30000")
+                .containsEntry("PORT_GAME_TCP", "30000")
+                .containsEntry("PORT_GAME_UDP", "30000");
+
+        List<Map<String, Object>> parsed = objectMapper.readValue(
+                result.portsJson(),
+                new TypeReference<List<Map<String, Object>>>() {
+                }
+        );
+        assertThat(parsed).hasSize(2);
+        assertThat(parsed.get(0))
+                .containsEntry("protocol", "tcp")
+                .containsEntry("hostPort", 30000);
+        assertThat(parsed.get(1))
+                .containsEntry("protocol", "udp")
+                .containsEntry("hostPort", 30000);
+    }
+
+    @Test
+    void allocateDoesNotTreatTcpReservationAsUdpConflict() {
+        ObjectMapper objectMapper = objectMapper();
+        InstanceWorkspaceLayout layout = workspaceLayout();
+        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper, layout);
+        InstanceWorkspaceManager workspaceManager = new InstanceWorkspaceManager(layout);
+
+        UUID existingInstanceId = UUID.randomUUID();
+        InstanceWorkspacePaths existingWorkspace = workspaceManager.prepareWorkspace(existingInstanceId.toString());
+        NodePrepareInstanceRequest existingRequest = new NodePrepareInstanceRequest(
+                existingInstanceId,
+                "existing",
+                "existing",
+                "image",
+                null,
+                List.of("run"),
+                1,
+                null,
+                "[{\"name\":\"game\",\"protocol\":\"tcp\",\"containerPort\":25565,\"hostPort\":30000}]",
+                Map.of("PORT", "30000", "PORT_GAME", "30000"),
+                null,
+                List.of(sampleLayer())
+        );
+        registryService.recordPrepared(
+                existingWorkspace,
+                existingRequest,
+                existingRequest.layers(),
+                existingRequest.variables(),
+                existingRequest.portsJson()
+        );
+
+        InstancePortAllocationService service = new InstancePortAllocationService(registryService, objectMapper);
+        NodePreparePortDefinition definition = new NodePreparePortDefinition(
+                "game",
+                "udp",
+                25565,
+                new NodePreparePortDefinition.HostRange(30000, 30000, 1)
+        );
+
+        InstancePortAllocationService.PortAllocationResult result = service.allocate(UUID.randomUUID(), List.of(definition));
+
+        assertThat(result.injectedVariables())
+                .containsEntry("PORT", "30000")
+                .containsEntry("PORT_GAME", "30000");
+    }
+
+    @Test
     void allocateDoesNotTreatLegacyContainerPortObjectValuesAsReservedHostPorts() {
         ObjectMapper objectMapper = objectMapper();
         InstanceWorkspaceLayout layout = workspaceLayout();
@@ -212,7 +302,7 @@ class InstancePortAllocationServiceTest {
         InstancePortAllocationService service = new InstancePortAllocationService(registryService, objectMapper);
         NodePreparePortDefinition definition = new NodePreparePortDefinition(
                 "game",
-                "udp",
+                "tcp",
                 25565,
                 new NodePreparePortDefinition.HostRange(30000, 30001, 1)
         );

@@ -24,7 +24,8 @@ Persist a local record of instance metadata after the node finishes preparing a 
   - container id (set after the instance is started)
   - container status and status timestamp (updated on start/stop/monitor)
   - container exit code and exit reason (recorded when containers stop)
-- Port reservations are derived from the `portsJson` host ports and treated as reserved while the registry entry exists.
+- Port reservations are derived from `portsJson` host ports and tracked per protocol (`tcp`/`udp`) while the registry entry exists.
+- Legacy or variable-based reservations without an explicit protocol default to `tcp`.
 - Legacy object-form `portsJson` scalar values (for example `{ "game": 25565 }`) are treated as container ports and do not reserve host ports.
 - Legacy object-form host reservations are only derived from explicit `hostPort` fields (for example `{ "game": { "hostPort": 30000 } }`).
 - Prepare serializes `hostPort` allocation and `instance.json` writes through a local reservation lock to avoid duplicate reservations under concurrent requests.

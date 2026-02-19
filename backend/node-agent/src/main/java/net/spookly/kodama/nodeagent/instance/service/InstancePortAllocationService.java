@@ -38,7 +38,7 @@ public class InstancePortAllocationService {
             return PortAllocationResult.none();
         }
 
-        Set<Integer> reservedHostPorts = loadReservedHostPorts(instanceId);
+        Set<HostPortReservation> reservedHostPorts = loadReservedHostPorts(instanceId);
         List<AllocatedPort> allocatedPorts = new ArrayList<>(definitions.size());
         Set<String> normalizedNames = new LinkedHashSet<>();
 
@@ -49,8 +49,13 @@ public class InstancePortAllocationService {
                         "Duplicate port definition name after normalization: " + normalized.name()
                 );
             }
-            int hostPort = allocateHostPort(normalized.hostRange(), reservedHostPorts, normalized.name());
-            reservedHostPorts.add(hostPort);
+            int hostPort = allocateHostPort(
+                    normalized.protocol(),
+                    normalized.hostRange(),
+                    reservedHostPorts,
+                    normalized.name()
+            );
+            reservedHostPorts.add(new HostPortReservation(normalized.protocol(), hostPort));
             allocatedPorts.add(new AllocatedPort(
                     normalized.name(),
                     normalized.protocol(),
@@ -64,9 +69,9 @@ public class InstancePortAllocationService {
         return new PortAllocationResult(portsJson, injectedVariables);
     }
 
-    private Set<Integer> loadReservedHostPorts(UUID currentInstanceId) {
+    private Set<HostPortReservation> loadReservedHostPorts(UUID currentInstanceId) {
         List<InstanceRegistryEntry> entries = registryService.listRegistriesForAllocation();
-        Set<Integer> reserved = new LinkedHashSet<>();
+        Set<HostPortReservation> reserved = new LinkedHashSet<>();
         for (InstanceRegistryEntry entry : entries) {
             if (entry == null || entry.instanceId() == null) {
                 continue;
@@ -79,21 +84,21 @@ public class InstancePortAllocationService {
         return reserved;
     }
 
-    private Set<Integer> parseReservedHostPorts(InstanceRegistryEntry entry) {
-        Set<Integer> reserved = new LinkedHashSet<>();
+    private Set<HostPortReservation> parseReservedHostPorts(InstanceRegistryEntry entry) {
+        Set<HostPortReservation> reserved = new LinkedHashSet<>();
         reserved.addAll(parseHostPortsFromPortsJson(entry));
         reserved.addAll(parseHostPortsFromVariables(entry));
         return reserved;
     }
 
-    private Set<Integer> parseHostPortsFromPortsJson(InstanceRegistryEntry entry) {
+    private Set<HostPortReservation> parseHostPortsFromPortsJson(InstanceRegistryEntry entry) {
         String portsJson = entry.portsJson();
         if (portsJson == null || portsJson.isBlank()) {
             return Set.of();
         }
         try {
             JsonNode root = objectMapper.readTree(portsJson);
-            Set<Integer> ports = new LinkedHashSet<>();
+            Set<HostPortReservation> ports = new LinkedHashSet<>();
             if (root.isArray()) {
                 int index = 0;
                 for (JsonNode item : root) {
@@ -101,7 +106,9 @@ public class InstancePortAllocationService {
                     if (hostPortNode == null || hostPortNode.isNull()) {
                         throw new InstancePrepareException("portsJson array entry is missing hostPort at index " + index);
                     }
-                    ports.add(parsePort(hostPortNode, "portsJson[" + index + "].hostPort"));
+                    int hostPort = parsePort(hostPortNode, "portsJson[" + index + "].hostPort");
+                    String protocol = parseProtocolForReservation(item.get("protocol"), "portsJson[" + index + "].protocol");
+                    ports.add(new HostPortReservation(protocol, hostPort));
                     index++;
                 }
                 return ports;
@@ -112,7 +119,12 @@ public class InstancePortAllocationService {
                     if (value != null && value.isObject()) {
                         JsonNode hostPortNode = value.get("hostPort");
                         if (hostPortNode != null && !hostPortNode.isNull()) {
-                            ports.add(parsePort(hostPortNode, "portsJson." + field.getKey() + ".hostPort"));
+                            int hostPort = parsePort(hostPortNode, "portsJson." + field.getKey() + ".hostPort");
+                            String protocol = parseProtocolForReservation(
+                                    value.get("protocol"),
+                                    "portsJson." + field.getKey() + ".protocol"
+                            );
+                            ports.add(new HostPortReservation(protocol, hostPort));
                         }
                     }
                 });
@@ -127,12 +139,12 @@ public class InstancePortAllocationService {
         }
     }
 
-    private Set<Integer> parseHostPortsFromVariables(InstanceRegistryEntry entry) {
+    private Set<HostPortReservation> parseHostPortsFromVariables(InstanceRegistryEntry entry) {
         Map<String, String> variables = entry.variables();
         if (variables == null || variables.isEmpty()) {
             return Set.of();
         }
-        Set<Integer> ports = new LinkedHashSet<>();
+        Set<HostPortReservation> ports = new LinkedHashSet<>();
         for (Map.Entry<String, String> variable : variables.entrySet()) {
             String key = variable.getKey();
             if (key == null) {
@@ -142,14 +154,16 @@ public class InstancePortAllocationService {
             if (!normalizedKey.equals("PORT") && !normalizedKey.startsWith("PORT_")) {
                 continue;
             }
-            ports.add(parsePort(variable.getValue(), "variables." + key));
+            int hostPort = parsePort(variable.getValue(), "variables." + key);
+            ports.add(new HostPortReservation("tcp", hostPort));
         }
         return ports;
     }
 
     private int allocateHostPort(
+            String protocol,
             NodePreparePortDefinition.HostRange hostRange,
-            Set<Integer> reservedHostPorts,
+            Set<HostPortReservation> reservedHostPorts,
             String definitionName
     ) {
         int min = requirePort(hostRange.min(), "hostRange.min for " + definitionName);
@@ -162,7 +176,7 @@ public class InstancePortAllocationService {
         long candidate = min;
         while (candidate <= max) {
             int hostPort = (int) candidate;
-            if (!reservedHostPorts.contains(hostPort)) {
+            if (!reservedHostPorts.contains(new HostPortReservation(protocol, hostPort))) {
                 return hostPort;
             }
             candidate += step;
@@ -171,6 +185,23 @@ public class InstancePortAllocationService {
         throw new InstancePrepareException(
                 "No available host port for " + definitionName + " in range " + min + "-" + max + " (step " + step + ")"
         );
+    }
+
+    private String parseProtocolForReservation(JsonNode node, String source) {
+        if (node == null || node.isNull()) {
+            return "tcp";
+        }
+        if (!node.isTextual()) {
+            throw new InstancePrepareException(source + " must be tcp or udp");
+        }
+        String normalized = node.textValue().trim().toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty()) {
+            return "tcp";
+        }
+        if (!"tcp".equals(normalized) && !"udp".equals(normalized)) {
+            throw new InstancePrepareException(source + " must be tcp or udp");
+        }
+        return normalized;
     }
 
     private AllocationDefinition normalizeDefinition(NodePreparePortDefinition definition) {
@@ -332,6 +363,12 @@ public class InstancePortAllocationService {
             String protocol,
             int containerPort,
             NodePreparePortDefinition.HostRange hostRange
+    ) {
+    }
+
+    private record HostPortReservation(
+            String protocol,
+            int hostPort
     ) {
     }
 }
