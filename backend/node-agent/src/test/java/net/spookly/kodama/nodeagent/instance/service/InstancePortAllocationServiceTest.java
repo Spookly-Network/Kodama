@@ -223,7 +223,7 @@ class InstancePortAllocationServiceTest {
     }
 
     @Test
-    void allocateDoesNotTreatLegacyContainerPortObjectValuesAsReservedHostPorts() {
+    void allocateIgnoresVariableReservationsWhenPortsJsonIsMissing() {
         ObjectMapper objectMapper = objectMapper();
         InstanceWorkspaceLayout layout = workspaceLayout();
         InstanceRegistryService registryService = new InstanceRegistryService(objectMapper, layout);
@@ -240,8 +240,8 @@ class InstancePortAllocationServiceTest {
                 List.of("run"),
                 1,
                 null,
-                "{\"game\":25565}",
-                Map.of(),
+                null,
+                Map.of("PORT", "30000", "PORT_GAME", "30001"),
                 null,
                 List.of(sampleLayer())
         );
@@ -256,20 +256,20 @@ class InstancePortAllocationServiceTest {
         InstancePortAllocationService service = new InstancePortAllocationService(registryService, objectMapper);
         NodePreparePortDefinition definition = new NodePreparePortDefinition(
                 "game",
-                "udp",
+                "tcp",
                 25565,
-                new NodePreparePortDefinition.HostRange(25565, 25565, 1)
+                new NodePreparePortDefinition.HostRange(30000, 30000, 1)
         );
 
         InstancePortAllocationService.PortAllocationResult result = service.allocate(UUID.randomUUID(), List.of(definition));
 
         assertThat(result.injectedVariables())
-                .containsEntry("PORT", "25565")
-                .containsEntry("PORT_GAME", "25565");
+                .containsEntry("PORT", "30000")
+                .containsEntry("PORT_GAME", "30000");
     }
 
     @Test
-    void allocateReservesLegacyObjectHostPortMappings() {
+    void allocateRejectsLegacyObjectPortsJsonDuringReservationLoad() {
         ObjectMapper objectMapper = objectMapper();
         InstanceWorkspaceLayout layout = workspaceLayout();
         InstanceRegistryService registryService = new InstanceRegistryService(objectMapper, layout);
@@ -307,11 +307,9 @@ class InstancePortAllocationServiceTest {
                 new NodePreparePortDefinition.HostRange(30000, 30001, 1)
         );
 
-        InstancePortAllocationService.PortAllocationResult result = service.allocate(UUID.randomUUID(), List.of(definition));
-
-        assertThat(result.injectedVariables())
-                .containsEntry("PORT", "30001")
-                .containsEntry("PORT_GAME", "30001");
+        assertThatThrownBy(() -> service.allocate(UUID.randomUUID(), List.of(definition)))
+                .isInstanceOf(InstancePrepareException.class)
+                .hasMessageContaining("portsJson must be a JSON array when loading reservations");
     }
 
     private InstanceWorkspaceLayout workspaceLayout() {

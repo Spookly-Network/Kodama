@@ -85,10 +85,7 @@ public class InstancePortAllocationService {
     }
 
     private Set<HostPortReservation> parseReservedHostPorts(InstanceRegistryEntry entry) {
-        Set<HostPortReservation> reserved = new LinkedHashSet<>();
-        reserved.addAll(parseHostPortsFromPortsJson(entry));
-        reserved.addAll(parseHostPortsFromVariables(entry));
-        return reserved;
+        return parseHostPortsFromPortsJson(entry);
     }
 
     private Set<HostPortReservation> parseHostPortsFromPortsJson(InstanceRegistryEntry entry) {
@@ -98,66 +95,28 @@ public class InstancePortAllocationService {
         }
         try {
             JsonNode root = objectMapper.readTree(portsJson);
+            if (!root.isArray()) {
+                throw new InstancePrepareException("portsJson must be a JSON array when loading reservations");
+            }
             Set<HostPortReservation> ports = new LinkedHashSet<>();
-            if (root.isArray()) {
-                int index = 0;
-                for (JsonNode item : root) {
-                    JsonNode hostPortNode = item.get("hostPort");
-                    if (hostPortNode == null || hostPortNode.isNull()) {
-                        throw new InstancePrepareException("portsJson array entry is missing hostPort at index " + index);
-                    }
-                    int hostPort = parsePort(hostPortNode, "portsJson[" + index + "].hostPort");
-                    String protocol = parseProtocolForReservation(item.get("protocol"), "portsJson[" + index + "].protocol");
-                    ports.add(new HostPortReservation(protocol, hostPort));
-                    index++;
+            int index = 0;
+            for (JsonNode item : root) {
+                JsonNode hostPortNode = item.get("hostPort");
+                if (hostPortNode == null || hostPortNode.isNull()) {
+                    throw new InstancePrepareException("portsJson array entry is missing hostPort at index " + index);
                 }
-                return ports;
+                int hostPort = parsePort(hostPortNode, "portsJson[" + index + "].hostPort");
+                String protocol = parseProtocolForReservation(item.get("protocol"), "portsJson[" + index + "].protocol");
+                ports.add(new HostPortReservation(protocol, hostPort));
+                index++;
             }
-            if (root.isObject()) {
-                root.fields().forEachRemaining(field -> {
-                    JsonNode value = field.getValue();
-                    if (value != null && value.isObject()) {
-                        JsonNode hostPortNode = value.get("hostPort");
-                        if (hostPortNode != null && !hostPortNode.isNull()) {
-                            int hostPort = parsePort(hostPortNode, "portsJson." + field.getKey() + ".hostPort");
-                            String protocol = parseProtocolForReservation(
-                                    value.get("protocol"),
-                                    "portsJson." + field.getKey() + ".protocol"
-                            );
-                            ports.add(new HostPortReservation(protocol, hostPort));
-                        }
-                    }
-                });
-                return ports;
-            }
-            throw new InstancePrepareException("portsJson must be a JSON object or array when loading reservations");
+            return ports;
         } catch (IOException ex) {
             throw new InstancePrepareException(
                     "Failed to parse portsJson from registry for instance " + entry.instanceId(),
                     ex
             );
         }
-    }
-
-    private Set<HostPortReservation> parseHostPortsFromVariables(InstanceRegistryEntry entry) {
-        Map<String, String> variables = entry.variables();
-        if (variables == null || variables.isEmpty()) {
-            return Set.of();
-        }
-        Set<HostPortReservation> ports = new LinkedHashSet<>();
-        for (Map.Entry<String, String> variable : variables.entrySet()) {
-            String key = variable.getKey();
-            if (key == null) {
-                continue;
-            }
-            String normalizedKey = key.trim().toUpperCase(Locale.ROOT);
-            if (!normalizedKey.equals("PORT") && !normalizedKey.startsWith("PORT_")) {
-                continue;
-            }
-            int hostPort = parsePort(variable.getValue(), "variables." + key);
-            ports.add(new HostPortReservation("tcp", hostPort));
-        }
-        return ports;
     }
 
     private int allocateHostPort(

@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
 import net.spookly.kodama.nodeagent.instance.dto.NodePrepareInstanceLayer;
 
 public record InstanceRegistryEntry(
@@ -16,7 +15,6 @@ public record InstanceRegistryEntry(
         String installScript,
         List<String> startCommand,
         Integer slotsRequired,
-        @JsonAlias("allocatedPorts")
         String portsJson,
         boolean installCompleted,
         Map<String, String> variables,

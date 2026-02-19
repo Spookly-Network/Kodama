@@ -320,7 +320,7 @@ class InstanceRegistryServiceTest {
     }
 
     @Test
-    void loadRegistrySupportsAllocatedPortsAlias() throws Exception {
+    void loadRegistryRejectsAllocatedPortsAlias() throws Exception {
         UUID instanceId = UUID.randomUUID();
         InstanceWorkspaceLayout layout = workspaceLayout();
         InstanceWorkspacePaths workspace = prepareWorkspace(layout, instanceId.toString());
@@ -339,9 +339,10 @@ class InstanceRegistryServiceTest {
         Files.writeString(registryFile, aliasJson);
 
         InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), layout);
-        InstanceRegistryEntry entry = registryService.loadRegistry(workspace);
 
-        assertThat(entry.portsJson()).isEqualTo("{\"game\":25565}");
+        assertThatThrownBy(() -> registryService.loadRegistry(workspace))
+                .isInstanceOf(InstanceRegistryException.class)
+                .hasMessageContaining("Failed to read instance registry");
     }
 
     @Test
