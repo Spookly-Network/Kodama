@@ -243,7 +243,14 @@ public class InstanceService {
     }
 
     public void reportInstancePrepared(UUID nodeId, UUID instanceId) {
+        reportInstancePrepared(nodeId, instanceId, null);
+    }
+
+    public void reportInstancePrepared(UUID nodeId, UUID instanceId, String portsJson) {
         Instance instance = loadInstanceForNode(nodeId, instanceId);
+        if (portsJson != null) {
+            instance.updatePortsJson(portsJson);
+        }
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         if (instance.getState() == InstanceState.REQUESTED) {
             OffsetDateTime dispatchedAt = now.minusNanos(1_000);

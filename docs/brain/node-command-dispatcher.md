@@ -19,6 +19,22 @@ Body: `NodePrepareInstanceRequest`
   "instanceId": "uuid",
   "name": "string",
   "displayName": "string",
+  "containerImage": "string|null",
+  "installScript": "string|null",
+  "startCommand": ["./start.sh", "--flag"],
+  "slotsRequired": 1,
+  "portDefinitions": [
+    {
+      "name": "game",
+      "protocol": "tcp",
+      "containerPort": 25565,
+      "hostRange": {
+        "min": 30000,
+        "max": 30100,
+        "step": 1
+      }
+    }
+  ],
   "portsJson": "string|null",
   "variables": {
     "KEY": "VALUE"
@@ -39,6 +55,7 @@ Body: `NodePrepareInstanceRequest`
 ```
 
 `variables` and `variablesJson` are mutually exclusive. Brain will send `variables` when provided, otherwise it forwards `variablesJson` from the instance record. `orderIndex` is derived from template assignment priority and deterministic tie-breakers.
+`containerImage`, `installScript`, `startCommand`, `slotsRequired`, and `portDefinitions` are resolved from blueprint/runtime overrides before dispatch.
 
 ### Start
 

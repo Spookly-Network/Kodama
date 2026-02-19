@@ -1,6 +1,7 @@
 package net.spookly.kodama.brain.security;
 
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -181,5 +182,29 @@ class NodeAuthIntegrationTest {
                         + "/00000000-0000-0000-0000-000000000002/prepared")
                         .header(NODE_TOKEN_HEADER, NODE_TOKEN_VALUE))
                 .andExpect(status().isOk());
+
+        verify(instanceService).reportInstancePrepared(
+                UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                null
+        );
+    }
+
+    @Test
+    void preparedCallbackWithPortsJsonIsOk() throws Exception {
+        String body = "{\"portsJson\":\"{\\\"game\\\":25565}\"}";
+
+        mockMvc.perform(post("/api/nodes/00000000-0000-0000-0000-000000000001/instances"
+                        + "/00000000-0000-0000-0000-000000000002/prepared")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body)
+                        .header(NODE_TOKEN_HEADER, NODE_TOKEN_VALUE))
+                .andExpect(status().isOk());
+
+        verify(instanceService).reportInstancePrepared(
+                UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                "{\"game\":25565}"
+        );
     }
 }

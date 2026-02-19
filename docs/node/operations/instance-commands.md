@@ -23,7 +23,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
   - merges layers into the instance `merged` workspace,
   - applies variable substitution,
   - writes `instance.json` metadata into the instance workspace,
-  - calls back to the Brain with `/api/nodes/{nodeId}/instances/{instanceId}/prepared` (includes the node auth header when configured).
+  - calls back to the Brain with `/api/nodes/{nodeId}/instances/{instanceId}/prepared` (includes the node auth header when configured, and may include `portsJson` when allocated ports are known).
 - `POST /api/instances/{instanceId}/start` with `NodeInstanceCommandRequest`.
 - `POST /api/instances/{instanceId}/stop` with `NodeInstanceCommandRequest`.
 - `POST /api/instances/{instanceId}/destroy` with `NodeInstanceCommandRequest`.
@@ -55,6 +55,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - The registry container status is updated to `stopped` after a successful stop.
 - `variables` and `variablesJson` are mutually exclusive. When `variablesJson` is provided, the node agent parses it as a JSON map.
 - Template cache lookups use `templateId` from the prepare payload as the cache key.
+- Prepare payload includes resolved runtime fields from Brain: `containerImage`, `installScript`, `startCommand`, `slotsRequired`, and `portDefinitions`.
 
 ## Edge cases / risks
 - Invalid payloads (missing instanceId, empty layers, invalid JSON) return HTTP 400 and trigger a `/failed` callback when possible.
