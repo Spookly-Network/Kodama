@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,6 +34,7 @@ public class InstanceRegistryService {
 
     private final ObjectMapper objectMapper;
     private final InstanceWorkspaceLayout workspaceLayout;
+    private final ReentrantLock portReservationLock = new ReentrantLock();
 
     public InstanceRegistryService(ObjectMapper objectMapper, InstanceWorkspaceLayout workspaceLayout) {
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
@@ -243,6 +246,18 @@ public class InstanceRegistryService {
 
     public List<InstanceRegistryEntry> listRegistriesForAllocation() {
         return listRegistries(false);
+    }
+
+    public <T> T withPortReservationLock(Supplier<T> operation) {
+        if (operation == null) {
+            throw new InstanceRegistryException("operation is required");
+        }
+        portReservationLock.lock();
+        try {
+            return operation.get();
+        } finally {
+            portReservationLock.unlock();
+        }
     }
 
     private List<InstanceRegistryEntry> listRegistries(boolean sanitizeVariables) {

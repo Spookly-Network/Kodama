@@ -22,6 +22,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - The node agent:
   - ensures each template layer is cached (downloading if needed),
   - allocates the lowest available host port per `portDefinitions[*].hostRange` (`min/max/step`) while avoiding conflicts with existing local registries,
+  - executes allocation + merge + registry write under a local reservation lock so concurrent prepares cannot reserve the same `hostPort`,
   - injects resolved host ports into variables (`PORT` and `PORT_<NAME>`),
   - merges layers into the instance `merged` workspace,
   - applies variable substitution,

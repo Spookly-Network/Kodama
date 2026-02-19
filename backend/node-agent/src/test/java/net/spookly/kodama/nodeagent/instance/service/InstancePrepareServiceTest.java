@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -94,6 +95,9 @@ class InstancePrepareServiceTest {
                 ));
         doNothing().when(mergeService).mergeLayers(any(), any(), any(), any());
         doNothing().when(registryService).recordPrepared(any(), any(), any(), any(), any());
+        doAnswer(invocation -> invocation.<java.util.function.Supplier<?>>getArgument(0).get())
+                .when(registryService)
+                .withPortReservationLock(any());
         doThrow(new RuntimeException("callback boom"))
                 .when(callbackService)
                 .sendPrepared(instanceId, null);
@@ -172,6 +176,9 @@ class InstancePrepareServiceTest {
                         Path.of("/tmp/cache"),
                         "checksum"
                 ));
+        doAnswer(invocation -> invocation.<java.util.function.Supplier<?>>getArgument(0).get())
+                .when(registryService)
+                .withPortReservationLock(any());
 
         assertThatNoException().isThrownBy(() -> service.prepare(request));
 

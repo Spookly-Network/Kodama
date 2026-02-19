@@ -8,6 +8,12 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -336,6 +342,49 @@ class InstanceRegistryServiceTest {
         InstanceRegistryEntry entry = registryService.loadRegistry(workspace);
 
         assertThat(entry.portsJson()).isEqualTo("{\"game\":25565}");
+    }
+
+    @Test
+    void withPortReservationLockSerializesConcurrentOperations() throws Exception {
+        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), workspaceLayout());
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch firstInside = new CountDownLatch(1);
+        CountDownLatch releaseFirst = new CountDownLatch(1);
+        CountDownLatch secondInside = new CountDownLatch(1);
+        AtomicBoolean secondEnteredBeforeRelease = new AtomicBoolean(false);
+
+        try {
+            Future<?> first = executor.submit(() -> registryService.withPortReservationLock(() -> {
+                firstInside.countDown();
+                try {
+                    if (!releaseFirst.await(2, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("timed out waiting to release first lock holder");
+                    }
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("interrupted while waiting for lock release", ex);
+                }
+                return null;
+            }));
+
+            assertThat(firstInside.await(2, TimeUnit.SECONDS)).isTrue();
+
+            Future<?> second = executor.submit(() -> registryService.withPortReservationLock(() -> {
+                secondEnteredBeforeRelease.set(releaseFirst.getCount() > 0);
+                secondInside.countDown();
+                return null;
+            }));
+
+            assertThat(secondInside.await(200, TimeUnit.MILLISECONDS)).isFalse();
+
+            releaseFirst.countDown();
+            first.get(2, TimeUnit.SECONDS);
+            second.get(2, TimeUnit.SECONDS);
+
+            assertThat(secondEnteredBeforeRelease.get()).isFalse();
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     private InstanceWorkspacePaths prepareWorkspace(InstanceWorkspaceLayout layout, String instanceId) {

@@ -68,20 +68,22 @@ public class InstancePrepareService {
             logger.info("Preparing instance workspace. instanceId={} layers={}", instanceId, layerCount);
             InstanceWorkspacePaths workspace = workspaceManager.prepareWorkspace(instanceId.toString());
             Map<String, String> resolvedVariables = variablesResolver.resolve(request.variables(), request.variablesJson());
-            InstancePortAllocationService.PortAllocationResult allocation = portAllocationService.allocate(
-                    instanceId,
-                    request.portDefinitions()
-            );
-            Map<String, String> variables = mergeVariables(resolvedVariables, allocation.injectedVariables());
-            portsJson = resolvePortsJson(request.portsJson(), allocation.portsJson());
-
             List<TemplateLayerSource> sources = new ArrayList<>(layers.size());
             for (NodePrepareInstanceLayer layer : layers) {
                 sources.add(resolveLayerSource(layer));
             }
-
-            mergeService.mergeLayers(instanceId.toString(), workspace.mergedDir(), sources, variables);
-            registryService.recordPrepared(workspace, request, layers, variables, portsJson);
+            // Keep allocation and reservation persistence in one critical section to prevent duplicate hostPort claims.
+            portsJson = registryService.withPortReservationLock(() -> {
+                InstancePortAllocationService.PortAllocationResult allocation = portAllocationService.allocate(
+                        instanceId,
+                        request.portDefinitions()
+                );
+                Map<String, String> variables = mergeVariables(resolvedVariables, allocation.injectedVariables());
+                String resolvedPortsJson = resolvePortsJson(request.portsJson(), allocation.portsJson());
+                mergeService.mergeLayers(instanceId.toString(), workspace.mergedDir(), sources, variables);
+                registryService.recordPrepared(workspace, request, layers, variables, resolvedPortsJson);
+                return resolvedPortsJson;
+            });
         } catch (InstancePrepareValidationException ex) {
             logger.warn("Instance preparation rejected. instanceId={}", instanceId, ex);
             try {
