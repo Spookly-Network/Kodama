@@ -14,16 +14,20 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - Destroy now stops (or force-kills) the container, removes it, deletes the instance workspace, and removes the local registry entry.
 - Added a local registry listing endpoint for listing known instance records.
 - Added optional retry settings for instance callbacks to the Brain.
+- Prepare now allocates host ports from `portDefinitions` ranges, reserves them via the local registry, and reports them back to Brain.
 
 ## How to use / impact
 - `POST /api/instances/{instanceId}/prepare` with `NodePrepareInstanceRequest`.
 - All instance command endpoints require Brain authentication (shared token header or client certificate, depending on node-agent auth configuration).
 - The node agent:
   - ensures each template layer is cached (downloading if needed),
+  - allocates the lowest available host port per `portDefinitions[*].hostRange` (`min/max/step`) while avoiding conflicts with existing local registries,
+  - executes allocation + merge + registry write under a local reservation lock so concurrent prepares cannot reserve the same `hostPort`,
+  - injects resolved host ports into variables (`PORT` and `PORT_<NAME>`),
   - merges layers into the instance `merged` workspace,
   - applies variable substitution,
-  - writes `instance.json` metadata into the instance workspace,
-  - calls back to the Brain with `/api/nodes/{nodeId}/instances/{instanceId}/prepared` (includes the node auth header when configured, and may include `portsJson` when allocated ports are known).
+  - writes `instance.json` metadata (including allocated `portsJson`) into the instance workspace,
+  - calls back to the Brain with `/api/nodes/{nodeId}/instances/{instanceId}/prepared` (includes the node auth header when configured and includes allocated `portsJson` when available).
 - `POST /api/instances/{instanceId}/start` with `NodeInstanceCommandRequest`.
 - `POST /api/instances/{instanceId}/stop` with `NodeInstanceCommandRequest`.
 - `POST /api/instances/{instanceId}/destroy` with `NodeInstanceCommandRequest`.
@@ -33,7 +37,8 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - Start now:
   - reads `instance.json` from the workspace,
   - creates a Docker container with the merged workspace mounted,
-  - maps ports from the variable map (and `portsJson` when present; uses `PORT_<NAME>` variables or `PORT` when only one port exists),
+  - maps ports from `portsJson` (preferred array format with `containerPort` + `hostPort`; legacy object format remains supported),
+  - falls back to `PORT`/`PORT_<NAME>` variables when `portsJson` is absent,
   - injects env vars (including `INSTANCE_ID` and `NODE_NAME`),
   - records the container id to the registry,
   - then calls back with `/api/nodes/{nodeId}/instances/{instanceId}/running`.
@@ -44,7 +49,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
   - `/api/nodes/{nodeId}/instances/{instanceId}/destroyed` (after container removal and workspace cleanup)
 - Stop uses the container id recorded in `instance.json` and calls Docker to stop the container gracefully.
 - Destroy resolves the container id from `instance.json` when available; if missing, it falls back to the container name `kodama-instance-<instanceId>`.
-- Destroy removes `instance.json` before deleting the instance workspace directory.
+- Destroy removes `instance.json` before deleting the instance workspace directory, which releases reserved ports.
 - Registry entries include the instance workspace path (relative to `node-agent.workspace-dir`) and last known container status.
 - Registry entries capture the last exit code and exit reason when a container stops.
 - Registry listings omit `variables` to avoid leaking runtime secrets.
@@ -75,6 +80,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - Destroy errors attempt a `/failed` callback before returning the error.
 - Missing `portsJson` is allowed; port bindings fall back to `PORT`/`PORT_*` variables.
 - Invalid or missing port mappings result in a failed start and a `/failed` callback attempt.
+- Port allocation fails prepare when no free host port exists in a required range, and the node attempts a `/failed` callback.
 - If a success callback (`/prepared`, `/running`, `/stopped`, `/destroyed`) fails after the command completes, the node logs the error but does not send `/failed`.
 
 ## Links

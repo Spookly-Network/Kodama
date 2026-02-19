@@ -8,6 +8,12 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -58,7 +64,7 @@ class InstanceRegistryServiceTest {
         InstanceWorkspacePaths workspace = prepareWorkspace(layout, instanceId.toString());
         InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), layout);
 
-        registryService.recordPrepared(workspace, request, layers, variables);
+        registryService.recordPrepared(workspace, request, layers, variables, request.portsJson());
 
         Path registryFile = workspace.instanceRoot().resolve("instance.json");
         assertThat(registryFile).exists();
@@ -116,7 +122,7 @@ class InstanceRegistryServiceTest {
         InstanceWorkspacePaths workspace = prepareWorkspace(layout, "different-instance");
         InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), layout);
 
-        assertThatThrownBy(() -> registryService.recordPrepared(workspace, request, layers, Map.of()))
+        assertThatThrownBy(() -> registryService.recordPrepared(workspace, request, layers, Map.of(), request.portsJson()))
                 .isInstanceOf(InstanceRegistryException.class)
                 .hasMessageContaining("instanceId does not match workspace");
     }
@@ -152,7 +158,7 @@ class InstanceRegistryServiceTest {
         InstanceWorkspacePaths workspace = prepareWorkspace(layout, instanceId.toString());
         InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), layout);
 
-        registryService.recordPrepared(workspace, request, layers, Map.of());
+        registryService.recordPrepared(workspace, request, layers, Map.of(), request.portsJson());
         registryService.recordContainerId(workspace, instanceId, "container-123");
 
         Path registryFile = workspace.instanceRoot().resolve("instance.json");
@@ -201,7 +207,7 @@ class InstanceRegistryServiceTest {
         InstanceWorkspacePaths workspace = prepareWorkspace(layout, instanceId.toString());
         InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), layout);
 
-        registryService.recordPrepared(workspace, request, layers, Map.of());
+        registryService.recordPrepared(workspace, request, layers, Map.of(), request.portsJson());
         registryService.recordContainerId(workspace, instanceId, "container-123");
         registryService.recordContainerStatus(workspace, instanceId, "stopped", 0, "exited");
 
@@ -259,8 +265,8 @@ class InstanceRegistryServiceTest {
                 layers
         );
 
-        registryService.recordPrepared(firstWorkspace, firstRequest, layers, Map.of());
-        registryService.recordPrepared(secondWorkspace, secondRequest, layers, Map.of());
+        registryService.recordPrepared(firstWorkspace, firstRequest, layers, Map.of(), firstRequest.portsJson());
+        registryService.recordPrepared(secondWorkspace, secondRequest, layers, Map.of(), secondRequest.portsJson());
 
         List<InstanceRegistryEntry> entries = registryService.listRegistries();
 
@@ -314,7 +320,7 @@ class InstanceRegistryServiceTest {
     }
 
     @Test
-    void loadRegistrySupportsAllocatedPortsAlias() throws Exception {
+    void loadRegistryRejectsAllocatedPortsAlias() throws Exception {
         UUID instanceId = UUID.randomUUID();
         InstanceWorkspaceLayout layout = workspaceLayout();
         InstanceWorkspacePaths workspace = prepareWorkspace(layout, instanceId.toString());
@@ -333,9 +339,53 @@ class InstanceRegistryServiceTest {
         Files.writeString(registryFile, aliasJson);
 
         InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), layout);
-        InstanceRegistryEntry entry = registryService.loadRegistry(workspace);
 
-        assertThat(entry.portsJson()).isEqualTo("{\"game\":25565}");
+        assertThatThrownBy(() -> registryService.loadRegistry(workspace))
+                .isInstanceOf(InstanceRegistryException.class)
+                .hasMessageContaining("Failed to read instance registry");
+    }
+
+    @Test
+    void withPortReservationLockSerializesConcurrentOperations() throws Exception {
+        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), workspaceLayout());
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch firstInside = new CountDownLatch(1);
+        CountDownLatch releaseFirst = new CountDownLatch(1);
+        CountDownLatch secondInside = new CountDownLatch(1);
+        AtomicBoolean secondEnteredBeforeRelease = new AtomicBoolean(false);
+
+        try {
+            Future<?> first = executor.submit(() -> registryService.withPortReservationLock(() -> {
+                firstInside.countDown();
+                try {
+                    if (!releaseFirst.await(2, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("timed out waiting to release first lock holder");
+                    }
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("interrupted while waiting for lock release", ex);
+                }
+                return null;
+            }));
+
+            assertThat(firstInside.await(2, TimeUnit.SECONDS)).isTrue();
+
+            Future<?> second = executor.submit(() -> registryService.withPortReservationLock(() -> {
+                secondEnteredBeforeRelease.set(releaseFirst.getCount() > 0);
+                secondInside.countDown();
+                return null;
+            }));
+
+            assertThat(secondInside.await(200, TimeUnit.MILLISECONDS)).isFalse();
+
+            releaseFirst.countDown();
+            first.get(2, TimeUnit.SECONDS);
+            second.get(2, TimeUnit.SECONDS);
+
+            assertThat(secondEnteredBeforeRelease.get()).isFalse();
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     private InstanceWorkspacePaths prepareWorkspace(InstanceWorkspaceLayout layout, String instanceId) {

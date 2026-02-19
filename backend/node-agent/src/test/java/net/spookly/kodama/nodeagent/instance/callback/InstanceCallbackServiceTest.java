@@ -14,6 +14,8 @@ import static org.mockito.Mockito.when;
 import java.net.URI;
 import java.util.UUID;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.spookly.kodama.nodeagent.config.InstanceProperties;
 import net.spookly.kodama.nodeagent.config.NodeConfig;
 import net.spookly.kodama.nodeagent.registration.NodeAuthTokenReader;
@@ -36,21 +38,22 @@ class InstanceCallbackServiceTest {
                 .doThrow(new RuntimeException("boom"))
                 .doNothing()
                 .when(callbackClient)
-                .sendCallback(any(), anyString(), any());
+                .sendCallback(any(), anyString(), any(), any());
 
         InstanceCallbackService service = new InstanceCallbackService(
                 config,
                 instanceProperties,
                 registrationState,
                 tokenReader,
-                callbackClient
+                callbackClient,
+                new ObjectMapper()
         );
         UUID instanceId = UUID.randomUUID();
 
         assertThatNoException().isThrownBy(() -> service.sendRunning(instanceId));
 
         ArgumentCaptor<URI> endpointCaptor = ArgumentCaptor.forClass(URI.class);
-        verify(callbackClient, times(3)).sendCallback(endpointCaptor.capture(), anyString(), any());
+        verify(callbackClient, times(3)).sendCallback(endpointCaptor.capture(), anyString(), any(), any());
         URI endpoint = endpointCaptor.getValue();
         assertThat(endpoint.toString())
                 .contains("/api/nodes/")
@@ -67,14 +70,15 @@ class InstanceCallbackServiceTest {
         BrainCallbackClient callbackClient = mock(BrainCallbackClient.class);
         doThrow(new RuntimeException("boom"))
                 .when(callbackClient)
-                .sendCallback(any(), anyString(), any());
+                .sendCallback(any(), anyString(), any(), any());
 
         InstanceCallbackService service = new InstanceCallbackService(
                 config,
                 instanceProperties,
                 registrationState,
                 tokenReader,
-                callbackClient
+                callbackClient,
+                new ObjectMapper()
         );
         UUID instanceId = UUID.randomUUID();
 
@@ -82,7 +86,38 @@ class InstanceCallbackServiceTest {
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("boom");
 
-        verify(callbackClient, times(2)).sendCallback(any(), anyString(), any());
+        verify(callbackClient, times(2)).sendCallback(any(), anyString(), any(), any());
+    }
+
+    @Test
+    void sendPreparedIncludesPortsJsonPayload() throws Exception {
+        NodeConfig config = buildConfig();
+        InstanceProperties instanceProperties = buildInstanceProperties(1, 0);
+        NodeRegistrationState registrationState = buildRegistrationState();
+        NodeAuthTokenReader tokenReader = mock(NodeAuthTokenReader.class);
+        when(tokenReader.readToken()).thenReturn(null);
+        BrainCallbackClient callbackClient = mock(BrainCallbackClient.class);
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        InstanceCallbackService service = new InstanceCallbackService(
+                config,
+                instanceProperties,
+                registrationState,
+                tokenReader,
+                callbackClient,
+                objectMapper
+        );
+
+        UUID instanceId = UUID.randomUUID();
+        String portsJson = "[{\"name\":\"game\",\"protocol\":\"tcp\",\"containerPort\":25565,\"hostPort\":30000}]";
+        service.sendPrepared(instanceId, portsJson);
+
+        ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
+        verify(callbackClient).sendCallback(any(), anyString(), any(), bodyCaptor.capture());
+        String body = bodyCaptor.getValue();
+        assertThat(body).isNotBlank();
+        assertThat(objectMapper.readValue(body, new TypeReference<java.util.Map<String, String>>() {
+        })).containsEntry("portsJson", portsJson);
     }
 
     private NodeConfig buildConfig() {

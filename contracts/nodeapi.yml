@@ -67,7 +67,7 @@ endpoints:
       installScript: string|null
       startCommand: list<string>|null
       slotsRequired: int32|null
-      portsJson: string|null
+      portsJson: string|null (legacy override; preferred runtime value is allocated by node from portDefinitions)
       portDefinitions:
         - name: string
           protocol: tcp|udp
@@ -160,7 +160,7 @@ callbacks:
     method: POST
     path: /api/nodes/{nodeId}/instances/{instanceId}/prepared
     request:
-      portsJson: string|null
+      portsJson: string|null (serialized JSON array of allocated ports: [{name, protocol, containerPort, hostPort}])
   running:
     method: POST
     path: /api/nodes/{nodeId}/instances/{instanceId}/running
@@ -181,5 +181,7 @@ notes:
   - The node agent records container exit codes and reasons in the local registry when containers stop.
   - `GET /api/instances/registry` returns registry entries derived from instance workspaces on disk.
   - Registry listings omit variables and return workspacePath relative to `node-agent.workspace-dir`.
+  - Node prepare allocates host ports from `portDefinitions[*].hostRange` and persists reservations in registry `portsJson`.
+  - Prepared callbacks may include `portsJson` as a JSON array containing `name`, `protocol`, `containerPort`, and `hostPort`.
   - `node-agent.instance-runtime.stop-timeout-seconds` controls the graceful stop timeout before force-kill (unset uses Docker defaults).
   - Validation errors return 400 and stop command processing.

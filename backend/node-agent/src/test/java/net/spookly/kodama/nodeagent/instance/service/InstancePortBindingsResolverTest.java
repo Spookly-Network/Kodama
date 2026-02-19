@@ -96,4 +96,38 @@ class InstancePortBindingsResolverTest {
                 .extracting(DockerPortBinding::hostPort)
                 .containsExactlyInAnyOrder(30001, 30002);
     }
+
+    @Test
+    void resolvesPortsFromArrayFormatAndIgnoresVariableFallback() {
+        InstanceRegistryEntry entry = new InstanceRegistryEntry(
+                UUID.randomUUID(),
+                "instance-name",
+                null,
+                """
+                        [
+                          {"name":"game","protocol":"udp","containerPort":25565,"hostPort":30001},
+                          {"name":"query","protocol":"tcp","containerPort":25566,"hostPort":30002}
+                        ]
+                        """,
+                Map.of("PORT_GAME", "39999"),
+                List.of(),
+                OffsetDateTime.now(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        List<DockerPortBinding> bindings = resolver.resolveBindings(entry);
+
+        assertThat(bindings).hasSize(2);
+        assertThat(bindings.get(0).containerPort()).isEqualTo(25565);
+        assertThat(bindings.get(0).hostPort()).isEqualTo(30001);
+        assertThat(bindings.get(0).protocol()).isEqualTo("udp");
+        assertThat(bindings.get(1).containerPort()).isEqualTo(25566);
+        assertThat(bindings.get(1).hostPort()).isEqualTo(30002);
+        assertThat(bindings.get(1).protocol()).isEqualTo("tcp");
+    }
 }
