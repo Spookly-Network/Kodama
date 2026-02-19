@@ -49,6 +49,14 @@ public class BlueprintGroupLinkService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<UUID> listLinkedGroupIds(UUID blueprintId) {
+        ensureBlueprintExists(blueprintId);
+        return blueprintGroupLinkRepository.findAllByBlueprintId(blueprintId).stream()
+                .map(link -> link.getGroup().getId())
+                .toList();
+    }
+
     public void addGroupLink(UUID blueprintId, UUID groupId) {
         Blueprint blueprint = loadBlueprint(blueprintId);
         InstanceGroup group = loadGroup(groupId);

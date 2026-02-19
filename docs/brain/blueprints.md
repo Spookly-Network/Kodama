@@ -47,6 +47,11 @@ Define the canonical blueprint data model and Brain ↔ Node payload shapes for 
 ## How to use / impact
 - Blueprints are normal entities with no versioning.
 - Instance creation can reference a blueprint with optional overrides; overrides replace blueprint values (no merge).
+- For instance creation with `blueprintId`:
+  - request `templateLayers` replaces blueprint template assignments when provided; otherwise blueprint assignments are used
+  - request `groupIds` replaces blueprint group links when provided; otherwise blueprint groups are applied
+  - request `portDefinitions` replaces blueprint port definitions when provided; otherwise blueprint definitions are persisted
+  - request variables/variablesJson replace blueprint variables when provided
 - Ports are defined as ranges; nodes allocate host ports from ranges and return allocations in portsJson.
 - Blueprint group links are validated against existing instance groups.
 - Blueprint group link `PUT` and `DELETE` operations are idempotent.

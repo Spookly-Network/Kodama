@@ -19,8 +19,6 @@ import net.spookly.kodama.brain.repository.GroupTemplateAssignmentRepository;
 import net.spookly.kodama.brain.repository.InstanceGroupRepository;
 import net.spookly.kodama.brain.repository.InstanceRepository;
 import net.spookly.kodama.brain.repository.InstanceTemplateAssignmentRepository;
-import net.spookly.kodama.brain.repository.TemplateRepository;
-import net.spookly.kodama.brain.repository.TemplateVersionRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,8 +34,7 @@ public class TemplateAssignmentService {
     private final BlueprintRepository blueprintRepository;
     private final InstanceRepository instanceRepository;
     private final InstanceGroupRepository instanceGroupRepository;
-    private final TemplateRepository templateRepository;
-    private final TemplateVersionRepository templateVersionRepository;
+    private final TemplateService templateService;
 
     public TemplateAssignmentService(
             BlueprintTemplateAssignmentRepository blueprintTemplateAssignmentRepository,
@@ -46,8 +43,7 @@ public class TemplateAssignmentService {
             BlueprintRepository blueprintRepository,
             InstanceRepository instanceRepository,
             InstanceGroupRepository instanceGroupRepository,
-            TemplateRepository templateRepository,
-            TemplateVersionRepository templateVersionRepository
+            TemplateService templateService
     ) {
         this.blueprintTemplateAssignmentRepository = blueprintTemplateAssignmentRepository;
         this.instanceTemplateAssignmentRepository = instanceTemplateAssignmentRepository;
@@ -55,8 +51,7 @@ public class TemplateAssignmentService {
         this.blueprintRepository = blueprintRepository;
         this.instanceRepository = instanceRepository;
         this.instanceGroupRepository = instanceGroupRepository;
-        this.templateRepository = templateRepository;
-        this.templateVersionRepository = templateVersionRepository;
+        this.templateService = templateService;
     }
 
     @Transactional(readOnly = true)
@@ -64,6 +59,18 @@ public class TemplateAssignmentService {
         ensureBlueprintExists(blueprintId);
         return blueprintTemplateAssignmentRepository.findAllByBlueprintId(blueprintId).stream()
                 .map(TemplateAssignmentDto::fromEntity)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<TemplateAssignmentReference> listBlueprintAssignmentReferences(UUID blueprintId) {
+        ensureBlueprintExists(blueprintId);
+        return blueprintTemplateAssignmentRepository.findAllByBlueprintId(blueprintId).stream()
+                .map(assignment -> new TemplateAssignmentReference(
+                        assignment.getTemplate().getId(),
+                        assignment.getTemplateVersion() == null ? null : assignment.getTemplateVersion().getId(),
+                        assignment.getPriority()
+                ))
                 .toList();
     }
 
@@ -166,19 +173,19 @@ public class TemplateAssignmentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Priority must be >= 0");
         }
 
-        Template template = templateRepository.findById(request.getTemplateId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Template not found"));
+        Template template = templateService.loadTemplatesById(List.of(request.getTemplateId()))
+                .get(request.getTemplateId());
 
         TemplateVersion templateVersion = null;
         if (request.getTemplateVersionId() != null) {
-            templateVersion = templateVersionRepository.findById(request.getTemplateVersionId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Template version not found"));
+            templateVersion = templateService.loadTemplateVersionsById(List.of(request.getTemplateVersionId()))
+                    .get(request.getTemplateVersionId());
             if (!template.getId().equals(templateVersion.getTemplate().getId())) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "templateVersionId does not belong to templateId");
             }
         } else {
-            ensureTemplateHasVersion(template.getId());
+            templateService.ensureTemplatesHaveVersions(List.of(template.getId()));
         }
 
         return new AssignmentTarget(template, templateVersion, priority);
@@ -207,12 +214,13 @@ public class TemplateAssignmentService {
         }
     }
 
-    private void ensureTemplateHasVersion(UUID templateId) {
-        if (templateVersionRepository.findLatestForTemplateIds(List.of(templateId)).isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Template has no versions: " + templateId);
-        }
+    private record AssignmentTarget(Template template, TemplateVersion templateVersion, int priority) {
     }
 
-    private record AssignmentTarget(Template template, TemplateVersion templateVersion, int priority) {
+    public record TemplateAssignmentReference(
+            UUID templateId,
+            UUID templateVersionId,
+            int priority
+    ) {
     }
 }

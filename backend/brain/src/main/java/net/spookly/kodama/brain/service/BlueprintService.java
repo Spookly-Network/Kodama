@@ -97,9 +97,23 @@ public class BlueprintService {
         blueprint.softDelete(OffsetDateTime.now(ZoneOffset.UTC));
     }
 
-    private Blueprint loadActiveBlueprint(UUID id) {
+    @Transactional(readOnly = true)
+    public Blueprint loadActiveBlueprint(@NonNull UUID id) {
         return blueprintRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blueprint not found"));
+    }
+
+    @Transactional(readOnly = true)
+    public Blueprint loadBlueprintForInstanceCreation(@NonNull UUID id) {
+        Blueprint blueprint = blueprintRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blueprint not found"));
+        if (blueprint.getDeletedAt() != null) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Blueprint is deleted and cannot be used for new instance creation"
+            );
+        }
+        return blueprint;
     }
 
     private Blueprint saveAndFlush(Blueprint blueprint) {
