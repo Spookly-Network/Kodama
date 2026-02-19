@@ -1314,7 +1314,7 @@ components:
         portsJson:
           type: string
           nullable: true
-          description: Serialized JSON with allocated ports reported by the node; optional.
+          description: Serialized JSON with allocated ports reported by the node; preferred format is an array of entries with name/protocol/containerPort/hostPort.
     NodeRegistrationResponse:
       type: object
       required: [nodeId, heartbeatIntervalSeconds]

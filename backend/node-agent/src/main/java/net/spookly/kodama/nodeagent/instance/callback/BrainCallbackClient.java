@@ -14,6 +14,7 @@ import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpHeaders;
 import org.apache.hc.core5.http.ParseException;
+import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.util.Timeout;
 import org.springframework.stereotype.Component;
@@ -36,11 +37,18 @@ public class BrainCallbackClient {
     }
 
     public void sendCallback(URI endpoint, String authHeaderName, String authToken) {
+        sendCallback(endpoint, authHeaderName, authToken, null);
+    }
+
+    public void sendCallback(URI endpoint, String authHeaderName, String authToken, String requestBody) {
         HttpPost post = new HttpPost(endpoint);
         post.setHeader(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType());
         post.setHeader(HttpHeaders.ACCEPT, ContentType.APPLICATION_JSON.getMimeType());
         if (authToken != null && !authToken.isBlank()) {
             post.setHeader(authHeaderName, authToken);
+        }
+        if (requestBody != null && !requestBody.isBlank()) {
+            post.setEntity(new StringEntity(requestBody, ContentType.APPLICATION_JSON));
         }
         try (CloseableHttpResponse response = httpClient.execute(post)) {
             int status = response.getCode();

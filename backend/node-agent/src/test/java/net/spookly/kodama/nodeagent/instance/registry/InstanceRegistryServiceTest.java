@@ -58,7 +58,7 @@ class InstanceRegistryServiceTest {
         InstanceWorkspacePaths workspace = prepareWorkspace(layout, instanceId.toString());
         InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), layout);
 
-        registryService.recordPrepared(workspace, request, layers, variables);
+        registryService.recordPrepared(workspace, request, layers, variables, request.portsJson());
 
         Path registryFile = workspace.instanceRoot().resolve("instance.json");
         assertThat(registryFile).exists();
@@ -116,7 +116,7 @@ class InstanceRegistryServiceTest {
         InstanceWorkspacePaths workspace = prepareWorkspace(layout, "different-instance");
         InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), layout);
 
-        assertThatThrownBy(() -> registryService.recordPrepared(workspace, request, layers, Map.of()))
+        assertThatThrownBy(() -> registryService.recordPrepared(workspace, request, layers, Map.of(), request.portsJson()))
                 .isInstanceOf(InstanceRegistryException.class)
                 .hasMessageContaining("instanceId does not match workspace");
     }
@@ -152,7 +152,7 @@ class InstanceRegistryServiceTest {
         InstanceWorkspacePaths workspace = prepareWorkspace(layout, instanceId.toString());
         InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), layout);
 
-        registryService.recordPrepared(workspace, request, layers, Map.of());
+        registryService.recordPrepared(workspace, request, layers, Map.of(), request.portsJson());
         registryService.recordContainerId(workspace, instanceId, "container-123");
 
         Path registryFile = workspace.instanceRoot().resolve("instance.json");
@@ -201,7 +201,7 @@ class InstanceRegistryServiceTest {
         InstanceWorkspacePaths workspace = prepareWorkspace(layout, instanceId.toString());
         InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), layout);
 
-        registryService.recordPrepared(workspace, request, layers, Map.of());
+        registryService.recordPrepared(workspace, request, layers, Map.of(), request.portsJson());
         registryService.recordContainerId(workspace, instanceId, "container-123");
         registryService.recordContainerStatus(workspace, instanceId, "stopped", 0, "exited");
 
@@ -259,8 +259,8 @@ class InstanceRegistryServiceTest {
                 layers
         );
 
-        registryService.recordPrepared(firstWorkspace, firstRequest, layers, Map.of());
-        registryService.recordPrepared(secondWorkspace, secondRequest, layers, Map.of());
+        registryService.recordPrepared(firstWorkspace, firstRequest, layers, Map.of(), firstRequest.portsJson());
+        registryService.recordPrepared(secondWorkspace, secondRequest, layers, Map.of(), secondRequest.portsJson());
 
         List<InstanceRegistryEntry> entries = registryService.listRegistries();
 

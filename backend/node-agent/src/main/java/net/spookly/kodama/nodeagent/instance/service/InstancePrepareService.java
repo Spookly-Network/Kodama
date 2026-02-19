@@ -1,6 +1,7 @@
 package net.spookly.kodama.nodeagent.instance.service;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -29,6 +30,7 @@ public class InstancePrepareService {
     private final TemplateLayerMergeService mergeService;
     private final InstanceWorkspaceManager workspaceManager;
     private final InstanceVariablesResolver variablesResolver;
+    private final InstancePortAllocationService portAllocationService;
     private final InstanceCallbackService callbackService;
     private final InstanceRegistryService registryService;
     private final InstanceStartService instanceStartService;
@@ -38,6 +40,7 @@ public class InstancePrepareService {
             TemplateLayerMergeService mergeService,
             InstanceWorkspaceManager workspaceManager,
             InstanceVariablesResolver variablesResolver,
+            InstancePortAllocationService portAllocationService,
             InstanceCallbackService callbackService,
             InstanceRegistryService registryService,
             InstanceStartService instanceStartService
@@ -46,6 +49,7 @@ public class InstancePrepareService {
         this.mergeService = Objects.requireNonNull(mergeService, "mergeService");
         this.workspaceManager = Objects.requireNonNull(workspaceManager, "workspaceManager");
         this.variablesResolver = Objects.requireNonNull(variablesResolver, "variablesResolver");
+        this.portAllocationService = Objects.requireNonNull(portAllocationService, "portAllocationService");
         this.callbackService = Objects.requireNonNull(callbackService, "callbackService");
         this.registryService = Objects.requireNonNull(registryService, "registryService");
         this.instanceStartService = Objects.requireNonNull(instanceStartService, "instanceStartService");
@@ -57,12 +61,19 @@ public class InstancePrepareService {
         }
         UUID instanceId = requireInstanceId(request.instanceId());
         int layerCount;
+        String portsJson = null;
         try {
             List<NodePrepareInstanceLayer> layers = requireLayers(request.layers());
             layerCount = layers.size();
             logger.info("Preparing instance workspace. instanceId={} layers={}", instanceId, layerCount);
             InstanceWorkspacePaths workspace = workspaceManager.prepareWorkspace(instanceId.toString());
-            Map<String, String> variables = variablesResolver.resolve(request.variables(), request.variablesJson());
+            Map<String, String> resolvedVariables = variablesResolver.resolve(request.variables(), request.variablesJson());
+            InstancePortAllocationService.PortAllocationResult allocation = portAllocationService.allocate(
+                    instanceId,
+                    request.portDefinitions()
+            );
+            Map<String, String> variables = mergeVariables(resolvedVariables, allocation.injectedVariables());
+            portsJson = resolvePortsJson(request.portsJson(), allocation.portsJson());
 
             List<TemplateLayerSource> sources = new ArrayList<>(layers.size());
             for (NodePrepareInstanceLayer layer : layers) {
@@ -70,7 +81,7 @@ public class InstancePrepareService {
             }
 
             mergeService.mergeLayers(instanceId.toString(), workspace.mergedDir(), sources, variables);
-            registryService.recordPrepared(workspace, request, layers, variables);
+            registryService.recordPrepared(workspace, request, layers, variables, portsJson);
         } catch (InstancePrepareValidationException ex) {
             logger.warn("Instance preparation rejected. instanceId={}", instanceId, ex);
             try {
@@ -90,7 +101,7 @@ public class InstancePrepareService {
         }
 
         try {
-            callbackService.sendPrepared(instanceId);
+            callbackService.sendPrepared(instanceId, portsJson);
         } catch (RuntimeException ex) {
             logger.warn("Prepared callback failed. instanceId={}", instanceId, ex);
         }
@@ -154,5 +165,29 @@ public class InstancePrepareService {
             throw new InstancePrepareValidationException(label + " is required");
         }
         return value.trim();
+    }
+
+    private Map<String, String> mergeVariables(Map<String, String> baseVariables, Map<String, String> injectedVariables) {
+        if ((baseVariables == null || baseVariables.isEmpty()) && (injectedVariables == null || injectedVariables.isEmpty())) {
+            return Map.of();
+        }
+        Map<String, String> merged = new LinkedHashMap<>();
+        if (baseVariables != null) {
+            merged.putAll(baseVariables);
+        }
+        if (injectedVariables != null) {
+            merged.putAll(injectedVariables);
+        }
+        return merged;
+    }
+
+    private String resolvePortsJson(String requestPortsJson, String allocatedPortsJson) {
+        if (allocatedPortsJson != null && !allocatedPortsJson.isBlank()) {
+            return allocatedPortsJson;
+        }
+        if (requestPortsJson == null || requestPortsJson.isBlank()) {
+            return null;
+        }
+        return requestPortsJson.trim();
     }
 }

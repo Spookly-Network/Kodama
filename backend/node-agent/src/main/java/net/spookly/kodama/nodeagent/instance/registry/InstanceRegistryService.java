@@ -42,7 +42,8 @@ public class InstanceRegistryService {
             InstanceWorkspacePaths workspace,
             NodePrepareInstanceRequest request,
             List<NodePrepareInstanceLayer> layers,
-            Map<String, String> variables
+            Map<String, String> variables,
+            String portsJson
     ) {
         if (workspace == null) {
             throw new InstanceRegistryException("instance workspace is required");
@@ -70,7 +71,7 @@ public class InstanceRegistryService {
                 request.installScript(),
                 safeStartCommand,
                 request.slotsRequired(),
-                request.portsJson(),
+                portsJson,
                 false,
                 safeVariables,
                 new ArrayList<>(safeLayers),
@@ -237,6 +238,14 @@ public class InstanceRegistryService {
     }
 
     public List<InstanceRegistryEntry> listRegistries() {
+        return listRegistries(true);
+    }
+
+    public List<InstanceRegistryEntry> listRegistriesForAllocation() {
+        return listRegistries(false);
+    }
+
+    private List<InstanceRegistryEntry> listRegistries(boolean sanitizeVariables) {
         Path instancesRoot = workspaceLayout.getInstancesRoot();
         if (!Files.isDirectory(instancesRoot)) {
             return List.of();
@@ -245,7 +254,7 @@ public class InstanceRegistryService {
         try (Stream<Path> stream = Files.list(instancesRoot)) {
             stream.filter(Files::isDirectory)
                     .forEach(instanceRoot -> {
-                        InstanceRegistryEntry entry = loadRegistryForListing(instanceRoot);
+                        InstanceRegistryEntry entry = loadRegistryForListing(instanceRoot, sanitizeVariables);
                         if (entry != null) {
                             entries.add(entry);
                         }
@@ -329,7 +338,7 @@ public class InstanceRegistryService {
         return layers;
     }
 
-    private InstanceRegistryEntry loadRegistryForListing(Path instanceRoot) {
+    private InstanceRegistryEntry loadRegistryForListing(Path instanceRoot, boolean sanitizeVariables) {
         if (instanceRoot == null || !Files.isDirectory(instanceRoot)) {
             return null;
         }
@@ -347,7 +356,11 @@ public class InstanceRegistryService {
                 logger.warn("Instance registry has no instanceId at {}", registryFile);
                 return null;
             }
-            return sanitizeForListing(entry, instanceRoot);
+            InstanceRegistryEntry normalized = ensureWorkspacePath(entry, instanceRoot, registryFile, true);
+            if (sanitizeVariables) {
+                return sanitizeForListing(normalized, instanceRoot);
+            }
+            return normalized;
         } catch (IOException ex) {
             logger.warn("Failed to read instance registry at {}", registryFile, ex);
             return null;

@@ -1,8 +1,11 @@
 package net.spookly.kodama.nodeagent.instance.callback;
 
 import java.net.URI;
+import java.util.Objects;
 import java.util.UUID;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.spookly.kodama.nodeagent.config.InstanceProperties;
 import net.spookly.kodama.nodeagent.config.NodeConfig;
 import net.spookly.kodama.nodeagent.instance.service.InstancePrepareException;
@@ -22,42 +25,49 @@ public class InstanceCallbackService {
     private final NodeRegistrationState registrationState;
     private final NodeAuthTokenReader tokenReader;
     private final BrainCallbackClient callbackClient;
+    private final ObjectMapper objectMapper;
 
     public InstanceCallbackService(
             NodeConfig config,
             InstanceProperties instanceProperties,
             NodeRegistrationState registrationState,
             NodeAuthTokenReader tokenReader,
-            BrainCallbackClient callbackClient
+            BrainCallbackClient callbackClient,
+            ObjectMapper objectMapper
     ) {
-        this.config = config;
-        this.instanceProperties = instanceProperties;
-        this.registrationState = registrationState;
-        this.tokenReader = tokenReader;
-        this.callbackClient = callbackClient;
+        this.config = Objects.requireNonNull(config, "config");
+        this.instanceProperties = Objects.requireNonNull(instanceProperties, "instanceProperties");
+        this.registrationState = Objects.requireNonNull(registrationState, "registrationState");
+        this.tokenReader = Objects.requireNonNull(tokenReader, "tokenReader");
+        this.callbackClient = Objects.requireNonNull(callbackClient, "callbackClient");
+        this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
     }
 
     public void sendPrepared(UUID instanceId) {
-        sendCallback(instanceId, "prepared");
+        sendPrepared(instanceId, null);
+    }
+
+    public void sendPrepared(UUID instanceId, String portsJson) {
+        sendCallback(instanceId, "prepared", createPreparedPayload(portsJson));
     }
 
     public void sendRunning(UUID instanceId) {
-        sendCallback(instanceId, "running");
+        sendCallback(instanceId, "running", null);
     }
 
     public void sendStopped(UUID instanceId) {
-        sendCallback(instanceId, "stopped");
+        sendCallback(instanceId, "stopped", null);
     }
 
     public void sendDestroyed(UUID instanceId) {
-        sendCallback(instanceId, "destroyed");
+        sendCallback(instanceId, "destroyed", null);
     }
 
     public void sendFailed(UUID instanceId) {
-        sendCallback(instanceId, "failed");
+        sendCallback(instanceId, "failed", null);
     }
 
-    private void sendCallback(UUID instanceId, String action) {
+    private void sendCallback(UUID instanceId, String action, String requestBody) {
         UUID nodeId = resolveNodeId();
         URI endpoint = buildEndpoint(nodeId, instanceId, action);
         String authToken = tokenReader.readToken();
@@ -72,7 +82,7 @@ public class InstanceCallbackService {
         long backoffMillis = resolveBackoffMillis();
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
-                callbackClient.sendCallback(endpoint, headerName, authToken);
+                callbackClient.sendCallback(endpoint, headerName, authToken, requestBody);
                 if (attempt > 1) {
                     logger.info(
                             "Instance callback succeeded after retry attempt {} action={} instanceId={}",
@@ -108,6 +118,17 @@ public class InstanceCallbackService {
                 }
                 backoffMillis = nextBackoffMillis(backoffMillis);
             }
+        }
+    }
+
+    private String createPreparedPayload(String portsJson) {
+        if (portsJson == null || portsJson.isBlank()) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(new InstancePreparedCallbackRequest(portsJson));
+        } catch (JsonProcessingException ex) {
+            throw new InstancePrepareException("Failed to serialize prepared callback payload", ex);
         }
     }
 
@@ -179,5 +200,8 @@ public class InstanceCallbackService {
         } catch (IllegalArgumentException ex) {
             throw new InstancePrepareException("Invalid Brain base URL: " + brainBaseUrl, ex);
         }
+    }
+
+    private record InstancePreparedCallbackRequest(String portsJson) {
     }
 }
