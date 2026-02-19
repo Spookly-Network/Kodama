@@ -66,8 +66,9 @@ endpoints:
       containerImage: string|null
       installScript: string|null
       startCommand: list<string>|null
+      slotsRequired: int32|null
       portsJson: string|null
-      ports:
+      portDefinitions:
         - name: string
           protocol: tcp|udp
           containerPort: int32

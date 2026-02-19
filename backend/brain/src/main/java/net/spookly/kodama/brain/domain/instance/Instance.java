@@ -161,6 +161,10 @@ public class Instance {
         this.portDefinitionsJson = portDefinitionsJson;
     }
 
+    public void updatePortsJson(String portsJson) {
+        this.portsJson = portsJson;
+    }
+
     public void markPrepared(OffsetDateTime timestamp) {
         updateLifecycle(InstanceState.PREPARED, timestamp);
         this.failureReason = null;

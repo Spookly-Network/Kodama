@@ -833,7 +833,7 @@ paths:
       security:
         - nodeToken: []
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
@@ -1310,13 +1310,11 @@ components:
           minimum: 0
     InstancePreparedCallbackRequest:
       type: object
-      required: [portsJson]
       properties:
         portsJson:
           type: string
           nullable: true
-          description: Legacy port mapping JSON; prefer portDefinitions with blueprints.
-          description: Serialized JSON array of allocated ports.
+          description: Serialized JSON with allocated ports reported by the node; optional.
     NodeRegistrationResponse:
       type: object
       required: [nodeId, heartbeatIntervalSeconds]

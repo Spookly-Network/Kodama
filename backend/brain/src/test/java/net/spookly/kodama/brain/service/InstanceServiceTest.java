@@ -153,7 +153,8 @@ class InstanceServiceTest {
                     new RestTemplate(),
                     new NodeProperties(),
                     new BrainPluginRegistry(new PluginsProperties(), objectMapper),
-                    new BrainSecurityProperties()
+                    new BrainSecurityProperties(),
+                    objectMapper
             );
         }
     }
@@ -767,6 +768,43 @@ class InstanceServiceTest {
                 instanceEventRepository.findAllByInstanceIdOrderByTimestampAsc(instance.getId());
         assertThat(events).isNotEmpty();
         assertThat(events.getLast().getType()).isEqualTo(InstanceEventType.PREPARE_COMPLETED);
+    }
+
+    @Test
+    void reportPreparedPersistsPortsJsonWhenProvided() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Node node = nodeRepository.save(new Node(
+                "node-callback-ports",
+                "eu-west-1",
+                NodeStatus.ONLINE,
+                false,
+                4,
+                1,
+                now,
+                "1.0.0",
+                null,
+                "http://node.local"
+        ));
+        Instance instance = instanceRepository.save(new Instance(
+                "instance-callback-ports",
+                "Callback Ports Instance",
+                InstanceState.PREPARING,
+                REQUESTER_ID,
+                node,
+                null,
+                null,
+                null,
+                "{\"old\":25565}",
+                null,
+                now,
+                now
+        ));
+
+        instanceService.reportInstancePrepared(node.getId(), instance.getId(), "{\"game\":30000}");
+
+        Instance persisted = instanceRepository.findById(instance.getId()).orElseThrow();
+        assertThat(persisted.getState()).isEqualTo(InstanceState.STARTING);
+        assertThat(persisted.getPortsJson()).isEqualTo("{\"game\":30000}");
     }
 
     @Test

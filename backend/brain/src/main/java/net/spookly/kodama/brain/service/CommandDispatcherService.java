@@ -6,11 +6,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.spookly.kodama.brain.config.BrainSecurityProperties;
 import net.spookly.kodama.brain.config.NodeProperties;
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.node.Node;
 import net.spookly.kodama.brain.domain.template.TemplateVersion;
+import net.spookly.kodama.brain.dto.PortDefinitionRequest;
 import net.spookly.kodama.brain.dto.node.NodeInstanceCommandRequest;
 import net.spookly.kodama.brain.dto.node.NodePrepareInstanceLayer;
 import net.spookly.kodama.brain.dto.node.NodePrepareInstanceRequest;
@@ -39,17 +43,20 @@ public class CommandDispatcherService {
     private final NodeProperties nodeProperties;
     private final BrainPluginRegistry pluginRegistry;
     private final BrainSecurityProperties securityProperties;
+    private final ObjectMapper objectMapper;
 
     public CommandDispatcherService(
             RestTemplate restTemplate,
             NodeProperties nodeProperties,
             BrainPluginRegistry pluginRegistry,
-            BrainSecurityProperties brainSecurityProperties
+            BrainSecurityProperties brainSecurityProperties,
+            ObjectMapper objectMapper
     ) {
         this.restTemplate = restTemplate;
         this.nodeProperties = nodeProperties;
         this.securityProperties = brainSecurityProperties;
         this.pluginRegistry = Objects.requireNonNull(pluginRegistry, "pluginRegistry");
+        this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
     }
 
     public void sendPrepareInstance(
@@ -82,6 +89,11 @@ public class CommandDispatcherService {
                 instanceId,
                 instance.getName(),
                 instance.getDisplayName(),
+                instance.getContainerImage(),
+                instance.getInstallScript(),
+                resolveStartCommand(instance),
+                instance.getSlotsRequired(),
+                resolvePortDefinitions(instance),
                 instance.getPortsJson(),
                 resolved.variables(),
                 resolved.variablesJson(),
@@ -220,5 +232,31 @@ public class CommandDispatcherService {
             throw new IllegalStateException("Instance id is required to dispatch node commands");
         }
         return id;
+    }
+
+    private List<String> resolveStartCommand(Instance instance) {
+        String startCommandJson = instance.getStartCommandJson();
+        if (startCommandJson == null) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(startCommandJson, new TypeReference<List<String>>() {
+            });
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("Instance startCommandJson is invalid JSON", ex);
+        }
+    }
+
+    private List<PortDefinitionRequest> resolvePortDefinitions(Instance instance) {
+        String portDefinitionsJson = instance.getPortDefinitionsJson();
+        if (portDefinitionsJson == null) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(portDefinitionsJson, new TypeReference<List<PortDefinitionRequest>>() {
+            });
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("Instance portDefinitionsJson is invalid JSON", ex);
+        }
     }
 }

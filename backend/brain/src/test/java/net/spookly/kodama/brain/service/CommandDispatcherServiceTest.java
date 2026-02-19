@@ -25,6 +25,7 @@ import net.spookly.kodama.brain.domain.node.NodeStatus;
 import net.spookly.kodama.brain.domain.template.Template;
 import net.spookly.kodama.brain.domain.template.TemplateType;
 import net.spookly.kodama.brain.domain.template.TemplateVersion;
+import net.spookly.kodama.brain.dto.PortDefinitionRequest;
 import net.spookly.kodama.brain.dto.node.NodeInstanceCommandRequest;
 import net.spookly.kodama.brain.dto.node.NodePrepareInstanceLayer;
 import net.spookly.kodama.brain.dto.node.NodePrepareInstanceRequest;
@@ -56,7 +57,7 @@ class CommandDispatcherServiceTest {
         PluginsProperties pluginsProperties = new PluginsProperties();
         BrainSecurityProperties securityProperties = new BrainSecurityProperties();
         BrainPluginRegistry registry = new BrainPluginRegistry(pluginsProperties, objectMapper);
-        dispatcher = new CommandDispatcherService(restTemplate, nodeProperties, registry, securityProperties);
+        dispatcher = new CommandDispatcherService(restTemplate, nodeProperties, registry, securityProperties, objectMapper);
     }
 
     @Test
@@ -83,6 +84,16 @@ class CommandDispatcherServiceTest {
                 instanceId,
                 instance.getName(),
                 instance.getDisplayName(),
+                "ghcr.io/spookly/hytale:latest",
+                "echo install",
+                List.of("./start.sh", "--port", "25565"),
+                2,
+                List.of(new PortDefinitionRequest(
+                        "game",
+                        "tcp",
+                        25565,
+                        new PortDefinitionRequest.HostRangeRequest(25565, 25565, 1)
+                )),
                 instance.getPortsJson(),
                 variables,
                 null,
@@ -213,6 +224,16 @@ class CommandDispatcherServiceTest {
                 now
         );
         ReflectionTestUtils.setField(instance, "id", instanceId);
+        instance.applyBlueprintAndRuntime(
+                null,
+                null,
+                2,
+                "ghcr.io/spookly/hytale:latest",
+                "echo install",
+                "[\"./start.sh\",\"--port\",\"25565\"]",
+                "[{\"name\":\"game\",\"protocol\":\"tcp\",\"containerPort\":25565,"
+                        + "\"hostRange\":{\"min\":25565,\"max\":25565,\"step\":1}}]"
+        );
         return instance;
     }
 
