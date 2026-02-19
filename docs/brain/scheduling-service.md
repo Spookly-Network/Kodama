@@ -8,7 +8,7 @@ Selection rules:
 - If a region is provided, only consider nodes in that region.
 - If tags are provided, the node must contain all requested tags.
 - If `devModeAllowed` is provided, the node's `devMode` must match it.
-- Nodes must have `usedSlots < capacitySlots`.
+- Nodes must satisfy `usedSlots + slotsRequired <= capacitySlots`.
 - Choose the node with the lowest `usedSlots`, then by name, then by id.
 
 Tag format:
@@ -19,4 +19,6 @@ Tag format:
 Implementation:
 - `brain/src/main/java/net/spookly/kodama/brain/service/SchedulingService.java`
 - Returns a `Node` or `null` if no candidate is available.
-- If no candidate is available during instance creation, the request fails with `409 Conflict`.
+- If no node matches filters, instance creation fails with `409 Conflict` and `No eligible nodes found`.
+- If nodes match filters but lack capacity for `slotsRequired`, instance creation fails with
+  `409 Conflict` and an insufficient capacity message.

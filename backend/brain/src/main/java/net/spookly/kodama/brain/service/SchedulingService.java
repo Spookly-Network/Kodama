@@ -36,19 +36,22 @@ public class SchedulingService {
         if (instance == null) {
             throw new IllegalArgumentException("instance");
         }
+        int slotsRequired = normalizeSlotsRequired(instance.getSlotsRequired());
         Node node = selectNodeFromCandidates(
                 nodeRepository.findAll(),
                 instance.getRegion(),
                 instance.getTags(),
-                instance.getDevModeAllowed()
+                instance.getDevModeAllowed(),
+                slotsRequired
         );
         if (node == null) {
             logger.warn(
-                    "No eligible nodes found for instance {} (region={}, tags={}, devModeAllowed={})",
+                    "No eligible nodes found for instance {} (region={}, tags={}, devModeAllowed={}, slotsRequired={})",
                     instance.getId(),
                     instance.getRegion(),
                     instance.getTags(),
-                    instance.getDevModeAllowed()
+                    instance.getDevModeAllowed(),
+                    slotsRequired
             );
         }
         return node;
@@ -56,31 +59,70 @@ public class SchedulingService {
 
     @Transactional(readOnly = true)
     public Node selectNode(String region, String tags, Boolean devModeAllowed) {
-        return selectNodeFromCandidates(nodeRepository.findAll(), region, tags, devModeAllowed);
+        return selectNode(region, tags, devModeAllowed, 1);
+    }
+
+    @Transactional(readOnly = true)
+    public Node selectNode(String region, String tags, Boolean devModeAllowed, int slotsRequired) {
+        return selectNodeFromCandidates(nodeRepository.findAll(), region, tags, devModeAllowed, slotsRequired);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasEligibleNodes(String region, String tags, Boolean devModeAllowed) {
+        return hasEligibleNodesFromCandidates(nodeRepository.findAll(), region, tags, devModeAllowed);
     }
 
     Node selectNodeFromCandidates(
             Collection<Node> nodes,
             String region,
             String tags,
-            Boolean devModeAllowed
+            Boolean devModeAllowed,
+            int slotsRequired
     ) {
         if (nodes == null || nodes.isEmpty()) {
             return null;
         }
 
+        int normalizedSlotsRequired = normalizeSlotsRequired(slotsRequired);
         String normalizedRegion = normalizeRegion(region);
         Set<String> requestedTags = parseTags(tags);
 
         return nodes.stream()
-                .filter(node -> node.getStatus() == NodeStatus.ONLINE)
-                .filter(node -> normalizedRegion == null || normalizedRegion.equals(node.getRegion()))
-                .filter(node -> devModeAllowed == null || node.isDevMode() == devModeAllowed)
-                .filter(node -> node.getUsedSlots() < node.getCapacitySlots())
-                .filter(node -> hasRequiredTags(node, requestedTags))
+                .filter(node -> matchesFilters(node, normalizedRegion, requestedTags, devModeAllowed))
+                .filter(node -> hasCapacity(node, normalizedSlotsRequired))
                 .sorted(NODE_ORDERING)
                 .findFirst()
                 .orElse(null);
+    }
+
+    boolean hasEligibleNodesFromCandidates(
+            Collection<Node> nodes,
+            String region,
+            String tags,
+            Boolean devModeAllowed
+    ) {
+        if (nodes == null || nodes.isEmpty()) {
+            return false;
+        }
+        String normalizedRegion = normalizeRegion(region);
+        Set<String> requestedTags = parseTags(tags);
+        return nodes.stream().anyMatch(node -> matchesFilters(node, normalizedRegion, requestedTags, devModeAllowed));
+    }
+
+    private boolean matchesFilters(
+            Node node,
+            String normalizedRegion,
+            Set<String> requestedTags,
+            Boolean devModeAllowed
+    ) {
+        return node.getStatus() == NodeStatus.ONLINE
+                && (normalizedRegion == null || normalizedRegion.equals(node.getRegion()))
+                && (devModeAllowed == null || node.isDevMode() == devModeAllowed)
+                && hasRequiredTags(node, requestedTags);
+    }
+
+    private boolean hasCapacity(Node node, int slotsRequired) {
+        return ((long) node.getUsedSlots() + slotsRequired) <= node.getCapacitySlots();
     }
 
     private boolean hasRequiredTags(Node node, Set<String> requestedTags) {
@@ -109,5 +151,15 @@ public class SchedulingService {
                 .filter(tag -> !tag.isEmpty())
                 .map(tag -> tag.toLowerCase(Locale.ROOT))
                 .collect(Collectors.toSet());
+    }
+
+    private int normalizeSlotsRequired(Integer slotsRequired) {
+        if (slotsRequired == null) {
+            return 1;
+        }
+        if (slotsRequired < 1) {
+            throw new IllegalArgumentException("slotsRequired must be at least 1");
+        }
+        return slotsRequired;
     }
 }

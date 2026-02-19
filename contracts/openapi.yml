@@ -1654,6 +1654,12 @@ components:
           type: boolean
           nullable: true
           description: Optional node preference; when false, dev-mode nodes are excluded.
+        slotsRequired:
+          type: integer
+          format: int32
+          minimum: 1
+          nullable: true
+          description: Effective slot reservation for this instance. Defaults to 1 for new instances.
         portsJson:
           type: string
           nullable: true

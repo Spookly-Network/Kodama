@@ -196,6 +196,8 @@ class InstanceServiceTest {
         assertThat(persisted.getRegion()).isEqualTo("eu-west-1");
         assertThat(persisted.getTags()).isEqualTo("primary,ssd");
         assertThat(persisted.getDevModeAllowed()).isTrue();
+        assertThat(persisted.getSlotsRequired()).isEqualTo(1);
+        assertThat(created.getSlotsRequired()).isEqualTo(1);
 
         List<InstanceTemplateAssignment> assignments =
                 instanceTemplateAssignmentRepository.findAllByInstanceId(created.getId());
@@ -404,6 +406,42 @@ class InstanceServiceTest {
     }
 
     @Test
+    void createInstanceRejectsProvidedNodeWhenCapacityInsufficient() {
+        Node node = nodeRepository.save(new Node(
+                "node-tight-capacity",
+                "eu-west",
+                NodeStatus.ONLINE,
+                false,
+                3,
+                2,
+                OffsetDateTime.now(ZoneOffset.UTC),
+                "1.0.0",
+                null,
+                "http://node-tight-capacity.internal"
+        ));
+        TemplateVersion version = createTemplateVersion("Tight Node Template", "1.0.0");
+
+        CreateInstanceRequest request = new CreateInstanceRequest(
+                "with-tight-node",
+                List.of(new TemplateAssignmentRequest(
+                        version.getTemplate().getId(),
+                        version.getId(),
+                        0
+                ))
+        );
+        request.setNodeId(node.getId());
+        request.setSlotsRequired(2);
+
+        assertThatThrownBy(() -> instanceService.createInstance(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException statusException = (ResponseStatusException) ex;
+                    assertThat(statusException.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(statusException.getReason()).contains("Insufficient node capacity");
+                });
+    }
+
+    @Test
     void createInstanceSelectsNodeWhenNodeIdMissing() {
         Node selectedNode = createOnlineNode(
                 "node-low",
@@ -460,6 +498,48 @@ class InstanceServiceTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
                 .isEqualTo(HttpStatus.CONFLICT);
+    }
+
+    @Test
+    void createInstanceRejectsWhenFilteredNodesHaveInsufficientCapacityForSlotsRequired() {
+        createOnlineNode(
+                "node-nearly-full",
+                "eu-west-1",
+                false,
+                "primary,ssd",
+                4,
+                3
+        );
+        createOnlineNode(
+                "node-also-nearly-full",
+                "eu-west-1",
+                false,
+                "primary,ssd",
+                6,
+                5
+        );
+        TemplateVersion version = createTemplateVersion("Capacity Template", "1.0.0");
+
+        CreateInstanceRequest request = new CreateInstanceRequest(
+                "capacity-too-small",
+                List.of(new TemplateAssignmentRequest(
+                        version.getTemplate().getId(),
+                        version.getId(),
+                        0
+                ))
+        );
+        request.setRegion("eu-west-1");
+        request.setTags("primary,ssd");
+        request.setDevModeAllowed(Boolean.FALSE);
+        request.setSlotsRequired(2);
+
+        assertThatThrownBy(() -> instanceService.createInstance(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException statusException = (ResponseStatusException) ex;
+                    assertThat(statusException.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(statusException.getReason()).isEqualTo("Insufficient node capacity for slotsRequired=2");
+                });
     }
 
     @Test
@@ -634,6 +714,7 @@ class InstanceServiceTest {
         assertThat(persisted.getBlueprint().getId()).isEqualTo(blueprint.getId());
         assertThat(persisted.getPermanent()).isTrue();
         assertThat(persisted.getSlotsRequired()).isEqualTo(6);
+        assertThat(created.getSlotsRequired()).isEqualTo(6);
         assertThat(persisted.getContainerImage()).isEqualTo("ghcr.io/spookly/hytale:override");
         assertThat(persisted.getInstallScript()).isEqualTo("echo install override");
         assertThat(objectMapper.readValue(persisted.getStartCommandJson(), new TypeReference<List<String>>() {

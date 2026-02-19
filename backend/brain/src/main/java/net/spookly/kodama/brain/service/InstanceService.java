@@ -104,14 +104,32 @@ public class InstanceService {
 
         InstanceCreationPreparationService.PreparedCreateInstanceRequest preparedCreateRequest =
                 instanceCreationPreparationService.prepareForCreate(request);
+        InstanceCreationPreparationService.RuntimeConfiguration runtimeConfiguration =
+                preparedCreateRequest.runtimeConfiguration();
 
         Node node;
         if (request.getNodeId() != null) {
             node = nodeRepository.findById(request.getNodeId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Node not found"));
+            validateNodeCapacity(node, runtimeConfiguration.slotsRequired());
         } else {
-            node = schedulingService.selectNode(request.getRegion(), request.getTags(), request.getDevModeAllowed());
+            node = schedulingService.selectNode(
+                    request.getRegion(),
+                    request.getTags(),
+                    request.getDevModeAllowed(),
+                    runtimeConfiguration.slotsRequired()
+            );
             if (node == null) {
+                if (schedulingService.hasEligibleNodes(
+                        request.getRegion(),
+                        request.getTags(),
+                        request.getDevModeAllowed()
+                )) {
+                    throw new ResponseStatusException(
+                            HttpStatus.CONFLICT,
+                            "Insufficient node capacity for slotsRequired=" + runtimeConfiguration.slotsRequired()
+                    );
+                }
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "No eligible nodes found");
             }
         }
@@ -131,8 +149,6 @@ public class InstanceService {
                 now,
                 now
         );
-        InstanceCreationPreparationService.RuntimeConfiguration runtimeConfiguration =
-                preparedCreateRequest.runtimeConfiguration();
         instance.applyBlueprintAndRuntime(
                 preparedCreateRequest.blueprint(),
                 runtimeConfiguration.permanent(),
@@ -287,6 +303,21 @@ public class InstanceService {
         Instance instance = loadInstanceForNode(nodeId, instanceId);
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         instanceStateMachine.transition(instance, InstanceState.FAILED, InstanceEventType.FAILURE_REPORTED, now, null);
+    }
+
+    private void validateNodeCapacity(Node node, int slotsRequired) {
+        if (((long) node.getUsedSlots() + slotsRequired) > node.getCapacitySlots()) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Insufficient node capacity for slotsRequired="
+                            + slotsRequired
+                            + " (usedSlots="
+                            + node.getUsedSlots()
+                            + ", capacitySlots="
+                            + node.getCapacitySlots()
+                            + ")"
+            );
+        }
     }
 
     private Instance loadInstanceForNode(UUID nodeId, UUID instanceId) {
