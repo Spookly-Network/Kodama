@@ -14,7 +14,9 @@ Persist a local record of instance metadata after the node finishes preparing a 
 - Location: `${NODE_AGENT_WORKSPACE_DIR:-./data}/instances/<instanceId>/instance.json`.
 - Contents include:
   - instance id, name, display name
+  - resolved runtime fields: `containerImage`, `installScript`, `startCommand`, `slotsRequired`
   - ports JSON (if provided)
+  - install completion status (`installCompleted`)
   - resolved variables map used for substitution
   - template layer list from the prepare request
   - prepared timestamp
@@ -22,6 +24,11 @@ Persist a local record of instance metadata after the node finishes preparing a 
   - container status and status timestamp (updated on start/stop/monitor)
   - container exit code and exit reason (recorded when containers stop)
 - The registry is overwritten on each successful prepare and updated again when the container id is recorded.
+- Legacy registry files that predate runtime fields are still readable; missing runtime fields default to:
+  - `startCommand: []`
+  - `slotsRequired: 1`
+  - `installCompleted: false`
+  - nullable runtime strings remain `null`
 - Container status updates are recorded when start marks the instance as `running` and stop marks it as `stopped`.
 - The instance monitor polls tracked containers (including stopped ones) and reconciles status changes,
   so manual restarts are reflected in the registry.

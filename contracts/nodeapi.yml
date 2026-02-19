@@ -132,7 +132,12 @@ endpoints:
         - instanceId: uuid
           name: string|null
           displayName: string|null
+          containerImage: string|null
+          installScript: string|null
+          startCommand: list<string>
+          slotsRequired: int32
           portsJson: string|null
+          installCompleted: boolean
           variables: map<string,string>|null (redacted in registry listing)
           layers:
             - templateVersionId: uuid
