@@ -660,6 +660,33 @@ class InstanceServiceTest {
     }
 
     @Test
+    void createInstanceRejectsBlueprintWithoutTemplateAssignments() throws Exception {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Blueprint blueprint = createBlueprint(
+                "bp-empty-assignments",
+                false,
+                1,
+                "ghcr.io/spookly/hytale:empty-assignments",
+                null,
+                List.of("./start.sh"),
+                null,
+                now
+        );
+
+        CreateInstanceRequest request = new CreateInstanceRequest();
+        request.setName("instance-blueprint-empty-assignments");
+        request.setBlueprintId(blueprint.getId());
+
+        assertThatThrownBy(() -> instanceService.createInstance(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException statusException = (ResponseStatusException) ex;
+                    assertThat(statusException.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(statusException.getReason()).isEqualTo("template layers are required");
+                });
+    }
+
+    @Test
     void createInstanceRejectsDeletedBlueprint() throws Exception {
         createOnlineNode("node-blueprint-deleted");
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);

@@ -116,13 +116,16 @@ public class InstanceCreationPreparationService {
             return validateAndNormalizeTemplateAssignments(request.getTemplateLayers(), true);
         }
         if (blueprint != null) {
-            return templateAssignmentService.listBlueprintAssignmentReferences(blueprint.getId()).stream()
+            List<AssignmentDescriptor> assignmentDescriptors =
+                    templateAssignmentService.listBlueprintAssignmentReferences(blueprint.getId()).stream()
                     .map(assignmentReference -> new AssignmentDescriptor(
                             assignmentReference.templateId(),
                             assignmentReference.templateVersionId(),
                             assignmentReference.priority()
                     ))
                     .toList();
+            requireTemplateLayers(assignmentDescriptors);
+            return assignmentDescriptors;
         }
         return validateAndNormalizeTemplateAssignments(null, true);
     }
@@ -133,7 +136,7 @@ public class InstanceCreationPreparationService {
     ) {
         if (assignments == null || assignments.isEmpty()) {
             if (required) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one template assignment is required");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "template layers are required");
             }
             return List.of();
         }
@@ -160,6 +163,12 @@ public class InstanceCreationPreparationService {
             ));
         }
         return descriptors;
+    }
+
+    private void requireTemplateLayers(List<?> layers) {
+        if (layers == null || layers.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "template layers are required");
+        }
     }
 
     private String resolveVariablesJson(CreateInstanceRequest request, Blueprint blueprint) {
