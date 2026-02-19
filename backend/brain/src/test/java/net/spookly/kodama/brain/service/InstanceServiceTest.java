@@ -294,6 +294,22 @@ class InstanceServiceTest {
     }
 
     @Test
+    void createInstanceRejectsEmptyTemplateLayers() {
+        CreateInstanceRequest request = new CreateInstanceRequest(
+                "empty-template-layers",
+                List.of()
+        );
+
+        assertThatThrownBy(() -> instanceService.createInstance(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+                    assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(responseStatusException.getReason()).isEqualTo("template layers are required");
+                });
+    }
+
+    @Test
     void createInstanceFailsWhenTemplateVersionMissing() {
         Template template = createTemplate("Missing Version Template");
         CreateInstanceRequest request = new CreateInstanceRequest(

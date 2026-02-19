@@ -60,6 +60,7 @@ Final order (with `orderIndex`) uses priority, source, then `templateId` orderin
 
 ## Edge Cases / Risks
 - `templateId` is required; missing it returns `400 Bad Request`.
+- Instance creation rejects requests that resolve to zero effective layers with `400 Bad Request` (`template layers are required`).
 - `templateVersionId` must belong to `templateId`; mismatches return `400 Bad Request`.
 - Missing `templateVersionId` uses latest version at resolve time; if none exists, resolution fails with `404 Not Found`.
 - Group assignments for a `templateId` are ignored when any direct instance assignment exists for that template.

@@ -116,6 +116,7 @@ public class InstanceService {
 
         List<AssignmentDescriptor> assignmentDescriptors =
                 validateAndNormalizeTemplateAssignments(request.getTemplateLayers());
+        requireTemplateLayers(assignmentDescriptors);
         AssignmentLookup assignmentLookup = resolveAssignmentReferences(assignmentDescriptors);
 
         Node node;
@@ -156,6 +157,7 @@ public class InstanceService {
 
         List<ResolvedTemplateLayer> resolvedLayers =
                 templateAssignmentResolver.resolveForInstance(savedInstance.getId());
+        requireTemplateLayers(resolvedLayers);
         return InstanceDto.fromEntity(savedInstance, resolvedLayers);
     }
 
@@ -286,7 +288,7 @@ public class InstanceService {
             List<TemplateAssignmentRequest> assignments
     ) {
         if (assignments == null || assignments.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one template assignment is required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "template layers are required");
         }
 
         List<AssignmentDescriptor> descriptors = new ArrayList<>();
@@ -311,6 +313,12 @@ public class InstanceService {
             ));
         }
         return descriptors;
+    }
+
+    private void requireTemplateLayers(List<?> layers) {
+        if (layers == null || layers.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "template layers are required");
+        }
     }
 
     private String resolveVariablesJson(CreateInstanceRequest request) {
