@@ -109,10 +109,11 @@ public class InstancePortAllocationService {
             if (root.isObject()) {
                 root.fields().forEachRemaining(field -> {
                     JsonNode value = field.getValue();
-                    if (value != null && value.isObject() && value.has("hostPort")) {
-                        ports.add(parsePort(value.get("hostPort"), "portsJson." + field.getKey() + ".hostPort"));
-                    } else {
-                        ports.add(parsePort(value, "portsJson." + field.getKey()));
+                    if (value != null && value.isObject()) {
+                        JsonNode hostPortNode = value.get("hostPort");
+                        if (hostPortNode != null && !hostPortNode.isNull()) {
+                            ports.add(parsePort(hostPortNode, "portsJson." + field.getKey() + ".hostPort"));
+                        }
                     }
                 });
                 return ports;

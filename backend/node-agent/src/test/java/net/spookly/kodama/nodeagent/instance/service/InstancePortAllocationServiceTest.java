@@ -132,6 +132,98 @@ class InstancePortAllocationServiceTest {
                 .hasMessageContaining("No available host port");
     }
 
+    @Test
+    void allocateDoesNotTreatLegacyContainerPortObjectValuesAsReservedHostPorts() {
+        ObjectMapper objectMapper = objectMapper();
+        InstanceWorkspaceLayout layout = workspaceLayout();
+        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper, layout);
+        InstanceWorkspaceManager workspaceManager = new InstanceWorkspaceManager(layout);
+
+        UUID existingInstanceId = UUID.randomUUID();
+        InstanceWorkspacePaths existingWorkspace = workspaceManager.prepareWorkspace(existingInstanceId.toString());
+        NodePrepareInstanceRequest existingRequest = new NodePrepareInstanceRequest(
+                existingInstanceId,
+                "existing",
+                "existing",
+                "image",
+                null,
+                List.of("run"),
+                1,
+                null,
+                "{\"game\":25565}",
+                Map.of(),
+                null,
+                List.of(sampleLayer())
+        );
+        registryService.recordPrepared(
+                existingWorkspace,
+                existingRequest,
+                existingRequest.layers(),
+                existingRequest.variables(),
+                existingRequest.portsJson()
+        );
+
+        InstancePortAllocationService service = new InstancePortAllocationService(registryService, objectMapper);
+        NodePreparePortDefinition definition = new NodePreparePortDefinition(
+                "game",
+                "udp",
+                25565,
+                new NodePreparePortDefinition.HostRange(25565, 25565, 1)
+        );
+
+        InstancePortAllocationService.PortAllocationResult result = service.allocate(UUID.randomUUID(), List.of(definition));
+
+        assertThat(result.injectedVariables())
+                .containsEntry("PORT", "25565")
+                .containsEntry("PORT_GAME", "25565");
+    }
+
+    @Test
+    void allocateReservesLegacyObjectHostPortMappings() {
+        ObjectMapper objectMapper = objectMapper();
+        InstanceWorkspaceLayout layout = workspaceLayout();
+        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper, layout);
+        InstanceWorkspaceManager workspaceManager = new InstanceWorkspaceManager(layout);
+
+        UUID existingInstanceId = UUID.randomUUID();
+        InstanceWorkspacePaths existingWorkspace = workspaceManager.prepareWorkspace(existingInstanceId.toString());
+        NodePrepareInstanceRequest existingRequest = new NodePrepareInstanceRequest(
+                existingInstanceId,
+                "existing",
+                "existing",
+                "image",
+                null,
+                List.of("run"),
+                1,
+                null,
+                "{\"game\":{\"containerPort\":25565,\"hostPort\":30000}}",
+                Map.of(),
+                null,
+                List.of(sampleLayer())
+        );
+        registryService.recordPrepared(
+                existingWorkspace,
+                existingRequest,
+                existingRequest.layers(),
+                existingRequest.variables(),
+                existingRequest.portsJson()
+        );
+
+        InstancePortAllocationService service = new InstancePortAllocationService(registryService, objectMapper);
+        NodePreparePortDefinition definition = new NodePreparePortDefinition(
+                "game",
+                "udp",
+                25565,
+                new NodePreparePortDefinition.HostRange(30000, 30001, 1)
+        );
+
+        InstancePortAllocationService.PortAllocationResult result = service.allocate(UUID.randomUUID(), List.of(definition));
+
+        assertThat(result.injectedVariables())
+                .containsEntry("PORT", "30001")
+                .containsEntry("PORT_GAME", "30001");
+    }
+
     private InstanceWorkspaceLayout workspaceLayout() {
         NodeConfig config = new NodeConfig();
         config.setWorkspaceDir(tempDir.resolve("workspace").toString());
