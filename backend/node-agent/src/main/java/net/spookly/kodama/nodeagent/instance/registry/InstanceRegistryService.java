@@ -54,6 +54,9 @@ public class InstanceRegistryService {
         requireMatchingInstanceId(instanceId, workspace.instanceId());
         List<NodePrepareInstanceLayer> safeLayers = requireLayers(layers);
         Map<String, String> safeVariables = variables == null ? Map.of() : new LinkedHashMap<>(variables);
+        List<String> safeStartCommand = request.startCommand() == null
+                ? List.of()
+                : new ArrayList<>(request.startCommand());
         Path instanceRoot = Objects.requireNonNull(workspace.instanceRoot(), "instanceRoot");
         if (!Files.isDirectory(instanceRoot)) {
             throw new InstanceRegistryException("Instance workspace root is missing at " + instanceRoot);
@@ -63,7 +66,12 @@ public class InstanceRegistryService {
                 instanceId,
                 request.name(),
                 request.displayName(),
+                request.containerImage(),
+                request.installScript(),
+                safeStartCommand,
+                request.slotsRequired(),
                 request.portsJson(),
+                false,
                 safeVariables,
                 new ArrayList<>(safeLayers),
                 OffsetDateTime.now(),
@@ -128,7 +136,12 @@ public class InstanceRegistryService {
                 entry.instanceId(),
                 entry.name(),
                 entry.displayName(),
+                entry.containerImage(),
+                entry.installScript(),
+                entry.startCommand(),
+                entry.slotsRequired(),
                 entry.portsJson(),
+                entry.installCompleted(),
                 entry.variables(),
                 entry.layers(),
                 entry.preparedAt(),
@@ -179,7 +192,12 @@ public class InstanceRegistryService {
                 entry.instanceId(),
                 entry.name(),
                 entry.displayName(),
+                entry.containerImage(),
+                entry.installScript(),
+                entry.startCommand(),
+                entry.slotsRequired(),
                 entry.portsJson(),
+                entry.installCompleted(),
                 entry.variables(),
                 entry.layers(),
                 entry.preparedAt(),
@@ -342,7 +360,12 @@ public class InstanceRegistryService {
                 entry.instanceId(),
                 entry.name(),
                 entry.displayName(),
+                entry.containerImage(),
+                entry.installScript(),
+                entry.startCommand(),
+                entry.slotsRequired(),
                 entry.portsJson(),
+                entry.installCompleted(),
                 null,
                 entry.layers(),
                 entry.preparedAt(),
@@ -392,7 +415,12 @@ public class InstanceRegistryService {
                 entry.instanceId(),
                 entry.name(),
                 entry.displayName(),
+                entry.containerImage(),
+                entry.installScript(),
+                entry.startCommand(),
+                entry.slotsRequired(),
                 entry.portsJson(),
+                entry.installCompleted(),
                 entry.variables(),
                 entry.layers(),
                 entry.preparedAt(),

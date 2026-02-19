@@ -3,6 +3,7 @@ package net.spookly.kodama.nodeagent.instance.registry;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +43,11 @@ class InstanceRegistryServiceTest {
                 instanceId,
                 "instance-name",
                 "Instance Name",
+                "ghcr.io/spookly/hytale:test",
+                "./install.sh",
+                List.of("java", "-jar", "server.jar"),
+                2,
+                null,
                 "{\"port\":25565}",
                 variables,
                 null,
@@ -61,7 +67,12 @@ class InstanceRegistryServiceTest {
         assertThat(entry.instanceId()).isEqualTo(instanceId);
         assertThat(entry.name()).isEqualTo("instance-name");
         assertThat(entry.displayName()).isEqualTo("Instance Name");
+        assertThat(entry.containerImage()).isEqualTo("ghcr.io/spookly/hytale:test");
+        assertThat(entry.installScript()).isEqualTo("./install.sh");
+        assertThat(entry.startCommand()).containsExactly("java", "-jar", "server.jar");
+        assertThat(entry.slotsRequired()).isEqualTo(2);
         assertThat(entry.portsJson()).isEqualTo("{\"port\":25565}");
+        assertThat(entry.installCompleted()).isFalse();
         assertThat(entry.variables()).containsEntry("REGION", "local");
         assertThat(entry.layers()).hasSize(1);
         assertThat(entry.layers().get(0).templateId()).isEqualTo(layer.templateId());
@@ -90,6 +101,11 @@ class InstanceRegistryServiceTest {
         NodePrepareInstanceRequest request = new NodePrepareInstanceRequest(
                 instanceId,
                 "instance-name",
+                "Instance Name",
+                "ghcr.io/spookly/hytale:test",
+                "./install.sh",
+                List.of("java", "-jar", "server.jar"),
+                2,
                 null,
                 null,
                 Map.of(),
@@ -121,6 +137,11 @@ class InstanceRegistryServiceTest {
         NodePrepareInstanceRequest request = new NodePrepareInstanceRequest(
                 instanceId,
                 "instance-name",
+                "Instance Name",
+                "ghcr.io/spookly/hytale:test",
+                "./install.sh",
+                List.of("java", "-jar", "server.jar"),
+                2,
                 null,
                 null,
                 Map.of(),
@@ -136,6 +157,11 @@ class InstanceRegistryServiceTest {
 
         Path registryFile = workspace.instanceRoot().resolve("instance.json");
         InstanceRegistryEntry entry = objectMapper().readValue(registryFile.toFile(), InstanceRegistryEntry.class);
+        assertThat(entry.containerImage()).isEqualTo("ghcr.io/spookly/hytale:test");
+        assertThat(entry.installScript()).isEqualTo("./install.sh");
+        assertThat(entry.startCommand()).containsExactly("java", "-jar", "server.jar");
+        assertThat(entry.slotsRequired()).isEqualTo(2);
+        assertThat(entry.installCompleted()).isFalse();
         assertThat(entry.containerId()).isEqualTo("container-123");
         assertThat(entry.containerStatus()).isEqualTo("running");
         assertThat(entry.containerStatusUpdatedAt()).isNotNull();
@@ -160,6 +186,11 @@ class InstanceRegistryServiceTest {
         NodePrepareInstanceRequest request = new NodePrepareInstanceRequest(
                 instanceId,
                 "instance-name",
+                "Instance Name",
+                "ghcr.io/spookly/hytale:test",
+                "./install.sh",
+                List.of("java", "-jar", "server.jar"),
+                2,
                 null,
                 null,
                 Map.of(),
@@ -176,6 +207,11 @@ class InstanceRegistryServiceTest {
 
         Path registryFile = workspace.instanceRoot().resolve("instance.json");
         InstanceRegistryEntry entry = objectMapper().readValue(registryFile.toFile(), InstanceRegistryEntry.class);
+        assertThat(entry.containerImage()).isEqualTo("ghcr.io/spookly/hytale:test");
+        assertThat(entry.installScript()).isEqualTo("./install.sh");
+        assertThat(entry.startCommand()).containsExactly("java", "-jar", "server.jar");
+        assertThat(entry.slotsRequired()).isEqualTo(2);
+        assertThat(entry.installCompleted()).isFalse();
         assertThat(entry.containerId()).isEqualTo("container-123");
         assertThat(entry.containerStatus()).isEqualTo("stopped");
         assertThat(entry.containerStatusUpdatedAt()).isNotNull();
@@ -238,6 +274,68 @@ class InstanceRegistryServiceTest {
         assertThat(entries)
                 .anyMatch(entry -> entry.workspacePath().equals(Path.of("instances", firstId.toString()).toString()))
                 .anyMatch(entry -> entry.workspacePath().equals(Path.of("instances", secondId.toString()).toString()));
+    }
+
+    @Test
+    void loadRegistryDefaultsMissingBlueprintRuntimeFieldsForLegacyEntries() throws Exception {
+        UUID instanceId = UUID.randomUUID();
+        InstanceWorkspaceLayout layout = workspaceLayout();
+        InstanceWorkspacePaths workspace = prepareWorkspace(layout, instanceId.toString());
+        Path registryFile = workspace.instanceRoot().resolve("instance.json");
+        String legacyJson = """
+                {
+                  "instanceId": "%s",
+                  "name": "legacy",
+                  "displayName": "Legacy",
+                  "portsJson": "{\\"game\\":25565}",
+                  "variables": {
+                    "ENV": "prod"
+                  },
+                  "layers": [],
+                  "preparedAt": null,
+                  "containerId": null,
+                  "containerStatus": null,
+                  "containerStatusUpdatedAt": null,
+                  "containerExitCode": null,
+                  "containerExitReason": null,
+                  "workspacePath": null
+                }
+                """.formatted(instanceId);
+        Files.writeString(registryFile, legacyJson);
+
+        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), layout);
+        InstanceRegistryEntry entry = registryService.loadRegistry(workspace);
+
+        assertThat(entry.containerImage()).isNull();
+        assertThat(entry.installScript()).isNull();
+        assertThat(entry.startCommand()).isEmpty();
+        assertThat(entry.slotsRequired()).isEqualTo(1);
+        assertThat(entry.installCompleted()).isFalse();
+    }
+
+    @Test
+    void loadRegistrySupportsAllocatedPortsAlias() throws Exception {
+        UUID instanceId = UUID.randomUUID();
+        InstanceWorkspaceLayout layout = workspaceLayout();
+        InstanceWorkspacePaths workspace = prepareWorkspace(layout, instanceId.toString());
+        Path registryFile = workspace.instanceRoot().resolve("instance.json");
+        String aliasJson = """
+                {
+                  "instanceId": "%s",
+                  "name": "legacy",
+                  "displayName": "Legacy",
+                  "allocatedPorts": "{\\"game\\":25565}",
+                  "variables": {},
+                  "layers": [],
+                  "workspacePath": null
+                }
+                """.formatted(instanceId);
+        Files.writeString(registryFile, aliasJson);
+
+        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), layout);
+        InstanceRegistryEntry entry = registryService.loadRegistry(workspace);
+
+        assertThat(entry.portsJson()).isEqualTo("{\"game\":25565}");
     }
 
     private InstanceWorkspacePaths prepareWorkspace(InstanceWorkspaceLayout layout, String instanceId) {
