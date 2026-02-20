@@ -25,40 +25,39 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/nodes")
 public class NodeController {
 
-    private final NodeService nodeService;
+  private final NodeService nodeService;
 
-    public NodeController(NodeService nodeService) {
-        this.nodeService = nodeService;
-    }
+  public NodeController(NodeService nodeService) {
+    this.nodeService = nodeService;
+  }
 
-    @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
-    public List<NodeDto> listNodes() {
-        return nodeService.listNodes();
-    }
+  @GetMapping
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
+  public List<NodeDto> listNodes() {
+    return nodeService.listNodes();
+  }
 
-    @PostMapping("/register")
-    @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAuthority('ROLE_NODE')")
-    public NodeRegistrationResponse registerNode(@Valid @RequestBody NodeRegistrationRequest request) {
-        return nodeService.registerNode(request);
-    }
+  @PostMapping("/register")
+  @ResponseStatus(HttpStatus.OK)
+  @PreAuthorize("hasAuthority('ROLE_NODE')")
+  public NodeRegistrationResponse registerNode(
+      @Valid @RequestBody NodeRegistrationRequest request) {
+    return nodeService.registerNode(request);
+  }
 
-    @PostMapping("/{nodeId}/heartbeat")
-    @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAuthority('ROLE_NODE')")
-    public NodeDto heartbeat(
-            @PathVariable UUID nodeId,
-            @Valid @RequestBody NodeHeartbeatRequest request) {
-        return nodeService.heartbeat(nodeId, request);
-    }
+  @PostMapping("/{nodeId}/heartbeat")
+  @ResponseStatus(HttpStatus.OK)
+  @PreAuthorize("hasAuthority('ROLE_NODE')")
+  public NodeDto heartbeat(
+      @PathVariable UUID nodeId, @Valid @RequestBody NodeHeartbeatRequest request) {
+    return nodeService.heartbeat(nodeId, request);
+  }
 
-    @PutMapping("/{nodeId}")
-    @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
-    public NodeDto updateNode(
-            @PathVariable UUID nodeId,
-            @Valid @RequestBody NodeUpdateRequest request) {
-        return nodeService.updateNode(nodeId, request);
-    }
+  @PutMapping("/{nodeId}")
+  @ResponseStatus(HttpStatus.OK)
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+  public NodeDto updateNode(
+      @PathVariable UUID nodeId, @Valid @RequestBody NodeUpdateRequest request) {
+    return nodeService.updateNode(nodeId, request);
+  }
 }

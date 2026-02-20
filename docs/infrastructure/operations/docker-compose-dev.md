@@ -12,7 +12,6 @@ Document the dev compose settings that must align with Brain and Node Agent conf
 - Start local services with `infra/docker-compose.dev.yml`.
 - The Node Agent now requires these env vars to pass startup validation:
   - `NODE_AGENT_NAME`
-  - `NODE_AGENT_NODE_VERSION`
   - `NODE_AGENT_REGION`
   - `NODE_AGENT_CAPACITY_SLOTS`
   - `NODE_AGENT_BRAIN_BASE_URL`
@@ -22,6 +21,7 @@ Document the dev compose settings that must align with Brain and Node Agent conf
   - `NODE_AGENT_S3_ACCESS_KEY`
   - `NODE_AGENT_S3_SECRET_KEY`
 - `NODE_AGENT_BASE_URL` is set so the Brain can issue commands back to the Node Agent.
+- Node version is not configured in compose; the node-agent uses its build version automatically.
 - Cache and workspace directories are mounted as named volumes.
 - `BRAIN_SECURITY_ENABLED=false` disables auth filters for local development.
 

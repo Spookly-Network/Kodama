@@ -5,5 +5,4 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 
 @Configuration
 @EnableWebSecurity
-class TestSecurityBootstrapConfig {
-}
+class TestSecurityBootstrapConfig {}

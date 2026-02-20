@@ -21,64 +21,62 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class NodeAuthFilter extends OncePerRequestFilter {
 
-    private static final String NODE_AUTHORITY = "ROLE_NODE";
+  private static final String NODE_AUTHORITY = "ROLE_NODE";
 
-    private final BrainSecurityProperties securityProperties;
+  private final BrainSecurityProperties securityProperties;
 
-    public NodeAuthFilter(BrainSecurityProperties securityProperties) {
-        this.securityProperties = securityProperties;
+  public NodeAuthFilter(BrainSecurityProperties securityProperties) {
+    this.securityProperties = securityProperties;
+  }
+
+  @Override
+  protected boolean shouldNotFilter(HttpServletRequest request) {
+    if (!securityProperties.isEnabled()) {
+      return true;
     }
-
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        if (!securityProperties.isEnabled()) {
-            return true;
-        }
-        if (CorsUtils.isPreFlightRequest(request)) {
-            return true;
-        }
-        return !NodeAuthRequestMatcher.matches(request);
+    if (CorsUtils.isPreFlightRequest(request)) {
+      return true;
     }
+    return !NodeAuthRequestMatcher.matches(request);
+  }
 
-    @Override
-    protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain
-    ) throws ServletException, IOException {
-        BrainSecurityProperties.NodeAuth nodeAuth = securityProperties.getNode();
-        String expectedToken = nodeAuth == null ? null : nodeAuth.getToken();
-        if (expectedToken == null || expectedToken.isBlank()) {
-            response.sendError(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Node authentication is not configured");
-            return;
-        }
-        String headerName = nodeAuth.getHeaderName();
-        if (headerName == null || headerName.isBlank()) {
-            response.sendError(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Node authentication header is not configured");
-            return;
-        }
-        String providedToken = request.getHeader(headerName);
-        if (providedToken == null || providedToken.isBlank()) {
-            response.sendError(HttpStatus.UNAUTHORIZED.value(), "Missing node authentication token");
-            return;
-        }
-        if (!tokensMatch(expectedToken, providedToken)) {
-            response.sendError(HttpStatus.UNAUTHORIZED.value(), "Invalid node authentication token");
-            return;
-        }
-        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                "node",
-                null,
-                AuthorityUtils.createAuthorityList(NODE_AUTHORITY)
-        );
-        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        filterChain.doFilter(request, response);
+  @Override
+  protected void doFilterInternal(
+      HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+      throws ServletException, IOException {
+    BrainSecurityProperties.NodeAuth nodeAuth = securityProperties.getNode();
+    String expectedToken = nodeAuth == null ? null : nodeAuth.getToken();
+    if (expectedToken == null || expectedToken.isBlank()) {
+      response.sendError(
+          HttpStatus.INTERNAL_SERVER_ERROR.value(), "Node authentication is not configured");
+      return;
     }
+    String headerName = nodeAuth.getHeaderName();
+    if (headerName == null || headerName.isBlank()) {
+      response.sendError(
+          HttpStatus.INTERNAL_SERVER_ERROR.value(), "Node authentication header is not configured");
+      return;
+    }
+    String providedToken = request.getHeader(headerName);
+    if (providedToken == null || providedToken.isBlank()) {
+      response.sendError(HttpStatus.UNAUTHORIZED.value(), "Missing node authentication token");
+      return;
+    }
+    if (!tokensMatch(expectedToken, providedToken)) {
+      response.sendError(HttpStatus.UNAUTHORIZED.value(), "Invalid node authentication token");
+      return;
+    }
+    UsernamePasswordAuthenticationToken authentication =
+        new UsernamePasswordAuthenticationToken(
+            "node", null, AuthorityUtils.createAuthorityList(NODE_AUTHORITY));
+    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+    SecurityContextHolder.getContext().setAuthentication(authentication);
+    filterChain.doFilter(request, response);
+  }
 
-    private boolean tokensMatch(String expectedToken, String providedToken) {
-        byte[] expectedBytes = expectedToken.getBytes(StandardCharsets.UTF_8);
-        byte[] providedBytes = providedToken.getBytes(StandardCharsets.UTF_8);
-        return MessageDigest.isEqual(expectedBytes, providedBytes);
-    }
+  private boolean tokensMatch(String expectedToken, String providedToken) {
+    byte[] expectedBytes = expectedToken.getBytes(StandardCharsets.UTF_8);
+    byte[] providedBytes = providedToken.getBytes(StandardCharsets.UTF_8);
+    return MessageDigest.isEqual(expectedBytes, providedBytes);
+  }
 }

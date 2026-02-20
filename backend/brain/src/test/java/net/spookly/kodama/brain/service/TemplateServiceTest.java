@@ -33,94 +33,92 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Import(TemplateService.class)
 class TemplateServiceTest {
 
-    @Container
-    private static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4.0");
+  @Container private static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4.0");
 
-    @DynamicPropertySource
-    static void configureDatasource(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-        registry.add("spring.datasource.driver-class-name", mysql::getDriverClassName);
-    }
+  @DynamicPropertySource
+  static void configureDatasource(DynamicPropertyRegistry registry) {
+    registry.add("spring.datasource.url", mysql::getJdbcUrl);
+    registry.add("spring.datasource.username", mysql::getUsername);
+    registry.add("spring.datasource.password", mysql::getPassword);
+    registry.add("spring.datasource.driver-class-name", mysql::getDriverClassName);
+  }
 
-    private static final String CREATOR_USERNAME = "admin";
+  private static final String CREATOR_USERNAME = "admin";
 
-    @Autowired
-    private TemplateService templateService;
+  @Autowired private TemplateService templateService;
 
-    @Autowired
-    private TemplateRepository templateRepository;
+  @Autowired private TemplateRepository templateRepository;
 
-    @Autowired
-    private TemplateVersionRepository templateVersionRepository;
+  @Autowired private TemplateVersionRepository templateVersionRepository;
 
-    @Test
-    void createTemplatePersistsEntity() {
-        TemplateDto templateDto = templateService.createTemplate(
-                new CreateTemplateRequest("Base Template", "Base description", TemplateType.CUSTOM),
-                CREATOR_USERNAME
-        );
+  @Test
+  void createTemplatePersistsEntity() {
+    TemplateDto templateDto =
+        templateService.createTemplate(
+            new CreateTemplateRequest("Base Template", "Base description", TemplateType.CUSTOM),
+            CREATOR_USERNAME);
 
-        Template persisted = templateRepository.findById(templateDto.getId()).orElseThrow();
-        assertThat(persisted.getName()).isEqualTo("Base Template");
-        assertThat(persisted.getDescription()).isEqualTo("Base description");
-        assertThat(persisted.getCreatedBy()).isEqualTo(CREATOR_USERNAME);
-        assertThat(persisted.getCreatedAt()).isNotNull();
-    }
+    Template persisted = templateRepository.findById(templateDto.getId()).orElseThrow();
+    assertThat(persisted.getName()).isEqualTo("Base Template");
+    assertThat(persisted.getDescription()).isEqualTo("Base description");
+    assertThat(persisted.getCreatedBy()).isEqualTo(CREATOR_USERNAME);
+    assertThat(persisted.getCreatedAt()).isNotNull();
+  }
 
-    @Test
-    void createTemplateRejectsDuplicateNames() {
-        CreateTemplateRequest request =
-                new CreateTemplateRequest("Duplicate", "desc", TemplateType.CUSTOM);
-        templateService.createTemplate(request, CREATOR_USERNAME);
+  @Test
+  void createTemplateRejectsDuplicateNames() {
+    CreateTemplateRequest request =
+        new CreateTemplateRequest("Duplicate", "desc", TemplateType.CUSTOM);
+    templateService.createTemplate(request, CREATOR_USERNAME);
 
-        assertThatThrownBy(() -> templateService.createTemplate(request, CREATOR_USERNAME))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
-                .isEqualTo(HttpStatus.CONFLICT);
-    }
+    assertThatThrownBy(() -> templateService.createTemplate(request, CREATOR_USERNAME))
+        .isInstanceOf(ResponseStatusException.class)
+        .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+        .isEqualTo(HttpStatus.CONFLICT);
+  }
 
-    @Test
-    void addVersionPersistsTemplateVersion() {
-        TemplateDto templateDto = templateService.createTemplate(
-                new CreateTemplateRequest("TemplateWithVersion", "desc", TemplateType.CUSTOM),
-                CREATOR_USERNAME
-        );
+  @Test
+  void addVersionPersistsTemplateVersion() {
+    TemplateDto templateDto =
+        templateService.createTemplate(
+            new CreateTemplateRequest("TemplateWithVersion", "desc", TemplateType.CUSTOM),
+            CREATOR_USERNAME);
 
-        TemplateVersionDto versionDto = templateService.addVersion(
-                templateDto.getId(),
-                new CreateTemplateVersionRequest("1.0.0", "checksum", "s3/path", "{\"map\":\"alpha\"}")
-        );
+    TemplateVersionDto versionDto =
+        templateService.addVersion(
+            templateDto.getId(),
+            new CreateTemplateVersionRequest(
+                "1.0.0", "checksum", "s3/path", "{\"map\":\"alpha\"}"));
 
-        TemplateVersion persisted = templateVersionRepository.findById(versionDto.getId()).orElseThrow();
-        assertThat(persisted.getTemplate().getId()).isEqualTo(templateDto.getId());
-        assertThat(persisted.getVersion()).isEqualTo("1.0.0");
-        assertThat(persisted.getChecksum()).isEqualTo("checksum");
-    }
+    TemplateVersion persisted =
+        templateVersionRepository.findById(versionDto.getId()).orElseThrow();
+    assertThat(persisted.getTemplate().getId()).isEqualTo(templateDto.getId());
+    assertThat(persisted.getVersion()).isEqualTo("1.0.0");
+    assertThat(persisted.getChecksum()).isEqualTo("checksum");
+  }
 
-    @Test
-    void addVersionRejectsDuplicateVersionForTemplate() {
-        TemplateDto templateDto = templateService.createTemplate(
-                new CreateTemplateRequest("TemplateDuplicateVersion", "desc", TemplateType.CUSTOM),
-                CREATOR_USERNAME
-        );
+  @Test
+  void addVersionRejectsDuplicateVersionForTemplate() {
+    TemplateDto templateDto =
+        templateService.createTemplate(
+            new CreateTemplateRequest("TemplateDuplicateVersion", "desc", TemplateType.CUSTOM),
+            CREATOR_USERNAME);
 
-        CreateTemplateVersionRequest versionRequest =
-                new CreateTemplateVersionRequest("1.0.0", "checksum", "s3/path", null);
-        templateService.addVersion(templateDto.getId(), versionRequest);
+    CreateTemplateVersionRequest versionRequest =
+        new CreateTemplateVersionRequest("1.0.0", "checksum", "s3/path", null);
+    templateService.addVersion(templateDto.getId(), versionRequest);
 
-        assertThatThrownBy(() -> templateService.addVersion(templateDto.getId(), versionRequest))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
-                .isEqualTo(HttpStatus.CONFLICT);
-    }
+    assertThatThrownBy(() -> templateService.addVersion(templateDto.getId(), versionRequest))
+        .isInstanceOf(ResponseStatusException.class)
+        .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+        .isEqualTo(HttpStatus.CONFLICT);
+  }
 
-    @Test
-    void listVersionsRequiresExistingTemplate() {
-        assertThatThrownBy(() -> templateService.listVersions(UUID.randomUUID()))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
-                .isEqualTo(HttpStatus.NOT_FOUND);
-    }
+  @Test
+  void listVersionsRequiresExistingTemplate() {
+    assertThatThrownBy(() -> templateService.listVersions(UUID.randomUUID()))
+        .isInstanceOf(ResponseStatusException.class)
+        .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+        .isEqualTo(HttpStatus.NOT_FOUND);
+  }
 }

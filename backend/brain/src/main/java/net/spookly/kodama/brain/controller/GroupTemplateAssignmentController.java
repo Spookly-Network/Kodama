@@ -22,32 +22,30 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/instance-groups/{groupId}/template-assignments")
 public class GroupTemplateAssignmentController {
 
-    private final TemplateAssignmentService templateAssignmentService;
+  private final TemplateAssignmentService templateAssignmentService;
 
-    public GroupTemplateAssignmentController(TemplateAssignmentService templateAssignmentService) {
-        this.templateAssignmentService = templateAssignmentService;
-    }
+  public GroupTemplateAssignmentController(TemplateAssignmentService templateAssignmentService) {
+    this.templateAssignmentService = templateAssignmentService;
+  }
 
-    @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
-    public List<TemplateAssignmentDto> listAssignments(@PathVariable UUID groupId) {
-        return templateAssignmentService.listGroupAssignments(groupId);
-    }
+  @GetMapping
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
+  public List<TemplateAssignmentDto> listAssignments(@PathVariable UUID groupId) {
+    return templateAssignmentService.listGroupAssignments(groupId);
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
-    public TemplateAssignmentDto addAssignment(
-            @PathVariable UUID groupId,
-            @Valid @RequestBody TemplateAssignmentRequest request
-    ) {
-        return templateAssignmentService.addGroupAssignment(groupId, request);
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+  public TemplateAssignmentDto addAssignment(
+      @PathVariable UUID groupId, @Valid @RequestBody TemplateAssignmentRequest request) {
+    return templateAssignmentService.addGroupAssignment(groupId, request);
+  }
 
-    @DeleteMapping("/{assignmentId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
-    public void removeAssignment(@PathVariable UUID groupId, @PathVariable UUID assignmentId) {
-        templateAssignmentService.removeGroupAssignment(groupId, assignmentId);
-    }
+  @DeleteMapping("/{assignmentId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+  public void removeAssignment(@PathVariable UUID groupId, @PathVariable UUID assignmentId) {
+    templateAssignmentService.removeGroupAssignment(groupId, assignmentId);
+  }
 }

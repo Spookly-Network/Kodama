@@ -14,13 +14,9 @@ import net.spookly.kodama.brain.domain.template.TemplateType;
 @NoArgsConstructor
 public class CreateTemplateRequest {
 
-    @NotBlank
-    private String name;
+  @NotBlank private String name;
 
-    @NotBlank
-    private String description;
+  @NotBlank private String description;
 
-    @NotNull
-    private TemplateType type;
-
+  @NotNull private TemplateType type;
 }

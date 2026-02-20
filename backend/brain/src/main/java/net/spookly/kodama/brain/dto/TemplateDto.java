@@ -14,21 +14,20 @@ import net.spookly.kodama.brain.domain.template.TemplateType;
 @NoArgsConstructor
 public class TemplateDto {
 
-    private UUID id;
-    private String name;
-    private String description;
-    private TemplateType type;
-    private OffsetDateTime createdAt;
-    private String createdBy;
+  private UUID id;
+  private String name;
+  private String description;
+  private TemplateType type;
+  private OffsetDateTime createdAt;
+  private String createdBy;
 
-    public static TemplateDto fromEntity(Template template) {
-        return new TemplateDto(
-                template.getId(),
-                template.getName(),
-                template.getDescription(),
-                template.getType(),
-                template.getCreatedAt(),
-                template.getCreatedBy()
-        );
-    }
+  public static TemplateDto fromEntity(Template template) {
+    return new TemplateDto(
+        template.getId(),
+        template.getName(),
+        template.getDescription(),
+        template.getType(),
+        template.getCreatedAt(),
+        template.getCreatedBy());
+  }
 }

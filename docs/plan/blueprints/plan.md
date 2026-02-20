@@ -41,14 +41,14 @@ Blueprint tables (Brain):
 
 Instance changes (Brain):
 - Add `blueprintId` (nullable for legacy flow).
-- Add override columns:
-  - permanentOverride (nullable)
-  - slotsRequiredOverride (nullable)
-  - containerImageOverride (nullable)
-  - installScriptOverride (nullable)
-  - startCommandOverrideJson (nullable)
-  - variablesOverrideJson (nullable)
-  - portDefinitionsOverrideJson (nullable; list of port definitions)
+- Add blueprint-backed instance columns (nullable):
+  - permanent
+  - slotsRequired
+  - containerImage
+  - installScript
+  - startCommandJson
+  - portDefinitionsJson (list of port definitions)
+- Reuse existing `variablesJson` on instances for blueprint overrides.
 
 Node registry changes:
 - Store resolved values (container image, start command, install script).

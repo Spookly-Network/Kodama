@@ -19,29 +19,29 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/instances/{id}/groups")
 public class InstanceGroupMembershipController {
 
-    private final InstanceGroupService instanceGroupService;
+  private final InstanceGroupService instanceGroupService;
 
-    public InstanceGroupMembershipController(InstanceGroupService instanceGroupService) {
-        this.instanceGroupService = instanceGroupService;
-    }
+  public InstanceGroupMembershipController(InstanceGroupService instanceGroupService) {
+    this.instanceGroupService = instanceGroupService;
+  }
 
-    @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
-    public List<InstanceGroupDto> listGroups(@PathVariable("id") UUID instanceId) {
-        return instanceGroupService.listGroupsForInstance(instanceId);
-    }
+  @GetMapping
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
+  public List<InstanceGroupDto> listGroups(@PathVariable("id") UUID instanceId) {
+    return instanceGroupService.listGroupsForInstance(instanceId);
+  }
 
-    @PutMapping("/{groupId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
-    public void addMembership(@PathVariable("id") UUID instanceId, @PathVariable UUID groupId) {
-        instanceGroupService.addMembership(instanceId, groupId);
-    }
+  @PutMapping("/{groupId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+  public void addMembership(@PathVariable("id") UUID instanceId, @PathVariable UUID groupId) {
+    instanceGroupService.addMembership(instanceId, groupId);
+  }
 
-    @DeleteMapping("/{groupId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
-    public void removeMembership(@PathVariable("id") UUID instanceId, @PathVariable UUID groupId) {
-        instanceGroupService.removeMembership(instanceId, groupId);
-    }
+  @DeleteMapping("/{groupId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+  public void removeMembership(@PathVariable("id") UUID instanceId, @PathVariable UUID groupId) {
+    instanceGroupService.removeMembership(instanceId, groupId);
+  }
 }

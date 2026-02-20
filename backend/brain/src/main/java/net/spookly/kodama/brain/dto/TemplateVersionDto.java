@@ -13,23 +13,22 @@ import net.spookly.kodama.brain.domain.template.TemplateVersion;
 @NoArgsConstructor
 public class TemplateVersionDto {
 
-    private UUID id;
-    private UUID templateId;
-    private String version;
-    private String checksum;
-    private String s3Key;
-    private String metadataJson;
-    private OffsetDateTime createdAt;
+  private UUID id;
+  private UUID templateId;
+  private String version;
+  private String checksum;
+  private String s3Key;
+  private String metadataJson;
+  private OffsetDateTime createdAt;
 
-    public static TemplateVersionDto fromEntity(TemplateVersion templateVersion) {
-        return new TemplateVersionDto(
-                templateVersion.getId(),
-                templateVersion.getTemplate().getId(),
-                templateVersion.getVersion(),
-                templateVersion.getChecksum(),
-                templateVersion.getS3Key(),
-                templateVersion.getMetadataJson(),
-                templateVersion.getCreatedAt()
-        );
-    }
+  public static TemplateVersionDto fromEntity(TemplateVersion templateVersion) {
+    return new TemplateVersionDto(
+        templateVersion.getId(),
+        templateVersion.getTemplate().getId(),
+        templateVersion.getVersion(),
+        templateVersion.getChecksum(),
+        templateVersion.getS3Key(),
+        templateVersion.getMetadataJson(),
+        templateVersion.getCreatedAt());
+  }
 }

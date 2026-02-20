@@ -9,5 +9,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface TemplateRepository extends JpaRepository<@NonNull Template, @NonNull UUID> {
 
-    Optional<Template> findByName(String name);
+  Optional<Template> findByName(String name);
 }

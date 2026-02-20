@@ -63,7 +63,19 @@ endpoints:
       instanceId: uuid
       name: string|null
       displayName: string|null
-      portsJson: string|null
+      containerImage: string|null
+      installScript: string|null
+      startCommand: list<string>|null
+      slotsRequired: int32|null
+      portsJson: string|null (legacy override; preferred runtime value is allocated by node from portDefinitions)
+      portDefinitions: list|null
+        - name: string
+          protocol: tcp|udp
+          containerPort: int32
+          hostRange:
+            min: int32
+            max: int32
+            step: int32
       variables: map<string,string>|null
       variablesJson: string|null
       layers:
@@ -74,6 +86,32 @@ endpoints:
           s3Key: string
           metadataJson: string|null
           orderIndex: int32
+    example:
+      instanceId: "04a46594-c578-462c-b2ec-fbbec84cd148"
+      name: "lobby-eu-1"
+      displayName: "Lobby EU #1"
+      containerImage: "ghcr.io/spookly-network/hytale:latest"
+      installScript: "./install.sh"
+      startCommand: ["./run-server.sh", "--port", "${PORT}"]
+      slotsRequired: 2
+      portDefinitions:
+        - name: "game"
+          protocol: "udp"
+          containerPort: 7777
+          hostRange:
+            min: 14000
+            max: 14100
+            step: 1
+      variables:
+        SERVER_NAME: "Lobby EU #1"
+      layers:
+        - templateVersionId: "f46e4888-f9f7-4e10-a7e8-393f3166ac9f"
+          templateId: "1474e8eb-7391-4231-af03-48e451f6fcd8"
+          version: "v1.0.2"
+          checksum: "sha256:8ca2806adff16442984f4f7c35cfaf5f5a10967f65e6b4f3e52f31f39a2f4f16"
+          s3Key: "templates/hytale/base/v1.0.2.tar.gz"
+          metadataJson: null
+          orderIndex: 0
     responses:
       "200": OK
       "400": Bad Request
@@ -120,7 +158,12 @@ endpoints:
         - instanceId: uuid
           name: string|null
           displayName: string|null
+          containerImage: string|null
+          installScript: string|null
+          startCommand: list<string>
+          slotsRequired: int32
           portsJson: string|null
+          installCompleted: boolean
           variables: map<string,string>|null (redacted in registry listing)
           layers:
             - templateVersionId: uuid
@@ -142,6 +185,10 @@ callbacks:
   prepared:
     method: POST
     path: /api/nodes/{nodeId}/instances/{instanceId}/prepared
+    request: optional
+      portsJson: string|null (serialized JSON array of allocated ports: [{name, protocol, containerPort, hostPort}])
+    example:
+      portsJson: '[{"name":"game","protocol":"udp","containerPort":7777,"hostPort":14000}]'
   running:
     method: POST
     path: /api/nodes/{nodeId}/instances/{instanceId}/running
@@ -162,5 +209,7 @@ notes:
   - The node agent records container exit codes and reasons in the local registry when containers stop.
   - `GET /api/instances/registry` returns registry entries derived from instance workspaces on disk.
   - Registry listings omit variables and return workspacePath relative to `node-agent.workspace-dir`.
+  - Node prepare allocates host ports from `portDefinitions[*].hostRange` and persists reservations in registry `portsJson`.
+  - Prepared callbacks may include `portsJson` as a JSON array containing `name`, `protocol`, `containerPort`, and `hostPort`.
   - `node-agent.instance-runtime.stop-timeout-seconds` controls the graceful stop timeout before force-kill (unset uses Docker defaults).
   - Validation errors return 400 and stop command processing.

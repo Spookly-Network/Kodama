@@ -9,13 +9,13 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 
 @SpringBootApplication
 @EnableConfigurationProperties({
-        NodeConfig.class,
-        InstanceProperties.class,
-        NodePluginsProperties.class
+  NodeConfig.class,
+  InstanceProperties.class,
+  NodePluginsProperties.class
 })
 public class NodeAgentApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(NodeAgentApplication.class, args);
-    }
+  public static void main(String[] args) {
+    SpringApplication.run(NodeAgentApplication.class, args);
+  }
 }

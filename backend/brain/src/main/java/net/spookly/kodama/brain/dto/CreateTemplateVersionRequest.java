@@ -12,14 +12,11 @@ import lombok.Setter;
 @NoArgsConstructor
 public class CreateTemplateVersionRequest {
 
-    @NotBlank
-    private String version;
+  @NotBlank private String version;
 
-    @NotBlank
-    private String checksum;
+  @NotBlank private String checksum;
 
-    @NotBlank
-    private String s3Key;
+  @NotBlank private String s3Key;
 
-    private String metadataJson;
+  private String metadataJson;
 }

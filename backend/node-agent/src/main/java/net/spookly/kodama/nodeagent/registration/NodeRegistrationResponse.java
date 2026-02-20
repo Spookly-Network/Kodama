@@ -4,25 +4,24 @@ import java.util.UUID;
 
 public class NodeRegistrationResponse {
 
-    private UUID nodeId;
-    private int heartbeatIntervalSeconds;
+  private UUID nodeId;
+  private int heartbeatIntervalSeconds;
 
-    public NodeRegistrationResponse() {
-    }
+  public NodeRegistrationResponse() {}
 
-    public UUID getNodeId() {
-        return nodeId;
-    }
+  public UUID getNodeId() {
+    return nodeId;
+  }
 
-    public void setNodeId(UUID nodeId) {
-        this.nodeId = nodeId;
-    }
+  public void setNodeId(UUID nodeId) {
+    this.nodeId = nodeId;
+  }
 
-    public int getHeartbeatIntervalSeconds() {
-        return heartbeatIntervalSeconds;
-    }
+  public int getHeartbeatIntervalSeconds() {
+    return heartbeatIntervalSeconds;
+  }
 
-    public void setHeartbeatIntervalSeconds(int heartbeatIntervalSeconds) {
-        this.heartbeatIntervalSeconds = heartbeatIntervalSeconds;
-    }
+  public void setHeartbeatIntervalSeconds(int heartbeatIntervalSeconds) {
+    this.heartbeatIntervalSeconds = heartbeatIntervalSeconds;
+  }
 }

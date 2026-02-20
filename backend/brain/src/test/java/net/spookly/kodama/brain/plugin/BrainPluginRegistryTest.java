@@ -20,122 +20,119 @@ import org.junit.jupiter.api.io.TempDir;
 
 class BrainPluginRegistryTest {
 
-    @TempDir
-    Path tempDir;
+  @TempDir Path tempDir;
 
-    @Test
-    void ignoresDisabledPluginsWithMismatchedApiVersion() throws Exception {
-        Path pluginsDir = tempDir.resolve("plugins");
-        Files.createDirectories(pluginsDir);
-        createJar(pluginsDir.resolve("disabled.jar"), DisabledApiMismatchPlugin.class);
-        createJar(pluginsDir.resolve("enabled.jar"), EnabledPlugin.class);
+  @Test
+  void ignoresDisabledPluginsWithMismatchedApiVersion() throws Exception {
+    Path pluginsDir = tempDir.resolve("plugins");
+    Files.createDirectories(pluginsDir);
+    createJar(pluginsDir.resolve("disabled.jar"), DisabledApiMismatchPlugin.class);
+    createJar(pluginsDir.resolve("enabled.jar"), EnabledPlugin.class);
 
-        PluginsProperties properties = new PluginsProperties();
-        properties.setDir(pluginsDir.toString());
-        properties.setEnabled(List.of("enabled-plugin"));
+    PluginsProperties properties = new PluginsProperties();
+    properties.setDir(pluginsDir.toString());
+    properties.setEnabled(List.of("enabled-plugin"));
 
-        BrainPluginRegistry registry = new BrainPluginRegistry(properties, new ObjectMapper());
-        try {
-            List<KodamaBrainPlugin> enabled = registry.getEnabledPlugins();
-            assertEquals(1, enabled.size());
-            assertEquals("enabled-plugin", enabled.get(0).id());
-        } finally {
-            registry.destroy();
-        }
+    BrainPluginRegistry registry = new BrainPluginRegistry(properties, new ObjectMapper());
+    try {
+      List<KodamaBrainPlugin> enabled = registry.getEnabledPlugins();
+      assertEquals(1, enabled.size());
+      assertEquals("enabled-plugin", enabled.get(0).id());
+    } finally {
+      registry.destroy();
+    }
+  }
+
+  @Test
+  void ignoresDisabledDuplicateIds() throws Exception {
+    Path pluginsDir = tempDir.resolve("plugins");
+    Files.createDirectories(pluginsDir);
+    createJar(pluginsDir.resolve("enabled.jar"), EnabledPlugin.class);
+    createJar(pluginsDir.resolve("disabled-a.jar"), DisabledDuplicatePluginA.class);
+    createJar(pluginsDir.resolve("disabled-b.jar"), DisabledDuplicatePluginB.class);
+
+    PluginsProperties properties = new PluginsProperties();
+    properties.setDir(pluginsDir.toString());
+    properties.setEnabled(List.of("enabled-plugin"));
+
+    BrainPluginRegistry registry = new BrainPluginRegistry(properties, new ObjectMapper());
+    try {
+      List<KodamaBrainPlugin> enabled = registry.getEnabledPlugins();
+      assertEquals(1, enabled.size());
+      assertEquals("enabled-plugin", enabled.get(0).id());
+    } finally {
+      registry.destroy();
+    }
+  }
+
+  private static Path createJar(Path jarPath, Class<?>... pluginClasses) throws IOException {
+    try (JarOutputStream jarOutputStream = new JarOutputStream(Files.newOutputStream(jarPath))) {
+      writeServiceEntry(jarOutputStream, KodamaBrainPlugin.class, pluginClasses);
+      for (Class<?> pluginClass : pluginClasses) {
+        writeClassEntry(jarOutputStream, pluginClass);
+      }
+    }
+    return jarPath;
+  }
+
+  private static void writeServiceEntry(
+      JarOutputStream jarOutputStream, Class<?> serviceType, Class<?>... pluginClasses)
+      throws IOException {
+    JarEntry entry = new JarEntry("META-INF/services/" + serviceType.getName());
+    jarOutputStream.putNextEntry(entry);
+    String content =
+        Arrays.stream(pluginClasses).map(Class::getName).collect(Collectors.joining("\n"));
+    jarOutputStream.write(content.getBytes(StandardCharsets.UTF_8));
+    jarOutputStream.closeEntry();
+  }
+
+  private static void writeClassEntry(JarOutputStream jarOutputStream, Class<?> pluginClass)
+      throws IOException {
+    String resourcePath = pluginClass.getName().replace('.', '/') + ".class";
+    try (InputStream inputStream = pluginClass.getClassLoader().getResourceAsStream(resourcePath)) {
+      if (inputStream == null) {
+        throw new IllegalStateException("Missing class resource " + resourcePath);
+      }
+      jarOutputStream.putNextEntry(new JarEntry(resourcePath));
+      inputStream.transferTo(jarOutputStream);
+      jarOutputStream.closeEntry();
+    }
+  }
+
+  public static final class EnabledPlugin implements KodamaBrainPlugin {
+
+    @Override
+    public String id() {
+      return "enabled-plugin";
+    }
+  }
+
+  public static final class DisabledApiMismatchPlugin implements KodamaBrainPlugin {
+
+    @Override
+    public String id() {
+      return "disabled-api-mismatch";
     }
 
-    @Test
-    void ignoresDisabledDuplicateIds() throws Exception {
-        Path pluginsDir = tempDir.resolve("plugins");
-        Files.createDirectories(pluginsDir);
-        createJar(pluginsDir.resolve("enabled.jar"), EnabledPlugin.class);
-        createJar(pluginsDir.resolve("disabled-a.jar"), DisabledDuplicatePluginA.class);
-        createJar(pluginsDir.resolve("disabled-b.jar"), DisabledDuplicatePluginB.class);
-
-        PluginsProperties properties = new PluginsProperties();
-        properties.setDir(pluginsDir.toString());
-        properties.setEnabled(List.of("enabled-plugin"));
-
-        BrainPluginRegistry registry = new BrainPluginRegistry(properties, new ObjectMapper());
-        try {
-            List<KodamaBrainPlugin> enabled = registry.getEnabledPlugins();
-            assertEquals(1, enabled.size());
-            assertEquals("enabled-plugin", enabled.get(0).id());
-        } finally {
-            registry.destroy();
-        }
+    @Override
+    public int apiVersion() {
+      return KodamaBrainPlugin.API_VERSION + 1;
     }
+  }
 
-    private static Path createJar(Path jarPath, Class<?>... pluginClasses) throws IOException {
-        try (JarOutputStream jarOutputStream = new JarOutputStream(Files.newOutputStream(jarPath))) {
-            writeServiceEntry(jarOutputStream, KodamaBrainPlugin.class, pluginClasses);
-            for (Class<?> pluginClass : pluginClasses) {
-                writeClassEntry(jarOutputStream, pluginClass);
-            }
-        }
-        return jarPath;
+  public static final class DisabledDuplicatePluginA implements KodamaBrainPlugin {
+
+    @Override
+    public String id() {
+      return "disabled-duplicate";
     }
+  }
 
-    private static void writeServiceEntry(
-            JarOutputStream jarOutputStream,
-            Class<?> serviceType,
-            Class<?>... pluginClasses
-    ) throws IOException {
-        JarEntry entry = new JarEntry("META-INF/services/" + serviceType.getName());
-        jarOutputStream.putNextEntry(entry);
-        String content = Arrays.stream(pluginClasses)
-                .map(Class::getName)
-                .collect(Collectors.joining("\n"));
-        jarOutputStream.write(content.getBytes(StandardCharsets.UTF_8));
-        jarOutputStream.closeEntry();
+  public static final class DisabledDuplicatePluginB implements KodamaBrainPlugin {
+
+    @Override
+    public String id() {
+      return "disabled-duplicate";
     }
-
-    private static void writeClassEntry(JarOutputStream jarOutputStream, Class<?> pluginClass) throws IOException {
-        String resourcePath = pluginClass.getName().replace('.', '/') + ".class";
-        try (InputStream inputStream = pluginClass.getClassLoader().getResourceAsStream(resourcePath)) {
-            if (inputStream == null) {
-                throw new IllegalStateException("Missing class resource " + resourcePath);
-            }
-            jarOutputStream.putNextEntry(new JarEntry(resourcePath));
-            inputStream.transferTo(jarOutputStream);
-            jarOutputStream.closeEntry();
-        }
-    }
-
-    public static final class EnabledPlugin implements KodamaBrainPlugin {
-
-        @Override
-        public String id() {
-            return "enabled-plugin";
-        }
-    }
-
-    public static final class DisabledApiMismatchPlugin implements KodamaBrainPlugin {
-
-        @Override
-        public String id() {
-            return "disabled-api-mismatch";
-        }
-
-        @Override
-        public int apiVersion() {
-            return KodamaBrainPlugin.API_VERSION + 1;
-        }
-    }
-
-    public static final class DisabledDuplicatePluginA implements KodamaBrainPlugin {
-
-        @Override
-        public String id() {
-            return "disabled-duplicate";
-        }
-    }
-
-    public static final class DisabledDuplicatePluginB implements KodamaBrainPlugin {
-
-        @Override
-        public String id() {
-            return "disabled-duplicate";
-        }
-    }
+  }
 }

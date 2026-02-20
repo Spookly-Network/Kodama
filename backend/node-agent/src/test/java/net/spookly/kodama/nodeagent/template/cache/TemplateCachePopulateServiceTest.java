@@ -3,6 +3,8 @@ package net.spookly.kodama.nodeagent.template.cache;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -16,9 +18,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import net.spookly.kodama.nodeagent.config.NodeConfig;
 import net.spookly.kodama.nodeagent.devmode.service.DevModeService;
 import net.spookly.kodama.nodeagent.template.storage.TemplateStorageClient;
@@ -33,336 +32,303 @@ import org.junit.jupiter.api.io.TempDir;
 
 class TemplateCachePopulateServiceTest {
 
-    @TempDir
-    Path tempDir;
+  @TempDir Path tempDir;
 
-    @Test
-    void populatesCacheFromTarball() throws Exception {
-        byte[] tarballBytes = createTarball(Map.of(
+  @Test
+  void populatesCacheFromTarball() throws Exception {
+    byte[] tarballBytes =
+        createTarball(
+            Map.of(
                 "server.properties", "motd=hello",
-                "config/settings.json", "{\"mode\":\"test\"}"
-        ));
-        String checksum = sha256Hex(tarballBytes);
-        InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(tarballBytes);
-        NodeConfig config = createConfig();
-        TemplateCacheLayout layout = createLayout(config);
-        TemplateCachePopulateService service = createService(storageClient, layout, config);
+                "config/settings.json", "{\"mode\":\"test\"}"));
+    String checksum = sha256Hex(tarballBytes);
+    InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(tarballBytes);
+    NodeConfig config = createConfig();
+    TemplateCacheLayout layout = createLayout(config);
+    TemplateCachePopulateService service = createService(storageClient, layout, config);
 
-        TemplateCacheLookupResult result = service.ensureCachedTemplate(
-                "starter",
-                "1.2.3",
-                checksum,
-                "templates/starter/1.2.3.tar"
-        );
+    TemplateCacheLookupResult result =
+        service.ensureCachedTemplate("starter", "1.2.3", checksum, "templates/starter/1.2.3.tar");
 
-        assertThat(result.isCacheHit()).isTrue();
-        assertThat(Files.readString(result.contentsDir().resolve("server.properties")))
-                .isEqualTo("motd=hello");
-        assertThat(Files.readString(result.contentsDir().resolve("config/settings.json")))
-                .isEqualTo("{\"mode\":\"test\"}");
+    assertThat(result.isCacheHit()).isTrue();
+    assertThat(Files.readString(result.contentsDir().resolve("server.properties")))
+        .isEqualTo("motd=hello");
+    assertThat(Files.readString(result.contentsDir().resolve("config/settings.json")))
+        .isEqualTo("{\"mode\":\"test\"}");
 
-        TemplateCachePaths paths = layout.resolveTemplateVersion("starter", "1.2.3");
-        assertThat(Files.readString(paths.checksumFile())).isEqualTo(checksum);
-        assertThat(Files.exists(paths.metadataFile())).isTrue();
-        assertThat(storageClient.getFetchCount()).isEqualTo(1);
+    TemplateCachePaths paths = layout.resolveTemplateVersion("starter", "1.2.3");
+    assertThat(Files.readString(paths.checksumFile())).isEqualTo(checksum);
+    assertThat(Files.exists(paths.metadataFile())).isTrue();
+    assertThat(storageClient.getFetchCount()).isEqualTo(1);
 
-        TemplateCacheLookupResult second = service.ensureCachedTemplate(
-                "starter",
-                "1.2.3",
-                checksum,
-                "templates/starter/1.2.3.tar"
-        );
-        assertThat(second.isCacheHit()).isTrue();
-        assertThat(storageClient.getFetchCount()).isEqualTo(1);
-    }
+    TemplateCacheLookupResult second =
+        service.ensureCachedTemplate("starter", "1.2.3", checksum, "templates/starter/1.2.3.tar");
+    assertThat(second.isCacheHit()).isTrue();
+    assertThat(storageClient.getFetchCount()).isEqualTo(1);
+  }
 
-    @Test
-    void preservesExecutablePermissionsFromTarball() throws Exception {
-        Assumptions.assumeTrue(FileSystems.getDefault().supportedFileAttributeViews().contains("posix"));
-        byte[] tarballBytes = createTarballWithModes(Map.of(
-                "bin/start.sh", new TarEntrySpec("#!/bin/sh\necho ok\n", 0755)
-        ));
-        String checksum = sha256Hex(tarballBytes);
-        InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(tarballBytes);
-        NodeConfig config = createConfig();
-        TemplateCacheLayout layout = createLayout(config);
-        TemplateCachePopulateService service = createService(storageClient, layout, config);
+  @Test
+  void preservesExecutablePermissionsFromTarball() throws Exception {
+    Assumptions.assumeTrue(
+        FileSystems.getDefault().supportedFileAttributeViews().contains("posix"));
+    byte[] tarballBytes =
+        createTarballWithModes(
+            Map.of("bin/start.sh", new TarEntrySpec("#!/bin/sh\necho ok\n", 0755)));
+    String checksum = sha256Hex(tarballBytes);
+    InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(tarballBytes);
+    NodeConfig config = createConfig();
+    TemplateCacheLayout layout = createLayout(config);
+    TemplateCachePopulateService service = createService(storageClient, layout, config);
 
-        TemplateCacheLookupResult result = service.ensureCachedTemplate(
-                "starter",
-                "1.2.4",
-                checksum,
-                "templates/starter/1.2.4.tar"
-        );
+    TemplateCacheLookupResult result =
+        service.ensureCachedTemplate("starter", "1.2.4", checksum, "templates/starter/1.2.4.tar");
 
-        Path scriptPath = result.contentsDir().resolve("bin/start.sh");
-        Set<PosixFilePermission> permissions = Files.getPosixFilePermissions(scriptPath);
-        assertThat(permissions).contains(
-                PosixFilePermission.OWNER_EXECUTE,
-                PosixFilePermission.GROUP_EXECUTE,
-                PosixFilePermission.OTHERS_EXECUTE
-        );
-    }
+    Path scriptPath = result.contentsDir().resolve("bin/start.sh");
+    Set<PosixFilePermission> permissions = Files.getPosixFilePermissions(scriptPath);
+    assertThat(permissions)
+        .contains(
+            PosixFilePermission.OWNER_EXECUTE,
+            PosixFilePermission.GROUP_EXECUTE,
+            PosixFilePermission.OTHERS_EXECUTE);
+  }
 
-    @Test
-    void populatesCacheFromZip() throws Exception {
-        byte[] zipBytes = createZip(Map.of(
+  @Test
+  void populatesCacheFromZip() throws Exception {
+    byte[] zipBytes =
+        createZip(
+            Map.of(
                 "server.properties", "motd=hello",
-                "config/settings.json", "{\"mode\":\"test\"}"
-        ));
-        String checksum = sha256Hex(zipBytes);
-        InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(zipBytes);
-        NodeConfig config = createConfig();
-        TemplateCacheLayout layout = createLayout(config);
-        TemplateCachePopulateService service = createService(storageClient, layout, config);
+                "config/settings.json", "{\"mode\":\"test\"}"));
+    String checksum = sha256Hex(zipBytes);
+    InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(zipBytes);
+    NodeConfig config = createConfig();
+    TemplateCacheLayout layout = createLayout(config);
+    TemplateCachePopulateService service = createService(storageClient, layout, config);
 
-        TemplateCacheLookupResult result = service.ensureCachedTemplate(
-                "starter",
-                "2.0.0",
-                checksum,
-                "templates/starter/2.0.0.zip"
-        );
+    TemplateCacheLookupResult result =
+        service.ensureCachedTemplate("starter", "2.0.0", checksum, "templates/starter/2.0.0.zip");
 
-        assertThat(result.isCacheHit()).isTrue();
-        assertThat(Files.readString(result.contentsDir().resolve("server.properties")))
-                .isEqualTo("motd=hello");
-        assertThat(Files.readString(result.contentsDir().resolve("config/settings.json")))
-                .isEqualTo("{\"mode\":\"test\"}");
-    }
+    assertThat(result.isCacheHit()).isTrue();
+    assertThat(Files.readString(result.contentsDir().resolve("server.properties")))
+        .isEqualTo("motd=hello");
+    assertThat(Files.readString(result.contentsDir().resolve("config/settings.json")))
+        .isEqualTo("{\"mode\":\"test\"}");
+  }
 
-    @Test
-    void preservesExecutablePermissionsFromZip() throws Exception {
-        Assumptions.assumeTrue(FileSystems.getDefault().supportedFileAttributeViews().contains("posix"));
-        byte[] zipBytes = createZipWithModes(Map.of(
-                "bin/start.sh", new ZipEntrySpec("#!/bin/sh\necho ok\n", 0755)
-        ));
-        String checksum = sha256Hex(zipBytes);
-        InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(zipBytes);
-        NodeConfig config = createConfig();
-        TemplateCacheLayout layout = createLayout(config);
-        TemplateCachePopulateService service = createService(storageClient, layout, config);
+  @Test
+  void preservesExecutablePermissionsFromZip() throws Exception {
+    Assumptions.assumeTrue(
+        FileSystems.getDefault().supportedFileAttributeViews().contains("posix"));
+    byte[] zipBytes =
+        createZipWithModes(Map.of("bin/start.sh", new ZipEntrySpec("#!/bin/sh\necho ok\n", 0755)));
+    String checksum = sha256Hex(zipBytes);
+    InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(zipBytes);
+    NodeConfig config = createConfig();
+    TemplateCacheLayout layout = createLayout(config);
+    TemplateCachePopulateService service = createService(storageClient, layout, config);
 
-        TemplateCacheLookupResult result = service.ensureCachedTemplate(
-                "starter",
-                "2.0.1",
-                checksum,
-                "templates/starter/2.0.1.zip"
-        );
+    TemplateCacheLookupResult result =
+        service.ensureCachedTemplate("starter", "2.0.1", checksum, "templates/starter/2.0.1.zip");
 
-        Path scriptPath = result.contentsDir().resolve("bin/start.sh");
-        Set<PosixFilePermission> permissions = Files.getPosixFilePermissions(scriptPath);
-        assertThat(permissions).contains(
-                PosixFilePermission.OWNER_EXECUTE,
-                PosixFilePermission.GROUP_EXECUTE,
-                PosixFilePermission.OTHERS_EXECUTE
-        );
-    }
+    Path scriptPath = result.contentsDir().resolve("bin/start.sh");
+    Set<PosixFilePermission> permissions = Files.getPosixFilePermissions(scriptPath);
+    assertThat(permissions)
+        .contains(
+            PosixFilePermission.OWNER_EXECUTE,
+            PosixFilePermission.GROUP_EXECUTE,
+            PosixFilePermission.OTHERS_EXECUTE);
+  }
 
-    @Test
-    void rejectsTarballExceedingMaxExtractedBytes() throws Exception {
-        byte[] tarballBytes = createTarball(Map.of(
-                "server.properties", "motd=hello"
-        ));
-        String checksum = sha256Hex(tarballBytes);
-        InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(tarballBytes);
-        NodeConfig config = createConfig();
-        config.getTemplateCacheLimits().setMaxExtractedBytes(4);
-        TemplateCacheLayout layout = createLayout(config);
-        TemplateCachePopulateService service = createService(storageClient, layout, config);
+  @Test
+  void rejectsTarballExceedingMaxExtractedBytes() throws Exception {
+    byte[] tarballBytes = createTarball(Map.of("server.properties", "motd=hello"));
+    String checksum = sha256Hex(tarballBytes);
+    InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(tarballBytes);
+    NodeConfig config = createConfig();
+    config.getTemplateCacheLimits().setMaxExtractedBytes(4);
+    TemplateCacheLayout layout = createLayout(config);
+    TemplateCachePopulateService service = createService(storageClient, layout, config);
 
-        assertThatThrownBy(() -> service.ensureCachedTemplate(
-                "starter",
-                "1.2.5",
-                checksum,
-                "templates/starter/1.2.5.tar"
-        )).isInstanceOf(TemplateCacheException.class)
-                .hasMessageContaining("max extracted bytes");
-    }
+    assertThatThrownBy(
+            () ->
+                service.ensureCachedTemplate(
+                    "starter", "1.2.5", checksum, "templates/starter/1.2.5.tar"))
+        .isInstanceOf(TemplateCacheException.class)
+        .hasMessageContaining("max extracted bytes");
+  }
 
-    @Test
-    void rejectsZipExceedingMaxExtractedBytes() throws Exception {
-        byte[] zipBytes = createZip(Map.of(
-                "server.properties", "motd=hello"
-        ));
-        String checksum = sha256Hex(zipBytes);
-        InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(zipBytes);
-        NodeConfig config = createConfig();
-        config.getTemplateCacheLimits().setMaxExtractedBytes(4);
-        TemplateCacheLayout layout = createLayout(config);
-        TemplateCachePopulateService service = createService(storageClient, layout, config);
+  @Test
+  void rejectsZipExceedingMaxExtractedBytes() throws Exception {
+    byte[] zipBytes = createZip(Map.of("server.properties", "motd=hello"));
+    String checksum = sha256Hex(zipBytes);
+    InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(zipBytes);
+    NodeConfig config = createConfig();
+    config.getTemplateCacheLimits().setMaxExtractedBytes(4);
+    TemplateCacheLayout layout = createLayout(config);
+    TemplateCachePopulateService service = createService(storageClient, layout, config);
 
-        assertThatThrownBy(() -> service.ensureCachedTemplate(
-                "starter",
-                "2.0.2",
-                checksum,
-                "templates/starter/2.0.2.zip"
-        )).isInstanceOf(TemplateCacheException.class)
-                .hasMessageContaining("max extracted bytes");
-    }
+    assertThatThrownBy(
+            () ->
+                service.ensureCachedTemplate(
+                    "starter", "2.0.2", checksum, "templates/starter/2.0.2.zip"))
+        .isInstanceOf(TemplateCacheException.class)
+        .hasMessageContaining("max extracted bytes");
+  }
 
-    @Test
-    void rejectsTarballExceedingMaxEntries() throws Exception {
-        byte[] tarballBytes = createTarball(Map.of(
+  @Test
+  void rejectsTarballExceedingMaxEntries() throws Exception {
+    byte[] tarballBytes =
+        createTarball(
+            Map.of(
                 "one.txt", "1",
                 "two.txt", "2",
-                "three.txt", "3"
-        ));
-        String checksum = sha256Hex(tarballBytes);
-        InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(tarballBytes);
-        NodeConfig config = createConfig();
-        config.getTemplateCacheLimits().setMaxEntries(2);
-        TemplateCacheLayout layout = createLayout(config);
-        TemplateCachePopulateService service = createService(storageClient, layout, config);
+                "three.txt", "3"));
+    String checksum = sha256Hex(tarballBytes);
+    InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(tarballBytes);
+    NodeConfig config = createConfig();
+    config.getTemplateCacheLimits().setMaxEntries(2);
+    TemplateCacheLayout layout = createLayout(config);
+    TemplateCachePopulateService service = createService(storageClient, layout, config);
 
-        assertThatThrownBy(() -> service.ensureCachedTemplate(
-                "starter",
-                "1.2.6",
-                checksum,
-                "templates/starter/1.2.6.tar"
-        )).isInstanceOf(TemplateCacheException.class)
-                .hasMessageContaining("max entry count");
-    }
+    assertThatThrownBy(
+            () ->
+                service.ensureCachedTemplate(
+                    "starter", "1.2.6", checksum, "templates/starter/1.2.6.tar"))
+        .isInstanceOf(TemplateCacheException.class)
+        .hasMessageContaining("max entry count");
+  }
 
-    @Test
-    void rejectsZipExceedingMaxEntries() throws Exception {
-        byte[] zipBytes = createZip(Map.of(
+  @Test
+  void rejectsZipExceedingMaxEntries() throws Exception {
+    byte[] zipBytes =
+        createZip(
+            Map.of(
                 "one.txt", "1",
                 "two.txt", "2",
-                "three.txt", "3"
-        ));
-        String checksum = sha256Hex(zipBytes);
-        InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(zipBytes);
-        NodeConfig config = createConfig();
-        config.getTemplateCacheLimits().setMaxEntries(2);
-        TemplateCacheLayout layout = createLayout(config);
-        TemplateCachePopulateService service = createService(storageClient, layout, config);
+                "three.txt", "3"));
+    String checksum = sha256Hex(zipBytes);
+    InMemoryTemplateStorageClient storageClient = new InMemoryTemplateStorageClient(zipBytes);
+    NodeConfig config = createConfig();
+    config.getTemplateCacheLimits().setMaxEntries(2);
+    TemplateCacheLayout layout = createLayout(config);
+    TemplateCachePopulateService service = createService(storageClient, layout, config);
 
-        assertThatThrownBy(() -> service.ensureCachedTemplate(
-                "starter",
-                "2.0.3",
-                checksum,
-                "templates/starter/2.0.3.zip"
-        )).isInstanceOf(TemplateCacheException.class)
-                .hasMessageContaining("max entry count");
+    assertThatThrownBy(
+            () ->
+                service.ensureCachedTemplate(
+                    "starter", "2.0.3", checksum, "templates/starter/2.0.3.zip"))
+        .isInstanceOf(TemplateCacheException.class)
+        .hasMessageContaining("max entry count");
+  }
+
+  private TemplateCachePopulateService createService(
+      TemplateStorageClient storageClient, TemplateCacheLayout layout, NodeConfig config) {
+    TemplateCacheLookupService lookupService = new TemplateCacheLookupService(layout);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.registerModule(new JavaTimeModule());
+    DevModeService devModeService = new DevModeService(config);
+    return new TemplateCachePopulateService(
+        layout, lookupService, storageClient, mapper, devModeService, config);
+  }
+
+  private NodeConfig createConfig() {
+    NodeConfig config = new NodeConfig();
+    config.setCacheDir(tempDir.resolve("cache-root").toString());
+    return config;
+  }
+
+  private TemplateCacheLayout createLayout(NodeConfig config) {
+    return new TemplateCacheLayout(config);
+  }
+
+  private byte[] createTarball(Map<String, String> files) throws IOException {
+    Map<String, TarEntrySpec> entries = new HashMap<>();
+    for (Map.Entry<String, String> entry : files.entrySet()) {
+      entries.put(entry.getKey(), new TarEntrySpec(entry.getValue(), 0644));
+    }
+    return createTarballWithModes(entries);
+  }
+
+  private byte[] createTarballWithModes(Map<String, TarEntrySpec> files) throws IOException {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try (TarArchiveOutputStream tarOutput = new TarArchiveOutputStream(outputStream)) {
+      tarOutput.setLongFileMode(TarArchiveOutputStream.LONGFILE_POSIX);
+      for (Map.Entry<String, TarEntrySpec> entry : files.entrySet()) {
+        byte[] content = entry.getValue().contents().getBytes(StandardCharsets.UTF_8);
+        TarArchiveEntry tarEntry = new TarArchiveEntry(entry.getKey());
+        tarEntry.setMode(entry.getValue().mode());
+        tarEntry.setSize(content.length);
+        tarOutput.putArchiveEntry(tarEntry);
+        tarOutput.write(content);
+        tarOutput.closeArchiveEntry();
+      }
+      tarOutput.finish();
+    }
+    return outputStream.toByteArray();
+  }
+
+  private record TarEntrySpec(String contents, int mode) {}
+
+  private byte[] createZip(Map<String, String> files) throws IOException {
+    Map<String, ZipEntrySpec> entries = new HashMap<>();
+    for (Map.Entry<String, String> entry : files.entrySet()) {
+      entries.put(entry.getKey(), new ZipEntrySpec(entry.getValue(), 0644));
+    }
+    return createZipWithModes(entries);
+  }
+
+  private byte[] createZipWithModes(Map<String, ZipEntrySpec> files) throws IOException {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try (ZipArchiveOutputStream zipOutput = new ZipArchiveOutputStream(outputStream)) {
+      for (Map.Entry<String, ZipEntrySpec> entry : files.entrySet()) {
+        byte[] content = entry.getValue().contents().getBytes(StandardCharsets.UTF_8);
+        ZipArchiveEntry zipEntry = new ZipArchiveEntry(entry.getKey());
+        zipEntry.setUnixMode(entry.getValue().mode());
+        zipEntry.setSize(content.length);
+        zipOutput.putArchiveEntry(zipEntry);
+        zipOutput.write(content);
+        zipOutput.closeArchiveEntry();
+      }
+      zipOutput.finish();
+    }
+    return outputStream.toByteArray();
+  }
+
+  private record ZipEntrySpec(String contents, int mode) {}
+
+  private String sha256Hex(byte[] data) {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      byte[] hash = digest.digest(data);
+      StringBuilder builder = new StringBuilder(hash.length * 2);
+      for (byte value : hash) {
+        builder.append(Character.forDigit((value >> 4) & 0xF, 16));
+        builder.append(Character.forDigit(value & 0xF, 16));
+      }
+      return builder.toString();
+    } catch (NoSuchAlgorithmException ex) {
+      throw new IllegalStateException("SHA-256 digest is not available", ex);
+    }
+  }
+
+  private static class InMemoryTemplateStorageClient implements TemplateStorageClient {
+
+    private final byte[] archiveBytes;
+    private int fetchCount;
+
+    private InMemoryTemplateStorageClient(byte[] archiveBytes) {
+      this.archiveBytes = archiveBytes;
     }
 
-    private TemplateCachePopulateService createService(
-            TemplateStorageClient storageClient,
-            TemplateCacheLayout layout,
-            NodeConfig config
-    ) {
-        TemplateCacheLookupService lookupService = new TemplateCacheLookupService(layout);
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-        DevModeService devModeService = new DevModeService(config);
-        return new TemplateCachePopulateService(layout, lookupService, storageClient, mapper, devModeService, config);
+    @Override
+    public TemplateTarball getTemplateTarball(String templateId, String version, String s3Key) {
+      fetchCount++;
+      return new TemplateTarball(
+          templateId, version, s3Key, archiveBytes.length, new ByteArrayInputStream(archiveBytes));
     }
 
-    private NodeConfig createConfig() {
-        NodeConfig config = new NodeConfig();
-        config.setCacheDir(tempDir.resolve("cache-root").toString());
-        return config;
+    private int getFetchCount() {
+      return fetchCount;
     }
-
-    private TemplateCacheLayout createLayout(NodeConfig config) {
-        return new TemplateCacheLayout(config);
-    }
-
-    private byte[] createTarball(Map<String, String> files) throws IOException {
-        Map<String, TarEntrySpec> entries = new HashMap<>();
-        for (Map.Entry<String, String> entry : files.entrySet()) {
-            entries.put(entry.getKey(), new TarEntrySpec(entry.getValue(), 0644));
-        }
-        return createTarballWithModes(entries);
-    }
-
-    private byte[] createTarballWithModes(Map<String, TarEntrySpec> files) throws IOException {
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        try (TarArchiveOutputStream tarOutput = new TarArchiveOutputStream(outputStream)) {
-            tarOutput.setLongFileMode(TarArchiveOutputStream.LONGFILE_POSIX);
-            for (Map.Entry<String, TarEntrySpec> entry : files.entrySet()) {
-                byte[] content = entry.getValue().contents().getBytes(StandardCharsets.UTF_8);
-                TarArchiveEntry tarEntry = new TarArchiveEntry(entry.getKey());
-                tarEntry.setMode(entry.getValue().mode());
-                tarEntry.setSize(content.length);
-                tarOutput.putArchiveEntry(tarEntry);
-                tarOutput.write(content);
-                tarOutput.closeArchiveEntry();
-            }
-            tarOutput.finish();
-        }
-        return outputStream.toByteArray();
-    }
-
-    private record TarEntrySpec(String contents, int mode) {
-    }
-
-    private byte[] createZip(Map<String, String> files) throws IOException {
-        Map<String, ZipEntrySpec> entries = new HashMap<>();
-        for (Map.Entry<String, String> entry : files.entrySet()) {
-            entries.put(entry.getKey(), new ZipEntrySpec(entry.getValue(), 0644));
-        }
-        return createZipWithModes(entries);
-    }
-
-    private byte[] createZipWithModes(Map<String, ZipEntrySpec> files) throws IOException {
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        try (ZipArchiveOutputStream zipOutput = new ZipArchiveOutputStream(outputStream)) {
-            for (Map.Entry<String, ZipEntrySpec> entry : files.entrySet()) {
-                byte[] content = entry.getValue().contents().getBytes(StandardCharsets.UTF_8);
-                ZipArchiveEntry zipEntry = new ZipArchiveEntry(entry.getKey());
-                zipEntry.setUnixMode(entry.getValue().mode());
-                zipEntry.setSize(content.length);
-                zipOutput.putArchiveEntry(zipEntry);
-                zipOutput.write(content);
-                zipOutput.closeArchiveEntry();
-            }
-            zipOutput.finish();
-        }
-        return outputStream.toByteArray();
-    }
-
-    private record ZipEntrySpec(String contents, int mode) {
-    }
-
-    private String sha256Hex(byte[] data) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(data);
-            StringBuilder builder = new StringBuilder(hash.length * 2);
-            for (byte value : hash) {
-                builder.append(Character.forDigit((value >> 4) & 0xF, 16));
-                builder.append(Character.forDigit(value & 0xF, 16));
-            }
-            return builder.toString();
-        } catch (NoSuchAlgorithmException ex) {
-            throw new IllegalStateException("SHA-256 digest is not available", ex);
-        }
-    }
-
-    private static class InMemoryTemplateStorageClient implements TemplateStorageClient {
-
-        private final byte[] archiveBytes;
-        private int fetchCount;
-
-        private InMemoryTemplateStorageClient(byte[] archiveBytes) {
-            this.archiveBytes = archiveBytes;
-        }
-
-        @Override
-        public TemplateTarball getTemplateTarball(String templateId, String version, String s3Key) {
-            fetchCount++;
-            return new TemplateTarball(
-                    templateId,
-                    version,
-                    s3Key,
-                    archiveBytes.length,
-                    new ByteArrayInputStream(archiveBytes)
-            );
-        }
-
-        private int getFetchCount() {
-            return fetchCount;
-        }
-    }
+  }
 }

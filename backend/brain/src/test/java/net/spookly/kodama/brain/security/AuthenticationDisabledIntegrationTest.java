@@ -24,31 +24,28 @@ import org.springframework.test.web.servlet.MockMvc;
 @WebMvcTest(controllers = InstanceController.class)
 @EnableConfigurationProperties(BrainSecurityProperties.class)
 @Import({
-        SecurityConfig.class,
-        MethodSecurityConfig.class,
-        JwtAuthFilter.class,
-        JwtTokenService.class,
-        ConfiguredUserStore.class,
-        TestSecurityBootstrapConfig.class
+  SecurityConfig.class,
+  MethodSecurityConfig.class,
+  JwtAuthFilter.class,
+  JwtTokenService.class,
+  ConfiguredUserStore.class,
+  TestSecurityBootstrapConfig.class
 })
 @TestPropertySource(properties = "brain.security.enabled=false")
 class AuthenticationDisabledIntegrationTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+  @Autowired private MockMvc mockMvc;
 
-    @MockitoBean
-    private InstanceService instanceService;
+  @MockitoBean private InstanceService instanceService;
 
-    @BeforeEach
-    void setUp() {
-        given(instanceService.listInstances()).willReturn(List.of());
-    }
+  @BeforeEach
+  void setUp() {
+    given(instanceService.listInstances()).willReturn(List.of());
+  }
 
-    @Test
-    void listInstancesIsAccessibleWhenSecurityDisabled() throws Exception {
-        mockMvc.perform(get("/api/instances"))
-                .andExpect(status().isOk());
-    }
+  @Test
+  void listInstancesIsAccessibleWhenSecurityDisabled() throws Exception {
+    mockMvc.perform(get("/api/instances")).andExpect(status().isOk());
+  }
 }
-//codex resume 019b9e4b-3f3a-70e1-9ebe-05aad51ffc22
+// codex resume 019b9e4b-3f3a-70e1-9ebe-05aad51ffc22

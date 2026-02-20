@@ -24,12 +24,13 @@ dependencies {
 
 bootJar {
     archiveBaseName = 'kodama-node-agent'
-    archiveFileName = 'node-app.jar'
+    archiveFileName = "kodama-node-app-${version}.jar"
     mainClass = 'net.spookly.kodama.nodeagent.NodeAgentApplication'
 }
 
 springBoot {
     mainClass = 'net.spookly.kodama.nodeagent.NodeAgentApplication'
+    buildInfo()
 }
 
 jar {

@@ -1,4 +1,3 @@
 package net.spookly.kodama.brain.domain.user;
 
-public class ApiToken {
-}
+public class ApiToken {}

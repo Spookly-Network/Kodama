@@ -11,11 +11,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface GroupTemplateAssignmentRepository
-        extends JpaRepository<@NonNull GroupTemplateAssignment, @NonNull UUID> {
+    extends JpaRepository<@NonNull GroupTemplateAssignment, @NonNull UUID> {
 
-    @Query("select a from GroupTemplateAssignment a where a.group.id = :groupId order by a.priority asc, a.id asc")
-    List<GroupTemplateAssignment> findAllByGroupId(@Param("groupId") UUID groupId);
+  @Query(
+      "select a from GroupTemplateAssignment a where a.group.id = :groupId order by a.priority asc, a.id asc")
+  List<GroupTemplateAssignment> findAllByGroupId(@Param("groupId") UUID groupId);
 
-    @Query("select a from GroupTemplateAssignment a where a.group.id in :groupIds")
-    List<GroupTemplateAssignment> findAllByGroupIds(@Param("groupIds") Collection<UUID> groupIds);
+  @Query("select a from GroupTemplateAssignment a where a.group.id in :groupIds")
+  List<GroupTemplateAssignment> findAllByGroupIds(@Param("groupIds") Collection<UUID> groupIds);
 }

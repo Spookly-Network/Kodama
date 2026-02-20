@@ -17,11 +17,11 @@ import lombok.NoArgsConstructor;
 @EqualsAndHashCode
 public class UserRoleId implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+  private static final long serialVersionUID = 1L;
 
-    @Column(name = "user_id", nullable = false)
-    private UUID userId;
+  @Column(name = "user_id", nullable = false)
+  private UUID userId;
 
-    @Column(name = "role_id", nullable = false)
-    private UUID roleId;
+  @Column(name = "role_id", nullable = false)
+  private UUID roleId;
 }

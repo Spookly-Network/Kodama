@@ -6,6 +6,9 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 
 @Configuration
 @EnableMethodSecurity
-@ConditionalOnProperty(prefix = "brain.security", name = "enabled", havingValue = "true", matchIfMissing = true)
-public class MethodSecurityConfig {
-}
+@ConditionalOnProperty(
+    prefix = "brain.security",
+    name = "enabled",
+    havingValue = "true",
+    matchIfMissing = true)
+public class MethodSecurityConfig {}

@@ -7,29 +7,29 @@ import org.junit.jupiter.api.Test;
 
 class NodeHeartbeatStateTest {
 
-    @Test
-    void defaultsAreOnlineAndZeroUsedSlots() {
-        NodeHeartbeatState state = new NodeHeartbeatState();
+  @Test
+  void defaultsAreOnlineAndZeroUsedSlots() {
+    NodeHeartbeatState state = new NodeHeartbeatState();
 
-        assertThat(state.getStatus()).isEqualTo(NodeStatus.ONLINE);
-        assertThat(state.getUsedSlots()).isZero();
-    }
+    assertThat(state.getStatus()).isEqualTo(NodeStatus.ONLINE);
+    assertThat(state.getUsedSlots()).isZero();
+  }
 
-    @Test
-    void setUsedSlotsRejectsNegativeValues() {
-        NodeHeartbeatState state = new NodeHeartbeatState();
+  @Test
+  void setUsedSlotsRejectsNegativeValues() {
+    NodeHeartbeatState state = new NodeHeartbeatState();
 
-        assertThatThrownBy(() -> state.setUsedSlots(-1))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("usedSlots cannot be negative");
-    }
+    assertThatThrownBy(() -> state.setUsedSlots(-1))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("usedSlots cannot be negative");
+  }
 
-    @Test
-    void setStatusRejectsNull() {
-        NodeHeartbeatState state = new NodeHeartbeatState();
+  @Test
+  void setStatusRejectsNull() {
+    NodeHeartbeatState state = new NodeHeartbeatState();
 
-        assertThatThrownBy(() -> state.setStatus(null))
-                .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("status");
-    }
+    assertThatThrownBy(() -> state.setStatus(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("status");
+  }
 }

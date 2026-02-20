@@ -19,21 +19,20 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class UserRole {
 
-    @EmbeddedId
-    private UserRoleId id = new UserRoleId();
+  @EmbeddedId private UserRoleId id = new UserRoleId();
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("userId")
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @MapsId("userId")
+  @JoinColumn(name = "user_id", nullable = false)
+  private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("roleId")
-    @JoinColumn(name = "role_id", nullable = false)
-    private RoleEntity role;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @MapsId("roleId")
+  @JoinColumn(name = "role_id", nullable = false)
+  private RoleEntity role;
 
-    public UserRole(User user, RoleEntity role) {
-        this.user = Objects.requireNonNull(user, "user");
-        this.role = Objects.requireNonNull(role, "role");
-    }
+  public UserRole(User user, RoleEntity role) {
+    this.user = Objects.requireNonNull(user, "user");
+    this.role = Objects.requireNonNull(role, "role");
+  }
 }

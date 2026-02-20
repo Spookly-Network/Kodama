@@ -11,6 +11,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class NodeRegistrationResponse {
 
-    private UUID nodeId;
-    private int heartbeatIntervalSeconds;
+  private UUID nodeId;
+  private int heartbeatIntervalSeconds;
 }

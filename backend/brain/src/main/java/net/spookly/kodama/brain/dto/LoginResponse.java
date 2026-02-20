@@ -13,8 +13,8 @@ import net.spookly.kodama.brain.security.Role;
 @NoArgsConstructor
 public class LoginResponse {
 
-    private String accessToken;
-    private String tokenType;
-    private OffsetDateTime expiresAt;
-    private Set<Role> roles;
+  private String accessToken;
+  private String tokenType;
+  private OffsetDateTime expiresAt;
+  private Set<Role> roles;
 }

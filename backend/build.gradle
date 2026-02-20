@@ -1,9 +1,9 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '4.0.0' apply false
+    id 'org.springframework.boot' version '4.0.3' apply false
     id 'io.spring.dependency-management' version '1.1.7' apply false
     id "io.freefair.lombok" version "9.1.0" apply false
-    id "com.diffplug.spotless" version "8.1.0" apply false
+    id "com.diffplug.spotless" version "8.2.1" apply false
 }
 
 allprojects {
@@ -22,7 +22,7 @@ subprojects {
 
     java {
         toolchain {
-            languageVersion = JavaLanguageVersion.of(21)
+            languageVersion = JavaLanguageVersion.of(25)
         }
     }
 
@@ -32,10 +32,7 @@ subprojects {
 
     spotless {
         java {
-            removeUnusedImports()
-            importOrder('java', 'javax', '', 'de.spookly', '')
-            leadingTabsToSpaces(4)
-            endWithNewline()
+            googleJavaFormat()
         }
     }
 }

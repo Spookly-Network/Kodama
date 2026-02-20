@@ -15,24 +15,19 @@ import net.spookly.kodama.brain.domain.node.NodeStatus;
 @NoArgsConstructor
 public class NodeRegistrationRequest {
 
-    @NotBlank
-    private String name;
+  @NotBlank private String name;
 
-    @NotBlank
-    private String region;
+  @NotBlank private String region;
 
-    @Min(1)
-    private int capacitySlots;
+  @Min(1) private int capacitySlots;
 
-    @NotBlank
-    private String nodeVersion;
+  @NotBlank private String nodeVersion;
 
-    private boolean devMode;
+  private boolean devMode;
 
-    private String tags;
+  private String tags;
 
-    @Size(max = 512)
-    private String baseUrl;
+  @Size(max = 512) private String baseUrl;
 
-    private NodeStatus status = NodeStatus.ONLINE;
+  private NodeStatus status = NodeStatus.ONLINE;
 }

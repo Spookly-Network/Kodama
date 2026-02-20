@@ -1,52 +1,65 @@
 # Node Agent Flow
 
-This document describes how the Node Agent handles instructions from the Brain.
-
----
+This document describes the runtime flow between Brain and node agent for instance lifecycle commands.
 
 ## 1. Registration
 
 On startup:
-1. Node sends a registration request
-2. Brain returns Node ID + config (intervals, etc.)
-
----
+1. Node sends registration to Brain (`/api/nodes/register`).
+2. Brain responds with `nodeId` and heartbeat interval.
 
 ## 2. Heartbeats
 
-Node sends heartbeat:
-- usedSlots
-- status
+Node sends heartbeat to Brain (`/api/nodes/{nodeId}/heartbeat`) with:
+- `status`
+- `usedSlots`
 
-Brain updates node status → ONLINE.
-Heartbeat interval comes from Brain registration unless overridden in node config.
+`usedSlots` is computed from local registry entries in states `starting`, `running`, and `stopping` by summing `slotsRequired`.
 
----
+## 3. Prepare Flow
 
-## 3. Handling Prepare Command
+Brain dispatches:
+- `POST /api/instances/{instanceId}/prepare`
+- payload includes resolved runtime fields (`containerImage`, `installScript`, `startCommand`, `slotsRequired`)
+- payload includes port definitions (`portDefinitions`) and template layers (`layers`)
 
-Steps:
-1. Receive template layers + variables
-2. Validate checksums
-3. Download missing templates
-4. Extract into workspace
-5. Merge layers
-6. Replace variables (skipping large files via `node-agent.variable-substitution.max-file-bytes`)
-7. Send PREPARED callback
+Node steps:
+1. Validate payload (`instanceId`, layers, runtime fields where needed).
+2. Ensure templates are cached (download if missing/changed).
+3. Allocate host ports from each `portDefinitions[*].hostRange`.
+4. Merge layers into workspace and apply variable substitution.
+5. Persist `instance.json` registry with resolved runtime fields and `portsJson`.
+6. Send prepared callback:
+   - `POST /api/nodes/{nodeId}/instances/{instanceId}/prepared`
+   - optional body: `{"portsJson":"[{\"name\":\"game\",\"protocol\":\"udp\",\"containerPort\":7777,\"hostPort\":14000}]"}`
+7. Trigger local start flow.
 
----
+## 4. Start Flow
 
-## 4. Handling Start Command
+Node start steps:
+1. Load prepared registry entry and workspace.
+2. Validate `containerImage` + `startCommand`.
+3. Run `installScript` once when present and not yet completed.
+4. Create Docker container with merged workspace mount.
+5. Bind ports from `portsJson` array entries (`containerPort` + `hostPort`).
+6. Mark local status `starting` then `running`.
+7. Send `POST /api/nodes/{nodeId}/instances/{instanceId}/running`.
 
-1. Start Docker container (or native server)
-2. Monitor logs
-3. On success → RUNNING callback
+## 5. Stop and Destroy
 
----
+Stop:
+1. Mark local status `stopping`.
+2. Stop Docker container (graceful timeout, then kill if needed).
+3. Mark local status `stopped`.
+4. Send `POST /api/nodes/{nodeId}/instances/{instanceId}/stopped`.
 
-## 5. Handling Stop / Destroy
+Destroy:
+1. Stop/kill container if present.
+2. Remove container and workspace.
+3. Remove local registry entry (releases reserved ports).
+4. Send `POST /api/nodes/{nodeId}/instances/{instanceId}/destroyed`.
 
-1. Stop container
-2. Clean workspace
-3. Update cache if needed
-4. Send STOPPED or DESTROYED callback
+## 6. Failure Handling
+
+- Prepare/start/stop/destroy failures attempt `POST /api/nodes/{nodeId}/instances/{instanceId}/failed`.
+- Success callbacks that fail to deliver are logged and retried per callback settings; command outcome is not rolled back.

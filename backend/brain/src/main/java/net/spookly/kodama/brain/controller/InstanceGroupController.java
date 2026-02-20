@@ -21,28 +21,28 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/instance-groups")
 public class InstanceGroupController {
 
-    private final InstanceGroupService instanceGroupService;
+  private final InstanceGroupService instanceGroupService;
 
-    public InstanceGroupController(InstanceGroupService instanceGroupService) {
-        this.instanceGroupService = instanceGroupService;
-    }
+  public InstanceGroupController(InstanceGroupService instanceGroupService) {
+    this.instanceGroupService = instanceGroupService;
+  }
 
-    @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
-    public List<InstanceGroupDto> listGroups() {
-        return instanceGroupService.listGroups();
-    }
+  @GetMapping
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
+  public List<InstanceGroupDto> listGroups() {
+    return instanceGroupService.listGroups();
+  }
 
-    @GetMapping("/{groupId}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
-    public InstanceGroupDto getGroup(@PathVariable UUID groupId) {
-        return instanceGroupService.getGroup(groupId);
-    }
+  @GetMapping("/{groupId}")
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
+  public InstanceGroupDto getGroup(@PathVariable UUID groupId) {
+    return instanceGroupService.getGroup(groupId);
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
-    public InstanceGroupDto createGroup(@Valid @RequestBody CreateInstanceGroupRequest request) {
-        return instanceGroupService.createGroup(request);
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+  public InstanceGroupDto createGroup(@Valid @RequestBody CreateInstanceGroupRequest request) {
+    return instanceGroupService.createGroup(request);
+  }
 }

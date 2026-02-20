@@ -11,11 +11,11 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class NodePrepareInstanceLayer {
 
-    private UUID templateVersionId;
-    private UUID templateId;
-    private String version;
-    private String checksum;
-    private String s3Key;
-    private String metadataJson;
-    private int orderIndex;
+  private UUID templateVersionId;
+  private UUID templateId;
+  private String version;
+  private String checksum;
+  private String s3Key;
+  private String metadataJson;
+  private int orderIndex;
 }

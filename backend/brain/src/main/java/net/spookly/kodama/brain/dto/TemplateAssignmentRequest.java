@@ -16,12 +16,10 @@ import lombok.Setter;
 @AllArgsConstructor
 public class TemplateAssignmentRequest {
 
-    @NotNull
-    private UUID templateId;
+  @NotNull private UUID templateId;
 
-    private UUID templateVersionId;
+  private UUID templateVersionId;
 
-    @Min(0)
-    @JsonAlias("orderIndex")
-    private Integer priority;
+  @Min(0) @JsonAlias("orderIndex")
+  private Integer priority;
 }

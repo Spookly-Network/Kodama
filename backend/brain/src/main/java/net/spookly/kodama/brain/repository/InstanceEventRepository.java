@@ -9,10 +9,9 @@ import net.spookly.kodama.brain.domain.instance.InstanceEvent;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface InstanceEventRepository
-        extends JpaRepository<@NonNull InstanceEvent, @NonNull UUID> {
+    extends JpaRepository<@NonNull InstanceEvent, @NonNull UUID> {
 
-    List<InstanceEvent> findByInstanceOrderByTimestampAsc(Instance instance);
-    List<InstanceEvent> findAllByInstanceIdOrderByTimestampAsc(UUID instanceId);
+  List<InstanceEvent> findByInstanceOrderByTimestampAsc(Instance instance);
 
-
+  List<InstanceEvent> findAllByInstanceIdOrderByTimestampAsc(UUID instanceId);
 }
