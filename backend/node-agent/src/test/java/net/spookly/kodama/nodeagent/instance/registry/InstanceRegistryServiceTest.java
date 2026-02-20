@@ -268,6 +268,50 @@ class InstanceRegistryServiceTest {
     }
 
     @Test
+    void clearContainerStateClearsContainerIdAndRetainsStoppedStatus() throws Exception {
+        UUID instanceId = UUID.randomUUID();
+        NodePrepareInstanceLayer layer = new NodePrepareInstanceLayer(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "1.0.0",
+                "checksum",
+                "s3/key.tgz",
+                null,
+                0
+        );
+        List<NodePrepareInstanceLayer> layers = List.of(layer);
+        NodePrepareInstanceRequest request = new NodePrepareInstanceRequest(
+                instanceId,
+                "instance-name",
+                "Instance Name",
+                "ghcr.io/spookly/hytale:test",
+                "./install.sh",
+                List.of("java", "-jar", "server.jar"),
+                2,
+                null,
+                null,
+                Map.of(),
+                null,
+                layers
+        );
+        InstanceWorkspaceLayout layout = workspaceLayout();
+        InstanceWorkspacePaths workspace = prepareWorkspace(layout, instanceId.toString());
+        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), layout);
+
+        registryService.recordPrepared(workspace, request, layers, Map.of(), request.portsJson());
+        registryService.recordContainerId(workspace, instanceId, "container-123", "starting");
+        registryService.clearContainerState(workspace, instanceId, "stopped", null, "start-failed");
+
+        Path registryFile = workspace.instanceRoot().resolve("instance.json");
+        InstanceRegistryEntry entry = objectMapper().readValue(registryFile.toFile(), InstanceRegistryEntry.class);
+        assertThat(entry.containerId()).isNull();
+        assertThat(entry.containerStatus()).isEqualTo("stopped");
+        assertThat(entry.containerStatusUpdatedAt()).isNotNull();
+        assertThat(entry.containerExitCode()).isNull();
+        assertThat(entry.containerExitReason()).isEqualTo("start-failed");
+    }
+
+    @Test
     void listRegistriesReturnsKnownInstances() {
         InstanceWorkspaceLayout layout = workspaceLayout();
         InstanceRegistryService registryService = new InstanceRegistryService(objectMapper(), layout);

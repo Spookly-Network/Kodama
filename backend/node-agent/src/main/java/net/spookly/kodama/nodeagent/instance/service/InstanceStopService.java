@@ -81,6 +81,16 @@ public class InstanceStopService {
             );
             return;
         }
+        try {
+            registryService.recordContainerStatus(workspace, instanceId, "stopping", null, null);
+        } catch (RuntimeException ex) {
+            logger.warn(
+                    "Failed to record stopping status before Docker stop. Continuing stop flow. instanceId={} containerId={}",
+                    instanceId,
+                    containerId,
+                    ex
+            );
+        }
         Integer stopTimeoutSeconds = resolveStopTimeoutSeconds();
         try {
             dockerService.stopContainer(containerId, stopTimeoutSeconds);

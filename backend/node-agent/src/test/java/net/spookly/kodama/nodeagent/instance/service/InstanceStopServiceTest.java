@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -79,8 +80,61 @@ class InstanceStopServiceTest {
 
         service.stopInstance(instanceId);
 
-        verify(dockerService).stopContainer(containerId, 15);
+        var order = inOrder(registryService, dockerService);
+        order.verify(registryService).recordContainerStatus(workspace, instanceId, "stopping", null, null);
+        order.verify(dockerService).stopContainer(containerId, 15);
+        order.verify(registryService).recordContainerStatus(eq(workspace), eq(instanceId), eq("stopped"), any(), any());
         verify(dockerService, never()).killContainer(containerId);
+    }
+
+    @Test
+    void stopInstanceContinuesWhenStoppingStatusWriteFails() throws Exception {
+        UUID instanceId = UUID.randomUUID();
+        String containerId = "container-stopping-failure";
+        InstanceWorkspacePaths workspace = createWorkspace(instanceId);
+        InstanceRegistryEntry registry = new InstanceRegistryEntry(
+                instanceId,
+                "instance-name",
+                null,
+                null,
+                Map.of(),
+                List.of(),
+                OffsetDateTime.now(),
+                containerId,
+                "running",
+                OffsetDateTime.now(),
+                null,
+                null,
+                null
+        );
+
+        DockerService dockerService = mock(DockerService.class);
+        InstanceRegistryService registryService = mock(InstanceRegistryService.class);
+        InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
+
+        when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
+        when(registryService.loadRegistry(workspace)).thenReturn(registry);
+        when(dockerService.inspectContainerIfExists(containerId))
+                .thenReturn(status(containerId, true, "running"), status(containerId, false, "exited"));
+        doThrow(new RuntimeException("registry write failed"))
+                .when(registryService)
+                .recordContainerStatus(workspace, instanceId, "stopping", null, null);
+
+        NodeConfig config = new NodeConfig();
+        InstanceProperties instanceProperties = new InstanceProperties();
+        instanceProperties.getInstanceRuntime().setStopTimeoutSeconds(10);
+
+        InstanceStopService service = new InstanceStopService(
+                dockerService,
+                registryService,
+                workspaceLayout,
+                config,
+                instanceProperties
+        );
+
+        assertThatNoException().isThrownBy(() -> service.stopInstance(instanceId));
+
+        verify(dockerService).stopContainer(containerId, 10);
         verify(registryService).recordContainerStatus(eq(workspace), eq(instanceId), eq("stopped"), any(), any());
     }
 

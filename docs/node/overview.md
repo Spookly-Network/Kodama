@@ -8,7 +8,7 @@ The Node Agent is a lightweight Java service that runs on each node and executes
 - Added startup validation for required configuration values.
 - Expanded the startup log to include the effective configuration (sans secrets).
 - Added Brain registration on startup and in-memory caching of the assigned node id.
-- Added a heartbeat scheduler that reports node status and usage to the Brain.
+- Added a heartbeat scheduler that reports node status and computes usage from local instance registry status and slots.
 - Added a cache purge endpoint so the Brain can instruct nodes to clear cached templates.
 - Added a dev-mode toggle endpoint so the Brain can force cache bypass on template fetches.
 - Added per-instance workspace layout helpers that create merged/config, logs, and temp folders on demand.

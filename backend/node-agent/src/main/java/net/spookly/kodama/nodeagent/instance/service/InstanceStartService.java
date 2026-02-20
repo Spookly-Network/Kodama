@@ -114,15 +114,21 @@ public class InstanceStartService {
         DockerContainerCreateResult result = dockerService.createContainer(request);
         String containerId = result.containerId();
         try {
-            dockerService.startContainer(containerId);
+            registryService.recordContainerId(workspace, instanceId, containerId, "starting");
         } catch (RuntimeException ex) {
-            removeContainerSafely(containerId, instanceId, "start failure");
+            removeContainerSafely(containerId, instanceId, "registry update failure");
             throw ex;
         }
         try {
-            registryService.recordContainerId(workspace, instanceId, containerId);
+            dockerService.startContainer(containerId);
         } catch (RuntimeException ex) {
-            removeContainerSafely(containerId, instanceId, "registry update failure");
+            cleanupAfterStartFailure(workspace, instanceId, containerId, "start failure");
+            throw ex;
+        }
+        try {
+            registryService.recordContainerStatus(workspace, instanceId, "running", null, null);
+        } catch (RuntimeException ex) {
+            cleanupAfterStartFailure(workspace, instanceId, containerId, "registry update failure");
             throw ex;
         }
         logger.info("Instance container started. instanceId={} containerId={}", instanceId, containerId);
@@ -264,7 +270,20 @@ public class InstanceStartService {
                 .toList();
     }
 
-    private void removeContainerSafely(String containerId, UUID instanceId, String reason) {
+    private void cleanupAfterStartFailure(
+            InstanceWorkspacePaths workspace,
+            UUID instanceId,
+            String containerId,
+            String reason
+    ) {
+        boolean removed = removeContainerSafely(containerId, instanceId, reason);
+        if (!removed) {
+            return;
+        }
+        clearRegistryContainerStateSafely(workspace, instanceId, reason);
+    }
+
+    private boolean removeContainerSafely(String containerId, UUID instanceId, String reason) {
         try {
             dockerService.removeContainer(containerId, true, false);
             logger.warn(
@@ -273,12 +292,36 @@ public class InstanceStartService {
                     instanceId,
                     containerId
             );
+            return true;
         } catch (RuntimeException ex) {
             logger.warn(
                     "Failed to remove container after {}. instanceId={} containerId={}",
                     reason,
                     instanceId,
                     containerId,
+                    ex
+            );
+            return false;
+        }
+    }
+
+    private void clearRegistryContainerStateSafely(
+            InstanceWorkspacePaths workspace,
+            UUID instanceId,
+            String reason
+    ) {
+        try {
+            registryService.clearContainerState(workspace, instanceId, "stopped", null, "start-failed");
+            logger.warn(
+                    "Cleared registry container state after {}. instanceId={}",
+                    reason,
+                    instanceId
+            );
+        } catch (RuntimeException ex) {
+            logger.warn(
+                    "Failed to clear registry container state after {}. instanceId={}",
+                    reason,
+                    instanceId,
                     ex
             );
         }

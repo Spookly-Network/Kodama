@@ -8,9 +8,13 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - Added variable substitution and Brain callbacks as part of the prepare flow.
 - Added a local instance registry record written after successful preparation.
 - Added start/stop/destroy command handlers that send lifecycle callbacks to the Brain.
-- Start now creates and starts a Docker container from the prepared workspace and records its container id locally.
+- Start now creates and starts a Docker container from the prepared workspace and records lifecycle status transitions
+  (`starting` before Docker start, `running` after success).
+- If start fails after the registry was marked `starting`, cleanup now removes the container and clears the registry
+  container reference back to a non-slot-consuming `stopped` state.
 - Start now executes `installScript` once with `/bin/sh -c` before first container start when `installCompleted` is `false`.
-- Stop now resolves the container id from the local registry, stops the container, and records the stopped state.
+- Stop now resolves the container id from the local registry, marks `stopping`, stops the container, and records the
+  final `stopped` state.
 - Added a container monitor that records exit codes and reasons when containers stop outside of stop/destroy commands.
 - Destroy now stops (or force-kills) the container, removes it, deletes the instance workspace, and removes the local registry entry.
 - Added a local registry listing endpoint for listing known instance records.
@@ -45,7 +49,10 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
   - maps ports from `portsJson` array entries (`containerPort` + `hostPort`),
   - treats `portsJson` arrays as authoritative and only falls back to `PORT`/`PORT_<NAME>` variables when `portsJson` is absent,
   - injects env vars (including `INSTANCE_ID` and `NODE_NAME`),
-  - records the container id to the registry,
+  - records the container id and `starting` status to the registry before calling Docker start,
+  - updates registry status to `running` after Docker start succeeds,
+  - if Docker start or the `running` registry write fails after `starting` was recorded, removes the container and
+    clears container id/status metadata in the registry to `stopped` with reason `start-failed`,
   - then calls back with `/api/nodes/{nodeId}/instances/{instanceId}/running`.
 - The merged workspace is mounted at `node-agent.instance-runtime.workspace-mount-path` and the working directory defaults to the same path.
 - Stop/destroy acknowledge commands by calling back to the Brain:
@@ -61,7 +68,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
   `node-agent.instance-callbacks.retry-backoff-millis`.
 - If the container is still running after the stop timeout, the node agent force-kills it.
 - The stop timeout is configured via `node-agent.instance-runtime.stop-timeout-seconds` (defaults to Docker's own timeout when unset).
-- The registry container status is updated to `stopped` after a successful stop.
+- The registry container status transitions through `stopping` and then `stopped` during stop.
 - `variables` and `variablesJson` are mutually exclusive. When `variablesJson` is provided, the node agent parses it as a JSON map.
 - Template cache lookups use `templateId` from the prepare payload as the cache key.
 - Prepare payload includes resolved runtime fields from Brain: `containerImage`, `installScript`, `startCommand`, `slotsRequired`, and `portDefinitions`.
@@ -75,9 +82,12 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - If the install script exits non-zero, start fails, `/failed` is attempted, and `installCompleted` remains `false`.
 - If the install script exceeds the configured install timeout, the node agent terminates it, start fails, `/failed` is attempted, and `installCompleted` remains `false`.
 - Start fails if the prepared workspace or `instance.json` registry record is missing.
+- If start fails after writing `starting`, the node attempts container removal and registry rollback; if cleanup succeeds,
+  heartbeat no longer counts the instance as slot-consuming.
 - Stop fails if the registry is missing or does not contain a container id.
 - If the container is missing at stop time, the node agent logs a warning, marks the registry as stopped, and preserves any
   existing exit metadata (otherwise it records an exit reason of `missing`).
+- If writing the intermediate `stopping` status fails, the node logs a warning and still attempts Docker stop.
 - If the registry, container, or workspace is missing during destroy, the node agent treats it as already removed and continues cleanup.
 - If the container disappears or stops between inspect and the Docker stop/kill calls, the node treats it as already stopped.
 - If a container stops without a stop command (crash, manual stop), the monitor records the exit code/reason in the local registry.
