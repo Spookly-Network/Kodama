@@ -1,9 +1,12 @@
 package net.spookly.kodama.nodeagent.instance.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -37,71 +40,65 @@ class InstanceStartServiceTest {
     Path tempDir;
 
     @Test
-    void startInstanceCreatesContainerAndRecordsId() throws Exception {
+    void startInstanceRunsInstallScriptOnceAndUsesRegistryRuntimeFields() throws Exception {
         UUID instanceId = UUID.randomUUID();
         Path instanceRoot = tempDir.resolve("instances").resolve(instanceId.toString());
         Path mergedDir = instanceRoot.resolve("merged");
         Files.createDirectories(mergedDir);
-        InstanceWorkspacePaths workspace = new InstanceWorkspacePaths(
-                instanceId.toString(),
-                instanceRoot,
-                mergedDir,
-                instanceRoot.resolve("logs"),
-                instanceRoot.resolve("temp")
-        );
+        InstanceWorkspacePaths workspace = workspace(instanceId, instanceRoot, mergedDir);
 
-        InstanceRegistryEntry registry = new InstanceRegistryEntry(
+        InstanceRegistryEntry pendingInstall = registryEntry(
                 instanceId,
-                "instance-name",
-                null,
-                null,
-                Map.of("ENV", "prod"),
-                List.of(),
-                OffsetDateTime.now(),
-                null,
-                null,
-                null,
-                null,
-                null,
-                instanceRoot.toAbsolutePath().normalize().toString()
+                instanceRoot,
+                false,
+                "printf 'ok' > .install-complete",
+                "ghcr.io/spookly/hytale:registry",
+                List.of("java", "-jar", "server.jar")
+        );
+        InstanceRegistryEntry installComplete = registryEntry(
+                instanceId,
+                instanceRoot,
+                true,
+                pendingInstall.installScript(),
+                pendingInstall.containerImage(),
+                pendingInstall.startCommand()
         );
 
         DockerService dockerService = mock(DockerService.class);
         InstanceRegistryService registryService = mock(InstanceRegistryService.class);
         InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
         InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
+        InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
 
         when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
-        when(registryService.loadRegistry(workspace)).thenReturn(registry);
-        when(portBindingsResolver.resolveBindings(registry))
+        when(registryService.loadRegistry(workspace)).thenReturn(pendingInstall, installComplete);
+        when(portBindingsResolver.resolveBindings(installComplete))
                 .thenReturn(List.of(new DockerPortBinding(25565, 30000, null)));
         when(dockerService.createContainer(any()))
                 .thenReturn(new DockerContainerCreateResult("container-1", List.of()));
-
-        NodeConfig config = new NodeConfig();
-        config.setNodeName("node-1");
-        InstanceProperties instanceProperties = new InstanceProperties();
-        instanceProperties.getInstanceRuntime().setImage("image:test");
-        instanceProperties.getInstanceRuntime().setWorkspaceMountPath("/workspace");
-        NodePluginsProperties pluginsProperties = new NodePluginsProperties();
-        NodePluginRegistry pluginRegistry = new NodePluginRegistry(pluginsProperties);
+        when(installScriptRunner.runScript(any(), any(), any())).thenReturn(0);
 
         InstanceStartService service = new InstanceStartService(
                 dockerService,
                 registryService,
                 workspaceLayout,
                 portBindingsResolver,
-                config,
-                instanceProperties,
-                pluginRegistry
+                nodeConfig(),
+                instanceProperties(),
+                pluginRegistry(),
+                installScriptRunner
         );
 
         service.startInstance(instanceId, "request-name");
 
+        verify(installScriptRunner).runScript(eq(mergedDir), eq("printf 'ok' > .install-complete"), any());
+        verify(registryService).recordInstallCompleted(workspace, instanceId);
+
         ArgumentCaptor<DockerContainerCreateRequest> captor = ArgumentCaptor.forClass(DockerContainerCreateRequest.class);
         verify(dockerService).createContainer(captor.capture());
         DockerContainerCreateRequest request = captor.getValue();
-        assertThat(request.image()).isEqualTo("image:test");
+        assertThat(request.image()).isEqualTo("ghcr.io/spookly/hytale:registry");
+        assertThat(request.command()).containsExactly("java", "-jar", "server.jar");
         assertThat(request.name()).isEqualTo("kodama-instance-" + instanceId);
         assertThat(request.workingDir()).isEqualTo("/workspace");
         assertThat(request.env()).contains("INSTANCE_ID=" + instanceId, "NODE_NAME=node-1", "ENV=prod");
@@ -114,5 +111,244 @@ class InstanceStartServiceTest {
         var order = inOrder(dockerService, registryService);
         order.verify(dockerService).startContainer("container-1");
         order.verify(registryService).recordContainerId(workspace, instanceId, "container-1");
+    }
+
+    @Test
+    void startInstanceSkipsInstallWhenRegistryAlreadyMarkedInstalled() throws Exception {
+        UUID instanceId = UUID.randomUUID();
+        Path instanceRoot = tempDir.resolve("instances").resolve(instanceId.toString());
+        Path mergedDir = instanceRoot.resolve("merged");
+        Files.createDirectories(mergedDir);
+        InstanceWorkspacePaths workspace = workspace(instanceId, instanceRoot, mergedDir);
+
+        InstanceRegistryEntry registry = registryEntry(
+                instanceId,
+                instanceRoot,
+                true,
+                "exit 99",
+                "ghcr.io/spookly/hytale:registry",
+                List.of("java", "-jar", "server.jar")
+        );
+
+        DockerService dockerService = mock(DockerService.class);
+        InstanceRegistryService registryService = mock(InstanceRegistryService.class);
+        InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
+        InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
+        InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
+
+        when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
+        when(registryService.loadRegistry(workspace)).thenReturn(registry);
+        when(portBindingsResolver.resolveBindings(registry)).thenReturn(List.of());
+        when(dockerService.createContainer(any()))
+                .thenReturn(new DockerContainerCreateResult("container-1", List.of()));
+
+        InstanceStartService service = new InstanceStartService(
+                dockerService,
+                registryService,
+                workspaceLayout,
+                portBindingsResolver,
+                nodeConfig(),
+                instanceProperties(),
+                pluginRegistry(),
+                installScriptRunner
+        );
+
+        service.startInstance(instanceId, "request-name");
+
+        verify(installScriptRunner, never()).runScript(any(), any(), any());
+        verify(registryService, never()).recordInstallCompleted(any(), any());
+    }
+
+    @Test
+    void startInstanceFailsWhenInstallScriptFailsAndDoesNotMarkInstallCompleted() throws Exception {
+        UUID instanceId = UUID.randomUUID();
+        Path instanceRoot = tempDir.resolve("instances").resolve(instanceId.toString());
+        Path mergedDir = instanceRoot.resolve("merged");
+        Files.createDirectories(mergedDir);
+        InstanceWorkspacePaths workspace = workspace(instanceId, instanceRoot, mergedDir);
+
+        InstanceRegistryEntry registry = registryEntry(
+                instanceId,
+                instanceRoot,
+                false,
+                "exit 7",
+                "ghcr.io/spookly/hytale:registry",
+                List.of("java", "-jar", "server.jar")
+        );
+
+        DockerService dockerService = mock(DockerService.class);
+        InstanceRegistryService registryService = mock(InstanceRegistryService.class);
+        InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
+        InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
+        InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
+
+        when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
+        when(registryService.loadRegistry(workspace)).thenReturn(registry);
+        when(installScriptRunner.runScript(any(), any(), any())).thenReturn(7);
+
+        InstanceStartService service = new InstanceStartService(
+                dockerService,
+                registryService,
+                workspaceLayout,
+                portBindingsResolver,
+                nodeConfig(),
+                instanceProperties(),
+                pluginRegistry(),
+                installScriptRunner
+        );
+
+        assertThatThrownBy(() -> service.startInstance(instanceId, "request-name"))
+                .isInstanceOf(InstanceStartException.class)
+                .hasMessageContaining("exit code 7");
+
+        verify(registryService, never()).recordInstallCompleted(any(), any());
+        verify(dockerService, never()).createContainer(any());
+    }
+
+    @Test
+    void startInstanceFailsWhenContainerImageMissingInRegistry() throws Exception {
+        UUID instanceId = UUID.randomUUID();
+        Path instanceRoot = tempDir.resolve("instances").resolve(instanceId.toString());
+        Path mergedDir = instanceRoot.resolve("merged");
+        Files.createDirectories(mergedDir);
+        InstanceWorkspacePaths workspace = workspace(instanceId, instanceRoot, mergedDir);
+
+        InstanceRegistryEntry registry = registryEntry(
+                instanceId,
+                instanceRoot,
+                true,
+                null,
+                null,
+                List.of("java", "-jar", "server.jar")
+        );
+
+        DockerService dockerService = mock(DockerService.class);
+        InstanceRegistryService registryService = mock(InstanceRegistryService.class);
+        InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
+        InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
+        InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
+
+        when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
+        when(registryService.loadRegistry(workspace)).thenReturn(registry);
+
+        InstanceStartService service = new InstanceStartService(
+                dockerService,
+                registryService,
+                workspaceLayout,
+                portBindingsResolver,
+                nodeConfig(),
+                instanceProperties(),
+                pluginRegistry(),
+                installScriptRunner
+        );
+
+        assertThatThrownBy(() -> service.startInstance(instanceId, "request-name"))
+                .isInstanceOf(InstanceStartException.class)
+                .hasMessageContaining("Container image is required in instance registry");
+
+        verify(installScriptRunner, never()).runScript(any(), any(), any());
+        verify(dockerService, never()).createContainer(any());
+    }
+
+    @Test
+    void startInstanceFailsWhenStartCommandMissingInRegistry() throws Exception {
+        UUID instanceId = UUID.randomUUID();
+        Path instanceRoot = tempDir.resolve("instances").resolve(instanceId.toString());
+        Path mergedDir = instanceRoot.resolve("merged");
+        Files.createDirectories(mergedDir);
+        InstanceWorkspacePaths workspace = workspace(instanceId, instanceRoot, mergedDir);
+
+        InstanceRegistryEntry registry = registryEntry(
+                instanceId,
+                instanceRoot,
+                true,
+                null,
+                "ghcr.io/spookly/hytale:registry",
+                List.of()
+        );
+
+        DockerService dockerService = mock(DockerService.class);
+        InstanceRegistryService registryService = mock(InstanceRegistryService.class);
+        InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
+        InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
+        InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
+
+        when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
+        when(registryService.loadRegistry(workspace)).thenReturn(registry);
+
+        InstanceStartService service = new InstanceStartService(
+                dockerService,
+                registryService,
+                workspaceLayout,
+                portBindingsResolver,
+                nodeConfig(),
+                instanceProperties(),
+                pluginRegistry(),
+                installScriptRunner
+        );
+
+        assertThatThrownBy(() -> service.startInstance(instanceId, "request-name"))
+                .isInstanceOf(InstanceStartException.class)
+                .hasMessageContaining("Start command is required in instance registry");
+
+        verify(installScriptRunner, never()).runScript(any(), any(), any());
+        verify(dockerService, never()).createContainer(any());
+    }
+
+    private InstanceWorkspacePaths workspace(UUID instanceId, Path instanceRoot, Path mergedDir) {
+        return new InstanceWorkspacePaths(
+                instanceId.toString(),
+                instanceRoot,
+                mergedDir,
+                instanceRoot.resolve("logs"),
+                instanceRoot.resolve("temp")
+        );
+    }
+
+    private InstanceRegistryEntry registryEntry(
+            UUID instanceId,
+            Path instanceRoot,
+            boolean installCompleted,
+            String installScript,
+            String containerImage,
+            List<String> startCommand
+    ) {
+        return new InstanceRegistryEntry(
+                instanceId,
+                "instance-name",
+                null,
+                containerImage,
+                installScript,
+                startCommand,
+                1,
+                null,
+                installCompleted,
+                Map.of("ENV", "prod"),
+                List.of(),
+                OffsetDateTime.now(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                instanceRoot.toAbsolutePath().normalize().toString()
+        );
+    }
+
+    private NodeConfig nodeConfig() {
+        NodeConfig config = new NodeConfig();
+        config.setNodeName("node-1");
+        return config;
+    }
+
+    private InstanceProperties instanceProperties() {
+        InstanceProperties instanceProperties = new InstanceProperties();
+        instanceProperties.getInstanceRuntime().setWorkspaceMountPath("/workspace");
+        return instanceProperties;
+    }
+
+    private NodePluginRegistry pluginRegistry() {
+        NodePluginsProperties pluginsProperties = new NodePluginsProperties();
+        return new NodePluginRegistry(pluginsProperties);
     }
 }

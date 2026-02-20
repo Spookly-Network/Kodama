@@ -6,6 +6,7 @@ Persist a local record of instance metadata after the node finishes preparing a 
 ## What changed
 - The prepare flow now writes an `instance.json` registry entry per instance.
 - The start flow updates the registry with the Docker container id.
+- The start flow marks `installCompleted=true` after a successful `installScript` run.
 - The stop flow updates the registry with the latest container status.
 - The node agent monitors container state changes and records exit codes and reasons when containers stop.
 - The destroy flow deletes the `instance.json` registry entry before removing the workspace.
@@ -30,6 +31,7 @@ Persist a local record of instance metadata after the node finishes preparing a 
 - Entries with non-array `portsJson` are treated as invalid and cause prepare allocation to fail until corrected.
 - Prepare serializes `hostPort` allocation and `instance.json` writes through a local reservation lock to avoid duplicate reservations under concurrent requests.
 - The registry is overwritten on each successful prepare and updated again when the container id is recorded.
+- Install completion is persisted in `installCompleted` and is used to skip repeated install script runs.
 - Registry files that predate runtime fields are still readable; missing runtime fields default to:
   - `startCommand: []`
   - `slotsRequired: 1`
@@ -42,6 +44,7 @@ Persist a local record of instance metadata after the node finishes preparing a 
 
 ## Edge cases / risks
 - If the registry write fails, the prepare request fails and a `/failed` callback is attempted.
+- If writing `installCompleted=true` fails after an install script run, start fails before Docker container creation.
 - Missing or invalid workspace paths are treated as preparation failures.
 - Corrupt `portsJson` values in existing registries can block new allocations because reservations can no longer be read safely.
 - When containers disappear outside of the node agent, the monitor records a stopped state with an exit reason of
