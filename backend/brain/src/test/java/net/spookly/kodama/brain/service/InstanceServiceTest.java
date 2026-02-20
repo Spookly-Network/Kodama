@@ -639,6 +639,40 @@ class InstanceServiceTest {
     }
 
     @Test
+    void createInstanceWithBlueprintDefaultsSlotsRequiredToOneWhenMissing() throws Exception {
+        createOnlineNode("node-blueprint-slots-default");
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        TemplateVersion version = createTemplateVersion("Blueprint Slots Default Layer", "1.0.0");
+
+        Blueprint blueprint = createBlueprint(
+                "bp-slots-default",
+                false,
+                null,
+                "ghcr.io/spookly/hytale:slots-default",
+                null,
+                List.of("./start.sh"),
+                null,
+                now
+        );
+        blueprintTemplateAssignmentRepository.save(new BlueprintTemplateAssignment(
+                blueprint,
+                version.getTemplate(),
+                version,
+                0
+        ));
+
+        CreateInstanceRequest request = new CreateInstanceRequest();
+        request.setName("instance-blueprint-slots-default");
+        request.setBlueprintId(blueprint.getId());
+
+        InstanceDto created = instanceService.createInstance(request);
+
+        Instance persisted = instanceRepository.findById(created.getId()).orElseThrow();
+        assertThat(persisted.getSlotsRequired()).isEqualTo(1);
+        assertThat(created.getSlotsRequired()).isEqualTo(1);
+    }
+
+    @Test
     void createInstanceWithBlueprintOverridesReplaceDefaults() throws Exception {
         createOnlineNode("node-blueprint-overrides");
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
