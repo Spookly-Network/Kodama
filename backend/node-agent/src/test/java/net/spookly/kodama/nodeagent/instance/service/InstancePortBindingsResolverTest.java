@@ -41,6 +41,29 @@ class InstancePortBindingsResolverTest {
     }
 
     @Test
+    void rejectsLiteralNullPortsJson() {
+        InstanceRegistryEntry entry = new InstanceRegistryEntry(
+                UUID.randomUUID(),
+                "instance-name",
+                null,
+                "null",
+                Map.of("PORT_GAME", "30000"),
+                List.of(),
+                OffsetDateTime.now(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> resolver.resolveBindings(entry))
+                .isInstanceOf(InstanceStartException.class)
+                .hasMessageContaining("portsJson must be a JSON array");
+    }
+
+    @Test
     void resolvesPortsFromVariablesWhenPortsJsonMissing() {
         InstanceRegistryEntry entry = new InstanceRegistryEntry(
                 UUID.randomUUID(),

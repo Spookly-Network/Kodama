@@ -52,10 +52,7 @@ public class InstancePortBindingsResolver {
         }
         try {
             JsonNode root = objectMapper.readTree(portsJson);
-            if (root == null || root.isNull()) {
-                return PortsJsonResult.empty(false);
-            }
-            if (root.isArray()) {
+            if (root != null && root.isArray()) {
                 return new PortsJsonResult(parseDirectBindings(root), true);
             }
             throw new InstanceStartException("portsJson must be a JSON array");
