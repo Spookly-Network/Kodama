@@ -68,7 +68,7 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew node-agent:test
-        working-directory: backend/node-agent
+        working-directory: backend
 
   build:
     runs-on: ubuntu-latest
