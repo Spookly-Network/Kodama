@@ -28,213 +28,218 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional
 public class TemplateAssignmentService {
 
-    private static final String ASSIGNMENT_NOT_FOUND_MESSAGE = "Assignment not found";
+  private static final String ASSIGNMENT_NOT_FOUND_MESSAGE = "Assignment not found";
 
-    private final BlueprintTemplateAssignmentRepository blueprintTemplateAssignmentRepository;
-    private final InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository;
-    private final GroupTemplateAssignmentRepository groupTemplateAssignmentRepository;
-    private final BlueprintRepository blueprintRepository;
-    private final InstanceRepository instanceRepository;
-    private final InstanceGroupRepository instanceGroupRepository;
-    private final TemplateService templateService;
+  private final BlueprintTemplateAssignmentRepository blueprintTemplateAssignmentRepository;
+  private final InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository;
+  private final GroupTemplateAssignmentRepository groupTemplateAssignmentRepository;
+  private final BlueprintRepository blueprintRepository;
+  private final InstanceRepository instanceRepository;
+  private final InstanceGroupRepository instanceGroupRepository;
+  private final TemplateService templateService;
 
-    public TemplateAssignmentService(
-            BlueprintTemplateAssignmentRepository blueprintTemplateAssignmentRepository,
-            InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository,
-            GroupTemplateAssignmentRepository groupTemplateAssignmentRepository,
-            BlueprintRepository blueprintRepository,
-            InstanceRepository instanceRepository,
-            InstanceGroupRepository instanceGroupRepository,
-            TemplateService templateService
-    ) {
-        this.blueprintTemplateAssignmentRepository = blueprintTemplateAssignmentRepository;
-        this.instanceTemplateAssignmentRepository = instanceTemplateAssignmentRepository;
-        this.groupTemplateAssignmentRepository = groupTemplateAssignmentRepository;
-        this.blueprintRepository = blueprintRepository;
-        this.instanceRepository = instanceRepository;
-        this.instanceGroupRepository = instanceGroupRepository;
-        this.templateService = templateService;
+  public TemplateAssignmentService(
+      BlueprintTemplateAssignmentRepository blueprintTemplateAssignmentRepository,
+      InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository,
+      GroupTemplateAssignmentRepository groupTemplateAssignmentRepository,
+      BlueprintRepository blueprintRepository,
+      InstanceRepository instanceRepository,
+      InstanceGroupRepository instanceGroupRepository,
+      TemplateService templateService) {
+    this.blueprintTemplateAssignmentRepository = blueprintTemplateAssignmentRepository;
+    this.instanceTemplateAssignmentRepository = instanceTemplateAssignmentRepository;
+    this.groupTemplateAssignmentRepository = groupTemplateAssignmentRepository;
+    this.blueprintRepository = blueprintRepository;
+    this.instanceRepository = instanceRepository;
+    this.instanceGroupRepository = instanceGroupRepository;
+    this.templateService = templateService;
+  }
+
+  @Transactional(readOnly = true)
+  public List<TemplateAssignmentDto> listBlueprintAssignments(UUID blueprintId) {
+    ensureBlueprintExists(blueprintId);
+    return blueprintTemplateAssignmentRepository.findAllByBlueprintId(blueprintId).stream()
+        .map(TemplateAssignmentDto::fromEntity)
+        .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public List<TemplateAssignmentReference> listBlueprintAssignmentReferences(UUID blueprintId) {
+    ensureBlueprintExists(blueprintId);
+    return blueprintTemplateAssignmentRepository.findAllByBlueprintId(blueprintId).stream()
+        .map(
+            assignment ->
+                new TemplateAssignmentReference(
+                    assignment.getTemplate().getId(),
+                    assignment.getTemplateVersion() == null
+                        ? null
+                        : assignment.getTemplateVersion().getId(),
+                    assignment.getPriority()))
+        .toList();
+  }
+
+  public TemplateAssignmentDto addBlueprintAssignment(
+      UUID blueprintId, TemplateAssignmentRequest request) {
+    Blueprint blueprint = loadBlueprint(blueprintId);
+    AssignmentTarget target = resolveAssignmentTarget(request);
+    BlueprintTemplateAssignment assignment =
+        new BlueprintTemplateAssignment(
+            blueprint, target.template(), target.templateVersion(), target.priority());
+    BlueprintTemplateAssignment saved = blueprintTemplateAssignmentRepository.save(assignment);
+    return TemplateAssignmentDto.fromEntity(saved);
+  }
+
+  public void removeBlueprintAssignment(UUID blueprintId, UUID assignmentId) {
+    ensureBlueprintExists(blueprintId);
+    BlueprintTemplateAssignment assignment =
+        blueprintTemplateAssignmentRepository
+            .findById(assignmentId)
+            .orElseThrow(this::assignmentNotFound);
+    if (!assignment.getBlueprint().getId().equals(blueprintId)) {
+      throw assignmentNotFound();
+    }
+    blueprintTemplateAssignmentRepository.delete(assignment);
+  }
+
+  @Transactional(readOnly = true)
+  public List<TemplateAssignmentDto> listInstanceAssignments(UUID instanceId) {
+    ensureInstanceExists(instanceId);
+    return instanceTemplateAssignmentRepository.findAllByInstanceId(instanceId).stream()
+        .map(TemplateAssignmentDto::fromEntity)
+        .toList();
+  }
+
+  public TemplateAssignmentDto addInstanceAssignment(
+      UUID instanceId, TemplateAssignmentRequest request) {
+    Instance instance = loadInstance(instanceId);
+    AssignmentTarget target = resolveAssignmentTarget(request);
+    InstanceTemplateAssignment assignment =
+        new InstanceTemplateAssignment(
+            instance, target.template(), target.templateVersion(), target.priority());
+    InstanceTemplateAssignment saved = instanceTemplateAssignmentRepository.save(assignment);
+    return TemplateAssignmentDto.fromEntity(saved);
+  }
+
+  public void removeInstanceAssignment(UUID instanceId, UUID assignmentId) {
+    ensureInstanceExists(instanceId);
+    InstanceTemplateAssignment assignment =
+        instanceTemplateAssignmentRepository
+            .findById(assignmentId)
+            .orElseThrow(this::assignmentNotFound);
+    if (!assignment.getInstance().getId().equals(instanceId)) {
+      throw assignmentNotFound();
+    }
+    instanceTemplateAssignmentRepository.delete(assignment);
+  }
+
+  @Transactional(readOnly = true)
+  public List<TemplateAssignmentDto> listGroupAssignments(UUID groupId) {
+    ensureGroupExists(groupId);
+    return groupTemplateAssignmentRepository.findAllByGroupId(groupId).stream()
+        .map(TemplateAssignmentDto::fromEntity)
+        .toList();
+  }
+
+  public TemplateAssignmentDto addGroupAssignment(UUID groupId, TemplateAssignmentRequest request) {
+    InstanceGroup group = loadGroup(groupId);
+    AssignmentTarget target = resolveAssignmentTarget(request);
+    GroupTemplateAssignment assignment =
+        new GroupTemplateAssignment(
+            group, target.template(), target.templateVersion(), target.priority());
+    GroupTemplateAssignment saved = groupTemplateAssignmentRepository.save(assignment);
+    return TemplateAssignmentDto.fromEntity(saved);
+  }
+
+  public void removeGroupAssignment(UUID groupId, UUID assignmentId) {
+    ensureGroupExists(groupId);
+    GroupTemplateAssignment assignment =
+        groupTemplateAssignmentRepository
+            .findById(assignmentId)
+            .orElseThrow(this::assignmentNotFound);
+    if (!assignment.getGroup().getId().equals(groupId)) {
+      throw assignmentNotFound();
+    }
+    groupTemplateAssignmentRepository.delete(assignment);
+  }
+
+  private AssignmentTarget resolveAssignmentTarget(TemplateAssignmentRequest request) {
+    if (request == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Assignment request is required");
+    }
+    if (request.getTemplateId() == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "templateId is required");
+    }
+    int priority = request.getPriority() != null ? request.getPriority() : 0;
+    if (priority < 0) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Priority must be >= 0");
     }
 
-    @Transactional(readOnly = true)
-    public List<TemplateAssignmentDto> listBlueprintAssignments(UUID blueprintId) {
-        ensureBlueprintExists(blueprintId);
-        return blueprintTemplateAssignmentRepository.findAllByBlueprintId(blueprintId).stream()
-                .map(TemplateAssignmentDto::fromEntity)
-                .toList();
+    Template template =
+        templateService
+            .loadTemplatesById(List.of(request.getTemplateId()))
+            .get(request.getTemplateId());
+
+    TemplateVersion templateVersion = null;
+    if (request.getTemplateVersionId() != null) {
+      templateVersion =
+          templateService
+              .loadTemplateVersionsById(List.of(request.getTemplateVersionId()))
+              .get(request.getTemplateVersionId());
+      if (!template.getId().equals(templateVersion.getTemplate().getId())) {
+        throw new ResponseStatusException(
+            HttpStatus.BAD_REQUEST, "templateVersionId does not belong to templateId");
+      }
+    } else {
+      templateService.ensureTemplatesHaveVersions(List.of(template.getId()));
     }
 
-    @Transactional(readOnly = true)
-    public List<TemplateAssignmentReference> listBlueprintAssignmentReferences(UUID blueprintId) {
-        ensureBlueprintExists(blueprintId);
-        return blueprintTemplateAssignmentRepository.findAllByBlueprintId(blueprintId).stream()
-                .map(assignment -> new TemplateAssignmentReference(
-                        assignment.getTemplate().getId(),
-                        assignment.getTemplateVersion() == null ? null : assignment.getTemplateVersion().getId(),
-                        assignment.getPriority()
-                ))
-                .toList();
+    return new AssignmentTarget(template, templateVersion, priority);
+  }
+
+  private void ensureInstanceExists(UUID instanceId) {
+    if (!instanceRepository.existsById(instanceId)) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Instance not found");
     }
+  }
 
-    public TemplateAssignmentDto addBlueprintAssignment(UUID blueprintId, TemplateAssignmentRequest request) {
-        Blueprint blueprint = loadBlueprint(blueprintId);
-        AssignmentTarget target = resolveAssignmentTarget(request);
-        BlueprintTemplateAssignment assignment = new BlueprintTemplateAssignment(
-                blueprint,
-                target.template(),
-                target.templateVersion(),
-                target.priority()
-        );
-        BlueprintTemplateAssignment saved = blueprintTemplateAssignmentRepository.save(assignment);
-        return TemplateAssignmentDto.fromEntity(saved);
+  private Instance loadInstance(UUID instanceId) {
+    return instanceRepository
+        .findById(instanceId)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Instance not found"));
+  }
+
+  private Blueprint loadBlueprint(UUID blueprintId) {
+    return blueprintRepository
+        .findByIdAndDeletedAtIsNull(blueprintId)
+        .orElseThrow(
+            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blueprint not found"));
+  }
+
+  private void ensureBlueprintExists(UUID blueprintId) {
+    if (blueprintRepository.findByIdAndDeletedAtIsNull(blueprintId).isEmpty()) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Blueprint not found");
     }
+  }
 
-    public void removeBlueprintAssignment(UUID blueprintId, UUID assignmentId) {
-        ensureBlueprintExists(blueprintId);
-        BlueprintTemplateAssignment assignment = blueprintTemplateAssignmentRepository.findById(assignmentId)
-                .orElseThrow(this::assignmentNotFound);
-        if (!assignment.getBlueprint().getId().equals(blueprintId)) {
-            throw assignmentNotFound();
-        }
-        blueprintTemplateAssignmentRepository.delete(assignment);
+  private void ensureGroupExists(UUID groupId) {
+    if (!instanceGroupRepository.existsById(groupId)) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found");
     }
+  }
 
-    @Transactional(readOnly = true)
-    public List<TemplateAssignmentDto> listInstanceAssignments(UUID instanceId) {
-        ensureInstanceExists(instanceId);
-        return instanceTemplateAssignmentRepository.findAllByInstanceId(instanceId).stream()
-                .map(TemplateAssignmentDto::fromEntity)
-                .toList();
-    }
+  private InstanceGroup loadGroup(UUID groupId) {
+    return instanceGroupRepository
+        .findById(groupId)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
+  }
 
-    public TemplateAssignmentDto addInstanceAssignment(UUID instanceId, TemplateAssignmentRequest request) {
-        Instance instance = loadInstance(instanceId);
-        AssignmentTarget target = resolveAssignmentTarget(request);
-        InstanceTemplateAssignment assignment = new InstanceTemplateAssignment(
-                instance,
-                target.template(),
-                target.templateVersion(),
-                target.priority()
-        );
-        InstanceTemplateAssignment saved = instanceTemplateAssignmentRepository.save(assignment);
-        return TemplateAssignmentDto.fromEntity(saved);
-    }
+  private ResponseStatusException assignmentNotFound() {
+    return new ResponseStatusException(HttpStatus.NOT_FOUND, ASSIGNMENT_NOT_FOUND_MESSAGE);
+  }
 
-    public void removeInstanceAssignment(UUID instanceId, UUID assignmentId) {
-        ensureInstanceExists(instanceId);
-        InstanceTemplateAssignment assignment = instanceTemplateAssignmentRepository.findById(assignmentId)
-                .orElseThrow(this::assignmentNotFound);
-        if (!assignment.getInstance().getId().equals(instanceId)) {
-            throw assignmentNotFound();
-        }
-        instanceTemplateAssignmentRepository.delete(assignment);
-    }
+  private record AssignmentTarget(
+      Template template, TemplateVersion templateVersion, int priority) {}
 
-    @Transactional(readOnly = true)
-    public List<TemplateAssignmentDto> listGroupAssignments(UUID groupId) {
-        ensureGroupExists(groupId);
-        return groupTemplateAssignmentRepository.findAllByGroupId(groupId).stream()
-                .map(TemplateAssignmentDto::fromEntity)
-                .toList();
-    }
-
-    public TemplateAssignmentDto addGroupAssignment(UUID groupId, TemplateAssignmentRequest request) {
-        InstanceGroup group = loadGroup(groupId);
-        AssignmentTarget target = resolveAssignmentTarget(request);
-        GroupTemplateAssignment assignment = new GroupTemplateAssignment(
-                group,
-                target.template(),
-                target.templateVersion(),
-                target.priority()
-        );
-        GroupTemplateAssignment saved = groupTemplateAssignmentRepository.save(assignment);
-        return TemplateAssignmentDto.fromEntity(saved);
-    }
-
-    public void removeGroupAssignment(UUID groupId, UUID assignmentId) {
-        ensureGroupExists(groupId);
-        GroupTemplateAssignment assignment = groupTemplateAssignmentRepository.findById(assignmentId)
-                .orElseThrow(this::assignmentNotFound);
-        if (!assignment.getGroup().getId().equals(groupId)) {
-            throw assignmentNotFound();
-        }
-        groupTemplateAssignmentRepository.delete(assignment);
-    }
-
-    private AssignmentTarget resolveAssignmentTarget(TemplateAssignmentRequest request) {
-        if (request == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Assignment request is required");
-        }
-        if (request.getTemplateId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "templateId is required");
-        }
-        int priority = request.getPriority() != null ? request.getPriority() : 0;
-        if (priority < 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Priority must be >= 0");
-        }
-
-        Template template = templateService.loadTemplatesById(List.of(request.getTemplateId()))
-                .get(request.getTemplateId());
-
-        TemplateVersion templateVersion = null;
-        if (request.getTemplateVersionId() != null) {
-            templateVersion = templateService.loadTemplateVersionsById(List.of(request.getTemplateVersionId()))
-                    .get(request.getTemplateVersionId());
-            if (!template.getId().equals(templateVersion.getTemplate().getId())) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "templateVersionId does not belong to templateId");
-            }
-        } else {
-            templateService.ensureTemplatesHaveVersions(List.of(template.getId()));
-        }
-
-        return new AssignmentTarget(template, templateVersion, priority);
-    }
-
-    private void ensureInstanceExists(UUID instanceId) {
-        if (!instanceRepository.existsById(instanceId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Instance not found");
-        }
-    }
-
-    private Instance loadInstance(UUID instanceId) {
-        return instanceRepository.findById(instanceId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Instance not found"));
-    }
-
-    private Blueprint loadBlueprint(UUID blueprintId) {
-        return blueprintRepository.findByIdAndDeletedAtIsNull(blueprintId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blueprint not found"));
-    }
-
-    private void ensureBlueprintExists(UUID blueprintId) {
-        if (blueprintRepository.findByIdAndDeletedAtIsNull(blueprintId).isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Blueprint not found");
-        }
-    }
-
-    private void ensureGroupExists(UUID groupId) {
-        if (!instanceGroupRepository.existsById(groupId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found");
-        }
-    }
-
-    private InstanceGroup loadGroup(UUID groupId) {
-        return instanceGroupRepository.findById(groupId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
-    }
-
-    private ResponseStatusException assignmentNotFound() {
-        return new ResponseStatusException(HttpStatus.NOT_FOUND, ASSIGNMENT_NOT_FOUND_MESSAGE);
-    }
-
-    private record AssignmentTarget(Template template, TemplateVersion templateVersion, int priority) {
-    }
-
-    public record TemplateAssignmentReference(
-            UUID templateId,
-            UUID templateVersionId,
-            int priority
-    ) {
-    }
+  public record TemplateAssignmentReference(
+      UUID templateId, UUID templateVersionId, int priority) {}
 }

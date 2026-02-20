@@ -11,6 +11,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class NodeInstanceCommandRequest {
 
-    private UUID instanceId;
-    private String name;
+  private UUID instanceId;
+  private String name;
 }

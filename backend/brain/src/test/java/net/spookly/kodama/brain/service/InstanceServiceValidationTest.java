@@ -24,87 +24,81 @@ import org.springframework.web.server.ResponseStatusException;
 @ExtendWith(MockitoExtension.class)
 class InstanceServiceValidationTest {
 
-    @Mock
-    private TemplateService templateService;
+  @Mock private TemplateService templateService;
 
-    @Mock
-    private InstanceGroupService instanceGroupService;
+  @Mock private InstanceGroupService instanceGroupService;
 
-    @Mock
-    private BlueprintService blueprintService;
+  @Mock private BlueprintService blueprintService;
 
-    @Mock
-    private TemplateAssignmentService templateAssignmentService;
+  @Mock private TemplateAssignmentService templateAssignmentService;
 
-    @Mock
-    private BlueprintPortDefinitionService blueprintPortDefinitionService;
+  @Mock private BlueprintPortDefinitionService blueprintPortDefinitionService;
 
-    @Mock
-    private BlueprintGroupLinkService blueprintGroupLinkService;
+  @Mock private BlueprintGroupLinkService blueprintGroupLinkService;
 
-    private InstanceCreationPreparationService instanceCreationPreparationService;
+  private InstanceCreationPreparationService instanceCreationPreparationService;
 
-    @BeforeEach
-    void setUp() {
-        instanceCreationPreparationService = new InstanceCreationPreparationService(
-                new ObjectMapper(),
-                templateService,
-                instanceGroupService,
-                blueprintService,
-                templateAssignmentService,
-                blueprintPortDefinitionService,
-                blueprintGroupLinkService
-        );
-    }
+  @BeforeEach
+  void setUp() {
+    instanceCreationPreparationService =
+        new InstanceCreationPreparationService(
+            new ObjectMapper(),
+            templateService,
+            instanceGroupService,
+            blueprintService,
+            templateAssignmentService,
+            blueprintPortDefinitionService,
+            blueprintGroupLinkService);
+  }
 
-    @Test
-    void prepareForCreateRejectsBlueprintWithoutTemplateLayers() {
-        UUID blueprintId = UUID.fromString("00000000-0000-0000-0000-000000002001");
+  @Test
+  void prepareForCreateRejectsBlueprintWithoutTemplateLayers() {
+    UUID blueprintId = UUID.fromString("00000000-0000-0000-0000-000000002001");
 
-        Blueprint blueprint = new Blueprint(
-                "blueprint-empty-layers",
-                false,
-                1,
-                "ghcr.io/example/hytale:latest",
-                null,
-                "[\"./start-server.sh\"]",
-                null,
-                OffsetDateTime.now(ZoneOffset.UTC),
-                OffsetDateTime.now(ZoneOffset.UTC)
-        );
-        ReflectionTestUtils.setField(blueprint, "id", blueprintId);
+    Blueprint blueprint =
+        new Blueprint(
+            "blueprint-empty-layers",
+            false,
+            1,
+            "ghcr.io/example/hytale:latest",
+            null,
+            "[\"./start-server.sh\"]",
+            null,
+            OffsetDateTime.now(ZoneOffset.UTC),
+            OffsetDateTime.now(ZoneOffset.UTC));
+    ReflectionTestUtils.setField(blueprint, "id", blueprintId);
 
-        CreateInstanceRequest request = new CreateInstanceRequest(
-                "instance-empty-blueprint-layers",
-                null
-        );
-        request.setBlueprintId(blueprintId);
+    CreateInstanceRequest request =
+        new CreateInstanceRequest("instance-empty-blueprint-layers", null);
+    request.setBlueprintId(blueprintId);
 
-        when(blueprintService.loadBlueprintForInstanceCreation(blueprintId)).thenReturn(blueprint);
-        when(templateAssignmentService.listBlueprintAssignmentReferences(blueprintId)).thenReturn(List.of());
+    when(blueprintService.loadBlueprintForInstanceCreation(blueprintId)).thenReturn(blueprint);
+    when(templateAssignmentService.listBlueprintAssignmentReferences(blueprintId))
+        .thenReturn(List.of());
 
-        assertThatThrownBy(() -> instanceCreationPreparationService.prepareForCreate(request))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> {
-                    ResponseStatusException responseStatusException = (ResponseStatusException) ex;
-                    assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-                    assertThat(responseStatusException.getReason()).isEqualTo("template layers are required");
-                });
-    }
+    assertThatThrownBy(() -> instanceCreationPreparationService.prepareForCreate(request))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex -> {
+              ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+              assertThat(responseStatusException.getReason())
+                  .isEqualTo("template layers are required");
+            });
+  }
 
-    @Test
-    void prepareForCreateRejectsWhenTemplateLayersAreMissingWithoutBlueprint() {
-        CreateInstanceRequest request = new CreateInstanceRequest(
-                "instance-missing-layers",
-                null
-        );
+  @Test
+  void prepareForCreateRejectsWhenTemplateLayersAreMissingWithoutBlueprint() {
+    CreateInstanceRequest request = new CreateInstanceRequest("instance-missing-layers", null);
 
-        assertThatThrownBy(() -> instanceCreationPreparationService.prepareForCreate(request))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> {
-                    ResponseStatusException responseStatusException = (ResponseStatusException) ex;
-                    assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-                    assertThat(responseStatusException.getReason()).isEqualTo("template layers are required");
-                });
-    }
+    assertThatThrownBy(() -> instanceCreationPreparationService.prepareForCreate(request))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            ex -> {
+              ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+              assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+              assertThat(responseStatusException.getReason())
+                  .isEqualTo("template layers are required");
+            });
+  }
 }

@@ -18,58 +18,53 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    private final BrainSecurityProperties securityProperties;
-    private final JwtTokenService tokenService;
+  private final BrainSecurityProperties securityProperties;
+  private final JwtTokenService tokenService;
 
-    public JwtAuthFilter(BrainSecurityProperties securityProperties, JwtTokenService tokenService) {
-        this.securityProperties = securityProperties;
-        this.tokenService = tokenService;
-    }
+  public JwtAuthFilter(BrainSecurityProperties securityProperties, JwtTokenService tokenService) {
+    this.securityProperties = securityProperties;
+    this.tokenService = tokenService;
+  }
 
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getServletPath();
-        return path.equals("/api/auth/login")
-                || path.startsWith("/actuator")
-                || NodeAuthRequestMatcher.matches(request);
-    }
+  @Override
+  protected boolean shouldNotFilter(HttpServletRequest request) {
+    String path = request.getServletPath();
+    return path.equals("/api/auth/login")
+        || path.startsWith("/actuator")
+        || NodeAuthRequestMatcher.matches(request);
+  }
 
-    @Override
-    protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain
-    ) throws ServletException, IOException {
-        if (!securityProperties.isEnabled()) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-        String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authorization == null || authorization.isBlank()) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-        if (!authorization.startsWith("Bearer ")) {
-            response.sendError(HttpStatus.UNAUTHORIZED.value(), "Unsupported authorization scheme");
-            return;
-        }
-        String token = authorization.substring("Bearer ".length()).trim();
-        if (token.isEmpty()) {
-            response.sendError(HttpStatus.UNAUTHORIZED.value(), "Missing bearer token");
-            return;
-        }
-        UserPrincipal principal = tokenService.parseToken(token).orElse(null);
-        if (principal == null) {
-            response.sendError(HttpStatus.UNAUTHORIZED.value(), "Invalid or expired token");
-            return;
-        }
-        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                principal,
-                null,
-                principal.getAuthorities()
-        );
-        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        filterChain.doFilter(request, response);
+  @Override
+  protected void doFilterInternal(
+      HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+      throws ServletException, IOException {
+    if (!securityProperties.isEnabled()) {
+      filterChain.doFilter(request, response);
+      return;
     }
+    String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
+    if (authorization == null || authorization.isBlank()) {
+      filterChain.doFilter(request, response);
+      return;
+    }
+    if (!authorization.startsWith("Bearer ")) {
+      response.sendError(HttpStatus.UNAUTHORIZED.value(), "Unsupported authorization scheme");
+      return;
+    }
+    String token = authorization.substring("Bearer ".length()).trim();
+    if (token.isEmpty()) {
+      response.sendError(HttpStatus.UNAUTHORIZED.value(), "Missing bearer token");
+      return;
+    }
+    UserPrincipal principal = tokenService.parseToken(token).orElse(null);
+    if (principal == null) {
+      response.sendError(HttpStatus.UNAUTHORIZED.value(), "Invalid or expired token");
+      return;
+    }
+    UsernamePasswordAuthenticationToken authentication =
+        new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
+    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+    SecurityContextHolder.getContext().setAuthentication(authentication);
+    filterChain.doFilter(request, response);
+  }
 }

@@ -22,32 +22,32 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/blueprints/{id}/template-assignments")
 public class BlueprintTemplateAssignmentController {
 
-    private final TemplateAssignmentService templateAssignmentService;
+  private final TemplateAssignmentService templateAssignmentService;
 
-    public BlueprintTemplateAssignmentController(TemplateAssignmentService templateAssignmentService) {
-        this.templateAssignmentService = templateAssignmentService;
-    }
+  public BlueprintTemplateAssignmentController(
+      TemplateAssignmentService templateAssignmentService) {
+    this.templateAssignmentService = templateAssignmentService;
+  }
 
-    @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
-    public List<TemplateAssignmentDto> listAssignments(@PathVariable("id") UUID blueprintId) {
-        return templateAssignmentService.listBlueprintAssignments(blueprintId);
-    }
+  @GetMapping
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
+  public List<TemplateAssignmentDto> listAssignments(@PathVariable("id") UUID blueprintId) {
+    return templateAssignmentService.listBlueprintAssignments(blueprintId);
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
-    public TemplateAssignmentDto addAssignment(
-            @PathVariable("id") UUID blueprintId,
-            @Valid @RequestBody TemplateAssignmentRequest request
-    ) {
-        return templateAssignmentService.addBlueprintAssignment(blueprintId, request);
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+  public TemplateAssignmentDto addAssignment(
+      @PathVariable("id") UUID blueprintId, @Valid @RequestBody TemplateAssignmentRequest request) {
+    return templateAssignmentService.addBlueprintAssignment(blueprintId, request);
+  }
 
-    @DeleteMapping("/{assignmentId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
-    public void removeAssignment(@PathVariable("id") UUID blueprintId, @PathVariable UUID assignmentId) {
-        templateAssignmentService.removeBlueprintAssignment(blueprintId, assignmentId);
-    }
+  @DeleteMapping("/{assignmentId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+  public void removeAssignment(
+      @PathVariable("id") UUID blueprintId, @PathVariable UUID assignmentId) {
+    templateAssignmentService.removeBlueprintAssignment(blueprintId, assignmentId);
+  }
 }

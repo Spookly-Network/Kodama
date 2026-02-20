@@ -14,52 +14,52 @@ import org.springframework.web.server.ResponseStatusException;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
-        String message = ex.getBindingResult().getFieldErrors().stream()
-                .map(this::formatFieldError)
-                .distinct()
-                .collect(Collectors.joining("; "));
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
+    String message =
+        ex.getBindingResult().getFieldErrors().stream()
+            .map(this::formatFieldError)
+            .distinct()
+            .collect(Collectors.joining("; "));
 
-        if (message.isBlank()) {
-            message = "Validation failed";
-        }
-
-        return build(HttpStatus.BAD_REQUEST, message);
+    if (message.isBlank()) {
+      message = "Validation failed";
     }
 
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ErrorResponse> handleNotReadable() {
-        return build(HttpStatus.BAD_REQUEST, "Malformed JSON request body");
-    }
+    return build(HttpStatus.BAD_REQUEST, message);
+  }
 
-    @ExceptionHandler(ResponseStatusException.class)
-    public ResponseEntity<ErrorResponse> handleResponseStatus(ResponseStatusException ex) {
-        HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
-        if (status == null) {
-            status = HttpStatus.INTERNAL_SERVER_ERROR;
-        }
-        String message = ex.getReason();
-        if (message == null || message.isBlank()) {
-            message = status.getReasonPhrase();
-        }
-        return build(status, message);
-    }
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ErrorResponse> handleNotReadable() {
+    return build(HttpStatus.BAD_REQUEST, "Malformed JSON request body");
+  }
 
-    private ResponseEntity<ErrorResponse> build(HttpStatus status, String message) {
-        return ResponseEntity.status(status)
-                .body(new ErrorResponse(status.value(), status.getReasonPhrase(), message));
+  @ExceptionHandler(ResponseStatusException.class)
+  public ResponseEntity<ErrorResponse> handleResponseStatus(ResponseStatusException ex) {
+    HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+    if (status == null) {
+      status = HttpStatus.INTERNAL_SERVER_ERROR;
     }
+    String message = ex.getReason();
+    if (message == null || message.isBlank()) {
+      message = status.getReasonPhrase();
+    }
+    return build(status, message);
+  }
 
-    private String formatFieldError(FieldError fieldError) {
-        String field = fieldError.getField();
-        String defaultMessage = fieldError.getDefaultMessage();
-        if (defaultMessage == null || defaultMessage.isBlank()) {
-            return field + " is invalid";
-        }
-        return field + " " + defaultMessage;
-    }
+  private ResponseEntity<ErrorResponse> build(HttpStatus status, String message) {
+    return ResponseEntity.status(status)
+        .body(new ErrorResponse(status.value(), status.getReasonPhrase(), message));
+  }
 
-    public record ErrorResponse(int status, String error, String message) {
+  private String formatFieldError(FieldError fieldError) {
+    String field = fieldError.getField();
+    String defaultMessage = fieldError.getDefaultMessage();
+    if (defaultMessage == null || defaultMessage.isBlank()) {
+      return field + " is invalid";
     }
+    return field + " " + defaultMessage;
+  }
+
+  public record ErrorResponse(int status, String error, String message) {}
 }

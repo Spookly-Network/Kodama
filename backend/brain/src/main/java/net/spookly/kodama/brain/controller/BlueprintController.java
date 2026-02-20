@@ -24,41 +24,42 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/blueprints")
 public class BlueprintController {
 
-    private final BlueprintService blueprintService;
+  private final BlueprintService blueprintService;
 
-    public BlueprintController(BlueprintService blueprintService) {
-        this.blueprintService = blueprintService;
-    }
+  public BlueprintController(BlueprintService blueprintService) {
+    this.blueprintService = blueprintService;
+  }
 
-    @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
-    public List<BlueprintDto> listBlueprints() {
-        return blueprintService.listBlueprints();
-    }
+  @GetMapping
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
+  public List<BlueprintDto> listBlueprints() {
+    return blueprintService.listBlueprints();
+  }
 
-    @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
-    public BlueprintDto getBlueprint(@PathVariable UUID id) {
-        return blueprintService.getBlueprint(id);
-    }
+  @GetMapping("/{id}")
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
+  public BlueprintDto getBlueprint(@PathVariable UUID id) {
+    return blueprintService.getBlueprint(id);
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
-    public BlueprintDto createBlueprint(@Valid @RequestBody CreateBlueprintRequest request) {
-        return blueprintService.createBlueprint(request);
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+  public BlueprintDto createBlueprint(@Valid @RequestBody CreateBlueprintRequest request) {
+    return blueprintService.createBlueprint(request);
+  }
 
-    @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
-    public BlueprintDto updateBlueprint(@PathVariable UUID id, @Valid @RequestBody UpdateBlueprintRequest request) {
-        return blueprintService.updateBlueprint(id, request);
-    }
+  @PutMapping("/{id}")
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+  public BlueprintDto updateBlueprint(
+      @PathVariable UUID id, @Valid @RequestBody UpdateBlueprintRequest request) {
+    return blueprintService.updateBlueprint(id, request);
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
-    public void deleteBlueprint(@PathVariable UUID id) {
-        blueprintService.deleteBlueprint(id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+  public void deleteBlueprint(@PathVariable UUID id) {
+    blueprintService.deleteBlueprint(id);
+  }
 }

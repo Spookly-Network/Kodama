@@ -9,5 +9,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class InstancePreparedCallbackRequest {
 
-    private String portsJson;
+  private String portsJson;
 }

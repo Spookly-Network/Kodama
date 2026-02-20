@@ -22,96 +22,91 @@ import org.hibernate.annotations.UuidGenerator;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Blueprint {
 
-    @Id
-    @GeneratedValue
-    @UuidGenerator
-    private UUID id;
+  @Id @GeneratedValue @UuidGenerator private UUID id;
 
-    @Column(nullable = false, unique = true)
-    private String name;
+  @Column(nullable = false, unique = true)
+  private String name;
 
-    @Column(nullable = false)
-    private boolean permanent;
+  @Column(nullable = false)
+  private boolean permanent;
 
-    @Column(name = "slots_required", nullable = false)
-    private Integer slotsRequired;
+  @Column(name = "slots_required", nullable = false)
+  private Integer slotsRequired;
 
-    @Column(name = "container_image", nullable = false)
-    private String containerImage;
+  @Column(name = "container_image", nullable = false)
+  private String containerImage;
 
-    @Lob
-    @Column(name = "install_script", columnDefinition = "TEXT")
-    private String installScript;
+  @Lob
+  @Column(name = "install_script", columnDefinition = "TEXT")
+  private String installScript;
 
-    @Lob
-    @Column(name = "start_command_json", columnDefinition = "TEXT", nullable = false)
-    private String startCommandJson;
+  @Lob
+  @Column(name = "start_command_json", columnDefinition = "TEXT", nullable = false)
+  private String startCommandJson;
 
-    @Lob
-    @Column(name = "variables_json", columnDefinition = "TEXT")
-    private String variablesJson;
+  @Lob
+  @Column(name = "variables_json", columnDefinition = "TEXT")
+  private String variablesJson;
 
-    @Column(name = "deleted_at")
-    private OffsetDateTime deletedAt;
+  @Column(name = "deleted_at")
+  private OffsetDateTime deletedAt;
 
-    @Column(name = "created_at", nullable = false)
-    private OffsetDateTime createdAt;
+  @Column(name = "created_at", nullable = false)
+  private OffsetDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private OffsetDateTime updatedAt;
+  @Column(name = "updated_at", nullable = false)
+  private OffsetDateTime updatedAt;
 
-    public Blueprint(
-            String name,
-            boolean permanent,
-            Integer slotsRequired,
-            String containerImage,
-            String installScript,
-            String startCommandJson,
-            String variablesJson,
-            OffsetDateTime createdAt,
-            OffsetDateTime updatedAt
-    ) {
-        this.name = Objects.requireNonNull(name, "name");
-        this.permanent = permanent;
-        this.slotsRequired = slotsRequired;
-        this.containerImage = Objects.requireNonNull(containerImage, "containerImage");
-        this.installScript = installScript;
-        this.startCommandJson = Objects.requireNonNull(startCommandJson, "startCommandJson");
-        this.variablesJson = variablesJson;
-        this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
-        this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt");
+  public Blueprint(
+      String name,
+      boolean permanent,
+      Integer slotsRequired,
+      String containerImage,
+      String installScript,
+      String startCommandJson,
+      String variablesJson,
+      OffsetDateTime createdAt,
+      OffsetDateTime updatedAt) {
+    this.name = Objects.requireNonNull(name, "name");
+    this.permanent = permanent;
+    this.slotsRequired = slotsRequired;
+    this.containerImage = Objects.requireNonNull(containerImage, "containerImage");
+    this.installScript = installScript;
+    this.startCommandJson = Objects.requireNonNull(startCommandJson, "startCommandJson");
+    this.variablesJson = variablesJson;
+    this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
+    this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt");
+  }
+
+  @PrePersist
+  private void applyDefaultsOnPersist() {
+    if (slotsRequired == null) {
+      slotsRequired = 1;
     }
+  }
 
-    @PrePersist
-    private void applyDefaultsOnPersist() {
-        if (slotsRequired == null) {
-            slotsRequired = 1;
-        }
-    }
+  public void update(
+      String name,
+      boolean permanent,
+      Integer slotsRequired,
+      String containerImage,
+      String installScript,
+      String startCommandJson,
+      String variablesJson,
+      OffsetDateTime updatedAt) {
+    this.name = Objects.requireNonNull(name, "name");
+    this.permanent = permanent;
+    this.slotsRequired = slotsRequired == null ? 1 : slotsRequired;
+    this.containerImage = Objects.requireNonNull(containerImage, "containerImage");
+    this.installScript = installScript;
+    this.startCommandJson = Objects.requireNonNull(startCommandJson, "startCommandJson");
+    this.variablesJson = variablesJson;
+    this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt");
+  }
 
-    public void update(
-            String name,
-            boolean permanent,
-            Integer slotsRequired,
-            String containerImage,
-            String installScript,
-            String startCommandJson,
-            String variablesJson,
-            OffsetDateTime updatedAt
-    ) {
-        this.name = Objects.requireNonNull(name, "name");
-        this.permanent = permanent;
-        this.slotsRequired = slotsRequired == null ? 1 : slotsRequired;
-        this.containerImage = Objects.requireNonNull(containerImage, "containerImage");
-        this.installScript = installScript;
-        this.startCommandJson = Objects.requireNonNull(startCommandJson, "startCommandJson");
-        this.variablesJson = variablesJson;
-        this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt");
-    }
-
-    public void softDelete(OffsetDateTime deletedAt) {
-        OffsetDateTime timestamp = Objects.requireNonNull(deletedAt, "deletedAt");
-        this.deletedAt = timestamp;
-        this.updatedAt = timestamp;
-    }
+  public void softDelete(OffsetDateTime deletedAt) {
+    OffsetDateTime timestamp = Objects.requireNonNull(deletedAt, "deletedAt");
+    this.deletedAt = timestamp;
+    this.updatedAt = timestamp;
+  }
 }

@@ -19,29 +19,29 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/blueprints/{id}/groups")
 public class BlueprintGroupLinkController {
 
-    private final BlueprintGroupLinkService blueprintGroupLinkService;
+  private final BlueprintGroupLinkService blueprintGroupLinkService;
 
-    public BlueprintGroupLinkController(BlueprintGroupLinkService blueprintGroupLinkService) {
-        this.blueprintGroupLinkService = blueprintGroupLinkService;
-    }
+  public BlueprintGroupLinkController(BlueprintGroupLinkService blueprintGroupLinkService) {
+    this.blueprintGroupLinkService = blueprintGroupLinkService;
+  }
 
-    @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
-    public List<InstanceGroupDto> listGroups(@PathVariable("id") UUID blueprintId) {
-        return blueprintGroupLinkService.listGroupLinks(blueprintId);
-    }
+  @GetMapping
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
+  public List<InstanceGroupDto> listGroups(@PathVariable("id") UUID blueprintId) {
+    return blueprintGroupLinkService.listGroupLinks(blueprintId);
+  }
 
-    @PutMapping("/{groupId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
-    public void addGroupLink(@PathVariable("id") UUID blueprintId, @PathVariable UUID groupId) {
-        blueprintGroupLinkService.addGroupLink(blueprintId, groupId);
-    }
+  @PutMapping("/{groupId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+  public void addGroupLink(@PathVariable("id") UUID blueprintId, @PathVariable UUID groupId) {
+    blueprintGroupLinkService.addGroupLink(blueprintId, groupId);
+  }
 
-    @DeleteMapping("/{groupId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
-    public void removeGroupLink(@PathVariable("id") UUID blueprintId, @PathVariable UUID groupId) {
-        blueprintGroupLinkService.removeGroupLink(blueprintId, groupId);
-    }
+  @DeleteMapping("/{groupId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+  public void removeGroupLink(@PathVariable("id") UUID blueprintId, @PathVariable UUID groupId) {
+    blueprintGroupLinkService.removeGroupLink(blueprintId, groupId);
+  }
 }

@@ -28,198 +28,191 @@ import org.hibernate.annotations.UuidGenerator;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Instance {
 
-    @Id
-    @GeneratedValue
-    @UuidGenerator
-    private UUID id;
+  @Id @GeneratedValue @UuidGenerator private UUID id;
 
-    @Column(nullable = false)
-    private String name;
+  @Column(nullable = false)
+  private String name;
 
-    @Column(nullable = false)
-    private String displayName;
+  @Column(nullable = false)
+  private String displayName;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private InstanceState state;
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  private InstanceState state;
 
-    // Optional: present when a user explicitly requested the instance.
-    @Column
-    private UUID requestedByUserId;
+  // Optional: present when a user explicitly requested the instance.
+  @Column private UUID requestedByUserId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "node_id")
-    private Node node;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "node_id")
+  private Node node;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "blueprint_id")
-    private Blueprint blueprint;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "blueprint_id")
+  private Blueprint blueprint;
 
-    @Column(name = "requested_region")
-    private String region;
+  @Column(name = "requested_region")
+  private String region;
 
-    @Lob
-    @Column(name = "requested_tags", columnDefinition = "TEXT")
-    private String tags;
+  @Lob
+  @Column(name = "requested_tags", columnDefinition = "TEXT")
+  private String tags;
 
-    @Column(name = "dev_mode_allowed")
-    private Boolean devModeAllowed;
+  @Column(name = "dev_mode_allowed")
+  private Boolean devModeAllowed;
 
-    @Lob
-    @Column(columnDefinition = "TEXT")
-    private String portsJson;
+  @Lob
+  @Column(columnDefinition = "TEXT")
+  private String portsJson;
 
-    @Lob
-    @Column(columnDefinition = "TEXT")
-    private String variablesJson;
+  @Lob
+  @Column(columnDefinition = "TEXT")
+  private String variablesJson;
 
-    @Column
-    private Boolean permanent;
+  @Column private Boolean permanent;
 
-    @Column(name = "slots_required")
-    private Integer slotsRequired;
+  @Column(name = "slots_required")
+  private Integer slotsRequired;
 
-    @Column(name = "container_image")
-    private String containerImage;
+  @Column(name = "container_image")
+  private String containerImage;
 
-    @Lob
-    @Column(name = "install_script", columnDefinition = "TEXT")
-    private String installScript;
+  @Lob
+  @Column(name = "install_script", columnDefinition = "TEXT")
+  private String installScript;
 
-    @Lob
-    @Column(name = "start_command_json", columnDefinition = "TEXT")
-    private String startCommandJson;
+  @Lob
+  @Column(name = "start_command_json", columnDefinition = "TEXT")
+  private String startCommandJson;
 
-    @Lob
-    @Column(name = "port_definitions_json", columnDefinition = "TEXT")
-    private String portDefinitionsJson;
+  @Lob
+  @Column(name = "port_definitions_json", columnDefinition = "TEXT")
+  private String portDefinitionsJson;
 
-    @Column(nullable = false)
-    private OffsetDateTime createdAt;
+  @Column(nullable = false)
+  private OffsetDateTime createdAt;
 
-    @Column(nullable = false)
-    private OffsetDateTime updatedAt;
+  @Column(nullable = false)
+  private OffsetDateTime updatedAt;
 
-    private OffsetDateTime startedAt;
+  private OffsetDateTime startedAt;
 
-    private OffsetDateTime stoppedAt;
+  private OffsetDateTime stoppedAt;
 
-    @Lob
-    @Column(columnDefinition = "TEXT")
-    private String failureReason;
+  @Lob
+  @Column(columnDefinition = "TEXT")
+  private String failureReason;
 
-    public Instance(
-            String name,
-            String displayName,
-            InstanceState state,
-            UUID requestedByUserId,
-            Node node,
-            String region,
-            String tags,
-            Boolean devModeAllowed,
-            String portsJson,
-            String variablesJson,
-            OffsetDateTime createdAt,
-            OffsetDateTime updatedAt
-//            OffsetDateTime startedAt,
-//            OffsetDateTime stoppedAt,
-//            String failureReason
-    ) {
-        this.name = name;
-        this.displayName = displayName;
-        this.state = state;
-        this.requestedByUserId = requestedByUserId;
-        this.node = node;
-        this.region = region;
-        this.tags = tags;
-        this.devModeAllowed = devModeAllowed;
-        this.portsJson = portsJson;
-        this.variablesJson = variablesJson;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
-//        this.startedAt = startedAt;
-//        this.stoppedAt = stoppedAt;
-//        this.failureReason = failureReason;
+  public Instance(
+      String name,
+      String displayName,
+      InstanceState state,
+      UUID requestedByUserId,
+      Node node,
+      String region,
+      String tags,
+      Boolean devModeAllowed,
+      String portsJson,
+      String variablesJson,
+      OffsetDateTime createdAt,
+      OffsetDateTime updatedAt
+      //            OffsetDateTime startedAt,
+      //            OffsetDateTime stoppedAt,
+      //            String failureReason
+      ) {
+    this.name = name;
+    this.displayName = displayName;
+    this.state = state;
+    this.requestedByUserId = requestedByUserId;
+    this.node = node;
+    this.region = region;
+    this.tags = tags;
+    this.devModeAllowed = devModeAllowed;
+    this.portsJson = portsJson;
+    this.variablesJson = variablesJson;
+    this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
+    //        this.startedAt = startedAt;
+    //        this.stoppedAt = stoppedAt;
+    //        this.failureReason = failureReason;
+  }
+
+  public void applyBlueprintAndRuntime(
+      Blueprint blueprint,
+      Boolean permanent,
+      Integer slotsRequired,
+      String containerImage,
+      String installScript,
+      String startCommandJson,
+      String portDefinitionsJson) {
+    this.blueprint = blueprint;
+    this.permanent = permanent;
+    this.slotsRequired = slotsRequired;
+    this.containerImage = containerImage;
+    this.installScript = installScript;
+    this.startCommandJson = startCommandJson;
+    this.portDefinitionsJson = portDefinitionsJson;
+  }
+
+  public void updatePortsJson(String portsJson) {
+    this.portsJson = portsJson;
+  }
+
+  public void markPrepared(OffsetDateTime timestamp) {
+    updateLifecycle(InstanceState.PREPARED, timestamp);
+    this.failureReason = null;
+  }
+
+  public void markPreparing(OffsetDateTime timestamp) {
+    updateLifecycle(InstanceState.PREPARING, timestamp);
+    this.failureReason = null;
+  }
+
+  public void markStarting(OffsetDateTime timestamp) {
+    updateLifecycle(InstanceState.STARTING, timestamp);
+    this.failureReason = null;
+  }
+
+  public void markRunning(OffsetDateTime timestamp) {
+    updateLifecycle(InstanceState.RUNNING, timestamp);
+    if (this.startedAt == null) {
+      this.startedAt = timestamp;
     }
+    this.stoppedAt = null;
+    this.failureReason = null;
+  }
 
-    public void applyBlueprintAndRuntime(
-            Blueprint blueprint,
-            Boolean permanent,
-            Integer slotsRequired,
-            String containerImage,
-            String installScript,
-            String startCommandJson,
-            String portDefinitionsJson
-    ) {
-        this.blueprint = blueprint;
-        this.permanent = permanent;
-        this.slotsRequired = slotsRequired;
-        this.containerImage = containerImage;
-        this.installScript = installScript;
-        this.startCommandJson = startCommandJson;
-        this.portDefinitionsJson = portDefinitionsJson;
+  public void markStopping(OffsetDateTime timestamp) {
+    updateLifecycle(InstanceState.STOPPING, timestamp);
+    this.failureReason = null;
+  }
+
+  public void markStopped(OffsetDateTime timestamp) {
+    updateLifecycle(InstanceState.STOPPED, timestamp);
+    if (this.stoppedAt == null) {
+      this.stoppedAt = timestamp;
     }
+    this.failureReason = null;
+  }
 
-    public void updatePortsJson(String portsJson) {
-        this.portsJson = portsJson;
+  public void markDestroyed(OffsetDateTime timestamp) {
+    updateLifecycle(InstanceState.DESTROYED, timestamp);
+    if (this.stoppedAt == null) {
+      this.stoppedAt = timestamp;
     }
+    this.failureReason = null;
+  }
 
-    public void markPrepared(OffsetDateTime timestamp) {
-        updateLifecycle(InstanceState.PREPARED, timestamp);
-        this.failureReason = null;
+  public void markFailed(OffsetDateTime timestamp, String failureReason) {
+    updateLifecycle(InstanceState.FAILED, timestamp);
+    this.failureReason = failureReason;
+    if (this.stoppedAt == null) {
+      this.stoppedAt = timestamp;
     }
+  }
 
-    public void markPreparing(OffsetDateTime timestamp) {
-        updateLifecycle(InstanceState.PREPARING, timestamp);
-        this.failureReason = null;
-    }
-
-    public void markStarting(OffsetDateTime timestamp) {
-        updateLifecycle(InstanceState.STARTING, timestamp);
-        this.failureReason = null;
-    }
-
-    public void markRunning(OffsetDateTime timestamp) {
-        updateLifecycle(InstanceState.RUNNING, timestamp);
-        if (this.startedAt == null) {
-            this.startedAt = timestamp;
-        }
-        this.stoppedAt = null;
-        this.failureReason = null;
-    }
-
-    public void markStopping(OffsetDateTime timestamp) {
-        updateLifecycle(InstanceState.STOPPING, timestamp);
-        this.failureReason = null;
-    }
-
-    public void markStopped(OffsetDateTime timestamp) {
-        updateLifecycle(InstanceState.STOPPED, timestamp);
-        if (this.stoppedAt == null) {
-            this.stoppedAt = timestamp;
-        }
-        this.failureReason = null;
-    }
-
-    public void markDestroyed(OffsetDateTime timestamp) {
-        updateLifecycle(InstanceState.DESTROYED, timestamp);
-        if (this.stoppedAt == null) {
-            this.stoppedAt = timestamp;
-        }
-        this.failureReason = null;
-    }
-
-    public void markFailed(OffsetDateTime timestamp, String failureReason) {
-        updateLifecycle(InstanceState.FAILED, timestamp);
-        this.failureReason = failureReason;
-        if (this.stoppedAt == null) {
-            this.stoppedAt = timestamp;
-        }
-    }
-
-    private void updateLifecycle(InstanceState state, OffsetDateTime timestamp) {
-        this.state = Objects.requireNonNull(state, "state");
-        this.updatedAt = Objects.requireNonNull(timestamp, "timestamp");
-    }
-
+  private void updateLifecycle(InstanceState state, OffsetDateTime timestamp) {
+    this.state = Objects.requireNonNull(state, "state");
+    this.updatedAt = Objects.requireNonNull(timestamp, "timestamp");
+  }
 }

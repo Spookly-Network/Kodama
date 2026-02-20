@@ -19,80 +19,71 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @ConditionalOnProperty(
-        prefix = "instance.stale-detection",
-        name = "enabled",
-        havingValue = "true",
-        matchIfMissing = true
-)
+    prefix = "instance.stale-detection",
+    name = "enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 public class InstanceStaleMonitorService {
 
-    private static final Logger logger = LoggerFactory.getLogger(InstanceStaleMonitorService.class);
-    private static final String FAILURE_REASON_TIMEOUT = "timeout";
+  private static final Logger logger = LoggerFactory.getLogger(InstanceStaleMonitorService.class);
+  private static final String FAILURE_REASON_TIMEOUT = "timeout";
 
-    private final InstanceRepository instanceRepository;
-    private final InstanceStateMachine instanceStateMachine;
-    private final InstanceStaleDetectionProperties staleDetectionProperties;
+  private final InstanceRepository instanceRepository;
+  private final InstanceStateMachine instanceStateMachine;
+  private final InstanceStaleDetectionProperties staleDetectionProperties;
 
-    public InstanceStaleMonitorService(
-            InstanceRepository instanceRepository,
-            InstanceStateMachine instanceStateMachine,
-            InstanceStaleDetectionProperties staleDetectionProperties
-    ) {
-        this.instanceRepository = instanceRepository;
-        this.instanceStateMachine = instanceStateMachine;
-        this.staleDetectionProperties = staleDetectionProperties;
+  public InstanceStaleMonitorService(
+      InstanceRepository instanceRepository,
+      InstanceStateMachine instanceStateMachine,
+      InstanceStaleDetectionProperties staleDetectionProperties) {
+    this.instanceRepository = instanceRepository;
+    this.instanceStateMachine = instanceStateMachine;
+    this.staleDetectionProperties = staleDetectionProperties;
+  }
+
+  @Scheduled(fixedDelayString = "${instance.stale-detection.monitor-interval-seconds:60}000")
+  @Transactional
+  public void monitorStaleInstances() {
+    try {
+      markStaleInstancesFailed(OffsetDateTime.now(ZoneOffset.UTC));
+    } catch (RuntimeException ex) {
+      logger.error("Failed to mark stale instances failed", ex);
+      throw ex;
     }
+  }
 
-    @Scheduled(fixedDelayString = "${instance.stale-detection.monitor-interval-seconds:60}000")
-    @Transactional
-    public void monitorStaleInstances() {
-        try {
-            markStaleInstancesFailed(OffsetDateTime.now(ZoneOffset.UTC));
-        } catch (RuntimeException ex) {
-            logger.error("Failed to mark stale instances failed", ex);
-            throw ex;
-        }
-    }
+  void markStaleInstancesFailed(@NonNull OffsetDateTime now) {
+    markStaleInstancesFailed(
+        InstanceState.PREPARING, staleDetectionProperties.getPreparingTimeoutSeconds(), now);
+    markStaleInstancesFailed(
+        InstanceState.STARTING, staleDetectionProperties.getStartingTimeoutSeconds(), now);
+  }
 
-    void markStaleInstancesFailed(@NonNull OffsetDateTime now) {
-        markStaleInstancesFailed(
-                InstanceState.PREPARING,
-                staleDetectionProperties.getPreparingTimeoutSeconds(),
-                now
-        );
-        markStaleInstancesFailed(
-                InstanceState.STARTING,
-                staleDetectionProperties.getStartingTimeoutSeconds(),
-                now
-        );
+  private void markStaleInstancesFailed(
+      InstanceState state, int timeoutSeconds, OffsetDateTime now) {
+    OffsetDateTime cutoff = now.minusSeconds(timeoutSeconds);
+    List<Instance> staleInstances = instanceRepository.findByStateAndUpdatedAtBefore(state, cutoff);
+    for (Instance instance : staleInstances) {
+      if (instance.getState() != state) {
+        continue;
+      }
+      OffsetDateTime updatedAt = instance.getUpdatedAt();
+      if (updatedAt == null || updatedAt.isAfter(cutoff)) {
+        continue;
+      }
+      instanceStateMachine.transition(
+          instance,
+          InstanceState.FAILED,
+          InstanceEventType.FAILURE_TIMEOUT,
+          now,
+          FAILURE_REASON_TIMEOUT);
+      logger.info(
+          "Marked instance failed due to stale state instanceId={} instanceName={} state={} updatedAt={} timeoutSeconds={}",
+          instance.getId(),
+          instance.getName(),
+          state,
+          updatedAt,
+          timeoutSeconds);
     }
-
-    private void markStaleInstancesFailed(InstanceState state, int timeoutSeconds, OffsetDateTime now) {
-        OffsetDateTime cutoff = now.minusSeconds(timeoutSeconds);
-        List<Instance> staleInstances = instanceRepository.findByStateAndUpdatedAtBefore(state, cutoff);
-        for (Instance instance : staleInstances) {
-            if (instance.getState() != state) {
-                continue;
-            }
-            OffsetDateTime updatedAt = instance.getUpdatedAt();
-            if (updatedAt == null || updatedAt.isAfter(cutoff)) {
-                continue;
-            }
-            instanceStateMachine.transition(
-                    instance,
-                    InstanceState.FAILED,
-                    InstanceEventType.FAILURE_TIMEOUT,
-                    now,
-                    FAILURE_REASON_TIMEOUT
-            );
-            logger.info(
-                    "Marked instance failed due to stale state instanceId={} instanceName={} state={} updatedAt={} timeoutSeconds={}",
-                    instance.getId(),
-                    instance.getName(),
-                    state,
-                    updatedAt,
-                    timeoutSeconds
-            );
-        }
-    }
+  }
 }

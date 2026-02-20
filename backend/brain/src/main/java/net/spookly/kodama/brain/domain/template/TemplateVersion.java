@@ -23,43 +23,40 @@ import org.hibernate.annotations.UuidGenerator;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class TemplateVersion {
 
-    @Id
-    @GeneratedValue
-    @UuidGenerator
-    private UUID id;
+  @Id @GeneratedValue @UuidGenerator private UUID id;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "template_id", nullable = false)
-    private Template template;
+  @ManyToOne(optional = false, fetch = FetchType.LAZY)
+  @JoinColumn(name = "template_id", nullable = false)
+  private Template template;
 
-    @Column(nullable = false)
-    private String version;
+  @Column(nullable = false)
+  private String version;
 
-    @Column(nullable = false)
-    private String checksum;
+  @Column(nullable = false)
+  private String checksum;
 
-    @Column(nullable = false)
-    private String s3Key;
+  @Column(nullable = false)
+  private String s3Key;
 
-    @Lob
-    @Column(columnDefinition = "TEXT")
-    private String metadataJson;
+  @Lob
+  @Column(columnDefinition = "TEXT")
+  private String metadataJson;
 
-    @Column(nullable = false)
-    private OffsetDateTime createdAt;
+  @Column(nullable = false)
+  private OffsetDateTime createdAt;
 
-    public TemplateVersion(
-            Template template,
-            String version,
-            String checksum,
-            String s3Key,
-            String metadataJson,
-            OffsetDateTime createdAt) {
-        this.template = template;
-        this.version = version;
-        this.checksum = checksum;
-        this.s3Key = s3Key;
-        this.metadataJson = metadataJson;
-        this.createdAt = createdAt;
-    }
+  public TemplateVersion(
+      Template template,
+      String version,
+      String checksum,
+      String s3Key,
+      String metadataJson,
+      OffsetDateTime createdAt) {
+    this.template = template;
+    this.version = version;
+    this.checksum = checksum;
+    this.s3Key = s3Key;
+    this.metadataJson = metadataJson;
+    this.createdAt = createdAt;
+  }
 }

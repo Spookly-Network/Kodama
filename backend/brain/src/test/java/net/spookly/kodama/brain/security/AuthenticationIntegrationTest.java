@@ -32,112 +32,104 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-@WebMvcTest(controllers = {AuthController.class, InstanceController.class, TemplateController.class})
+@WebMvcTest(
+    controllers = {AuthController.class, InstanceController.class, TemplateController.class})
 @EnableConfigurationProperties(BrainSecurityProperties.class)
 @Import({
-        SecurityConfig.class,
-        MethodSecurityConfig.class,
-        JwtAuthFilter.class,
-        JwtTokenService.class,
-        ConfiguredUserStore.class,
-        AuthService.class,
-        TestSecurityBootstrapConfig.class
+  SecurityConfig.class,
+  MethodSecurityConfig.class,
+  JwtAuthFilter.class,
+  JwtTokenService.class,
+  ConfiguredUserStore.class,
+  AuthService.class,
+  TestSecurityBootstrapConfig.class
 })
-@TestPropertySource(properties = {
-        "brain.security.enabled=true",
-        "brain.security.jwt.issuer=kodama-test",
-        "brain.security.jwt.secret=01234567890123456789012345678901",
-        "brain.security.jwt.token-ttl-seconds=3600",
-        "brain.security.node.token=test-node-token",
-        "brain.security.users[0].username=admin",
-        "brain.security.users[0].display-name=Admin",
-        "brain.security.users[0].email=admin@example.com",
-        "brain.security.users[0].password={noop}test-pass",
-        "brain.security.users[0].roles=ADMIN",
-        "brain.security.users[1].username=viewer",
-        "brain.security.users[1].display-name=Viewer",
-        "brain.security.users[1].email=viewer@example.com",
-        "brain.security.users[1].password={noop}view-pass",
-        "brain.security.users[1].roles=VIEWER",
-        "brain.security.users[2].username=operator",
-        "brain.security.users[2].display-name=Operator",
-        "brain.security.users[2].email=operator@example.com",
-        "brain.security.users[2].password={noop}op-pass",
-        "brain.security.users[2].roles=OPERATOR"
-})
+@TestPropertySource(
+    properties = {
+      "brain.security.enabled=true",
+      "brain.security.jwt.issuer=kodama-test",
+      "brain.security.jwt.secret=01234567890123456789012345678901",
+      "brain.security.jwt.token-ttl-seconds=3600",
+      "brain.security.node.token=test-node-token",
+      "brain.security.users[0].username=admin",
+      "brain.security.users[0].display-name=Admin",
+      "brain.security.users[0].email=admin@example.com",
+      "brain.security.users[0].password={noop}test-pass",
+      "brain.security.users[0].roles=ADMIN",
+      "brain.security.users[1].username=viewer",
+      "brain.security.users[1].display-name=Viewer",
+      "brain.security.users[1].email=viewer@example.com",
+      "brain.security.users[1].password={noop}view-pass",
+      "brain.security.users[1].roles=VIEWER",
+      "brain.security.users[2].username=operator",
+      "brain.security.users[2].display-name=Operator",
+      "brain.security.users[2].email=operator@example.com",
+      "brain.security.users[2].password={noop}op-pass",
+      "brain.security.users[2].roles=OPERATOR"
+    })
 class AuthenticationIntegrationTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+  @Autowired private MockMvc mockMvc;
 
-    @Autowired
-    private ConfiguredUserStore userStore;
+  @Autowired private ConfiguredUserStore userStore;
 
-    @MockitoBean
-    private InstanceService instanceService;
+  @MockitoBean private InstanceService instanceService;
 
-    @MockitoBean
-    private TemplateService templateService;
+  @MockitoBean private TemplateService templateService;
 
-    @BeforeEach
-    void setUp() {
-        given(instanceService.listInstances()).willReturn(List.of());
-    }
+  @BeforeEach
+  void setUp() {
+    given(instanceService.listInstances()).willReturn(List.of());
+  }
 
-    @Test
-    void loginWithValidCredentialsReturnsToken() throws Exception {
-        String body = """
+  @Test
+  void loginWithValidCredentialsReturnsToken() throws Exception {
+    String body =
+        """
                 {
                   "username": "admin",
                   "password": "test-pass"
                 }
                 """;
 
-        mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accessToken").isNotEmpty())
-                .andExpect(jsonPath("$.tokenType").value("Bearer"));
-    }
+    mockMvc
+        .perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(body))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.accessToken").isNotEmpty())
+        .andExpect(jsonPath("$.tokenType").value("Bearer"));
+  }
 
-    @Test
-    void listInstancesWithoutTokenIsUnauthorized() throws Exception {
-        mockMvc.perform(get("/api/instances"))
-                .andExpect(status().isUnauthorized());
-    }
+  @Test
+  void listInstancesWithoutTokenIsUnauthorized() throws Exception {
+    mockMvc.perform(get("/api/instances")).andExpect(status().isUnauthorized());
+  }
 
-    @Test
-    void listInstancesWithInvalidTokenIsUnauthorized() throws Exception {
-        mockMvc.perform(get("/api/instances")
-                        .header("Authorization", "Bearer invalid-token"))
-                .andExpect(status().isUnauthorized());
-    }
+  @Test
+  void listInstancesWithInvalidTokenIsUnauthorized() throws Exception {
+    mockMvc
+        .perform(get("/api/instances").header("Authorization", "Bearer invalid-token"))
+        .andExpect(status().isUnauthorized());
+  }
 
-    @Test
-    void listInstancesWithValidTokenIsOk() throws Exception {
-        UserPrincipal principal = userStore.findByUsername("admin").orElseThrow();
-        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
-                principal,
-                null,
-                principal.getAuthorities()
-        );
+  @Test
+  void listInstancesWithValidTokenIsOk() throws Exception {
+    UserPrincipal principal = userStore.findByUsername("admin").orElseThrow();
+    UsernamePasswordAuthenticationToken authenticationToken =
+        new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
 
-        mockMvc.perform(get("/api/instances")
-                        .with(authentication(authenticationToken)))
-                .andExpect(status().isOk());
-    }
+    mockMvc
+        .perform(get("/api/instances").with(authentication(authenticationToken)))
+        .andExpect(status().isOk());
+  }
 
-    @Test
-    void createTemplateWithViewerRoleIsForbidden() throws Exception {
-        UserPrincipal principal = userStore.findByUsername("viewer").orElseThrow();
-        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
-                principal,
-                null,
-                principal.getAuthorities()
-        );
+  @Test
+  void createTemplateWithViewerRoleIsForbidden() throws Exception {
+    UserPrincipal principal = userStore.findByUsername("viewer").orElseThrow();
+    UsernamePasswordAuthenticationToken authenticationToken =
+        new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
 
-        String body = """
+    String body =
+        """
                 {
                   "name": "t1",
                   "description": "Template",
@@ -145,23 +137,23 @@ class AuthenticationIntegrationTest {
                 }
                 """;
 
-        mockMvc.perform(post("/api/templates")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body)
-                        .with(authentication(authenticationToken)))
-                .andExpect(status().isForbidden());
-    }
+    mockMvc
+        .perform(
+            post("/api/templates")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+                .with(authentication(authenticationToken)))
+        .andExpect(status().isForbidden());
+  }
 
-    @Test
-    void createTemplateWithOperatorRoleIsForbidden() throws Exception {
-        UserPrincipal principal = userStore.findByUsername("operator").orElseThrow();
-        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
-                principal,
-                null,
-                principal.getAuthorities()
-        );
+  @Test
+  void createTemplateWithOperatorRoleIsForbidden() throws Exception {
+    UserPrincipal principal = userStore.findByUsername("operator").orElseThrow();
+    UsernamePasswordAuthenticationToken authenticationToken =
+        new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
 
-        String body = """
+    String body =
+        """
                 {
                   "name": "t1",
                   "description": "Template",
@@ -169,23 +161,23 @@ class AuthenticationIntegrationTest {
                 }
                 """;
 
-        mockMvc.perform(post("/api/templates")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body)
-                        .with(authentication(authenticationToken)))
-                .andExpect(status().isForbidden());
-    }
+    mockMvc
+        .perform(
+            post("/api/templates")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+                .with(authentication(authenticationToken)))
+        .andExpect(status().isForbidden());
+  }
 
-    @Test
-    void createInstanceWithViewerRoleIsForbidden() throws Exception {
-        UserPrincipal principal = userStore.findByUsername("viewer").orElseThrow();
-        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
-                principal,
-                null,
-                principal.getAuthorities()
-        );
+  @Test
+  void createInstanceWithViewerRoleIsForbidden() throws Exception {
+    UserPrincipal principal = userStore.findByUsername("viewer").orElseThrow();
+    UsernamePasswordAuthenticationToken authenticationToken =
+        new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
 
-        String body = """
+    String body =
+        """
                 {
                   "name": "instance-1",
                   "templateLayers": [
@@ -198,26 +190,26 @@ class AuthenticationIntegrationTest {
                 }
                 """;
 
-        mockMvc.perform(post("/api/instances")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body)
-                        .with(authentication(authenticationToken)))
-                .andExpect(status().isForbidden());
-    }
+    mockMvc
+        .perform(
+            post("/api/instances")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+                .with(authentication(authenticationToken)))
+        .andExpect(status().isForbidden());
+  }
 
-    @Test
-    void createInstanceWithAdminRoleIsCreated() throws Exception {
-        UserPrincipal principal = userStore.findByUsername("admin").orElseThrow();
-        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
-                principal,
-                null,
-                principal.getAuthorities()
-        );
+  @Test
+  void createInstanceWithAdminRoleIsCreated() throws Exception {
+    UserPrincipal principal = userStore.findByUsername("admin").orElseThrow();
+    UsernamePasswordAuthenticationToken authenticationToken =
+        new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
 
-        given(instanceService.createInstance(org.mockito.ArgumentMatchers.any()))
-                .willReturn(new InstanceDto());
+    given(instanceService.createInstance(org.mockito.ArgumentMatchers.any()))
+        .willReturn(new InstanceDto());
 
-        String body = """
+    String body =
+        """
                 {
                   "name": "instance-1",
                   "templateLayers": [
@@ -230,26 +222,28 @@ class AuthenticationIntegrationTest {
                 }
                 """;
 
-        mockMvc.perform(post("/api/instances")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body)
-                        .with(authentication(authenticationToken)))
-                .andExpect(status().isCreated());
-    }
+    mockMvc
+        .perform(
+            post("/api/instances")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+                .with(authentication(authenticationToken)))
+        .andExpect(status().isCreated());
+  }
 
-    @Test
-    void createTemplateWithAdminRoleIsCreated() throws Exception {
-        UserPrincipal principal = userStore.findByUsername("admin").orElseThrow();
-        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
-                principal,
-                null,
-                principal.getAuthorities()
-        );
+  @Test
+  void createTemplateWithAdminRoleIsCreated() throws Exception {
+    UserPrincipal principal = userStore.findByUsername("admin").orElseThrow();
+    UsernamePasswordAuthenticationToken authenticationToken =
+        new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
 
-        given(templateService.createTemplate(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
-                .willReturn(new TemplateDto());
+    given(
+            templateService.createTemplate(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+        .willReturn(new TemplateDto());
 
-        String body = """
+    String body =
+        """
                 {
                   "name": "t1",
                   "description": "Template",
@@ -257,15 +251,17 @@ class AuthenticationIntegrationTest {
                 }
                 """;
 
-        mockMvc.perform(post("/api/templates")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body)
-                        .with(authentication(authenticationToken)))
-                .andExpect(status().isCreated());
+    mockMvc
+        .perform(
+            post("/api/templates")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+                .with(authentication(authenticationToken)))
+        .andExpect(status().isCreated());
 
-        org.mockito.Mockito.verify(templateService).createTemplate(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.eq(principal.getUsername())
-        );
-    }
+    org.mockito.Mockito.verify(templateService)
+        .createTemplate(
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.eq(principal.getUsername()));
+  }
 }

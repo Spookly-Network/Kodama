@@ -41,228 +41,222 @@ import org.springframework.web.client.RestTemplate;
 
 class CommandDispatcherServiceTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
-    private RestTemplate restTemplate;
-    private MockRestServiceServer server;
-    private NodeProperties nodeProperties;
-    private CommandDispatcherService dispatcher;
-    private static final String TEMPLATE_CREATOR_USERNAME = "admin";
+  private final ObjectMapper objectMapper = new ObjectMapper();
+  private RestTemplate restTemplate;
+  private MockRestServiceServer server;
+  private NodeProperties nodeProperties;
+  private CommandDispatcherService dispatcher;
+  private static final String TEMPLATE_CREATOR_USERNAME = "admin";
 
-    @BeforeEach
-    void setUp() {
-        restTemplate = new RestTemplate();
-        server = MockRestServiceServer.bindTo(restTemplate).build();
-        nodeProperties = new NodeProperties();
-        nodeProperties.setCommandRetryBackoffMillis(0);
-        PluginsProperties pluginsProperties = new PluginsProperties();
-        BrainSecurityProperties securityProperties = new BrainSecurityProperties();
-        BrainPluginRegistry registry = new BrainPluginRegistry(pluginsProperties, objectMapper);
-        dispatcher = new CommandDispatcherService(restTemplate, nodeProperties, registry, securityProperties, objectMapper);
-    }
+  @BeforeEach
+  void setUp() {
+    restTemplate = new RestTemplate();
+    server = MockRestServiceServer.bindTo(restTemplate).build();
+    nodeProperties = new NodeProperties();
+    nodeProperties.setCommandRetryBackoffMillis(0);
+    PluginsProperties pluginsProperties = new PluginsProperties();
+    BrainSecurityProperties securityProperties = new BrainSecurityProperties();
+    BrainPluginRegistry registry = new BrainPluginRegistry(pluginsProperties, objectMapper);
+    dispatcher =
+        new CommandDispatcherService(
+            restTemplate, nodeProperties, registry, securityProperties, objectMapper);
+  }
 
-    @Test
-    void sendPrepareInstanceSendsExpectedPayload() throws Exception {
-        UUID nodeId = UUID.randomUUID();
-        UUID instanceId = UUID.randomUUID();
-        UUID templateId = UUID.randomUUID();
-        UUID templateVersionId = UUID.randomUUID();
-        Node node = buildNode(nodeId, "http://node-1.internal");
-        Instance instance = buildInstance(instanceId, node);
-        ResolvedTemplateLayer layer = buildLayer(instance, templateId, templateVersionId);
+  @Test
+  void sendPrepareInstanceSendsExpectedPayload() throws Exception {
+    UUID nodeId = UUID.randomUUID();
+    UUID instanceId = UUID.randomUUID();
+    UUID templateId = UUID.randomUUID();
+    UUID templateVersionId = UUID.randomUUID();
+    Node node = buildNode(nodeId, "http://node-1.internal");
+    Instance instance = buildInstance(instanceId, node);
+    ResolvedTemplateLayer layer = buildLayer(instance, templateId, templateVersionId);
 
-        Map<String, String> variables = Map.of("WORLD_NAME", "test");
-        NodePrepareInstanceLayer expectedLayer = new NodePrepareInstanceLayer(
-                templateVersionId,
-                templateId,
-                "1.0.0",
-                "checksum",
-                "s3://templates/template-1-1.0.0.tar.gz",
-                "{\"hello\":\"world\"}",
-                0
-        );
-        NodePrepareInstanceRequest expected = new NodePrepareInstanceRequest(
-                instanceId,
-                instance.getName(),
-                instance.getDisplayName(),
-                "ghcr.io/spookly/hytale:latest",
-                "echo install",
-                List.of("./start.sh", "--port", "25565"),
-                2,
-                List.of(new PortDefinitionRequest(
-                        "game",
-                        "tcp",
-                        25565,
-                        new PortDefinitionRequest.HostRangeRequest(25565, 25565, 1)
-                )),
-                instance.getPortsJson(),
-                variables,
-                null,
-                List.of(expectedLayer)
-        );
+    Map<String, String> variables = Map.of("WORLD_NAME", "test");
+    NodePrepareInstanceLayer expectedLayer =
+        new NodePrepareInstanceLayer(
+            templateVersionId,
+            templateId,
+            "1.0.0",
+            "checksum",
+            "s3://templates/template-1-1.0.0.tar.gz",
+            "{\"hello\":\"world\"}",
+            0);
+    NodePrepareInstanceRequest expected =
+        new NodePrepareInstanceRequest(
+            instanceId,
+            instance.getName(),
+            instance.getDisplayName(),
+            "ghcr.io/spookly/hytale:latest",
+            "echo install",
+            List.of("./start.sh", "--port", "25565"),
+            2,
+            List.of(
+                new PortDefinitionRequest(
+                    "game",
+                    "tcp",
+                    25565,
+                    new PortDefinitionRequest.HostRangeRequest(25565, 25565, 1))),
+            instance.getPortsJson(),
+            variables,
+            null,
+            List.of(expectedLayer));
 
-        server.expect(requestTo("http://node-1.internal/api/instances/" + instanceId + "/prepare"))
-                .andExpect(method(HttpMethod.POST))
-                .andExpect(content().json(objectMapper.writeValueAsString(expected)))
-                .andRespond(withSuccess());
+    server
+        .expect(requestTo("http://node-1.internal/api/instances/" + instanceId + "/prepare"))
+        .andExpect(method(HttpMethod.POST))
+        .andExpect(content().json(objectMapper.writeValueAsString(expected)))
+        .andRespond(withSuccess());
 
-        dispatcher.sendPrepareInstance(node, instance, List.of(layer), variables);
+    dispatcher.sendPrepareInstance(node, instance, List.of(layer), variables);
 
-        server.verify();
-    }
+    server.verify();
+  }
 
-    @Test
-    void sendStartInstanceSendsExpectedPayload() throws Exception {
-        UUID nodeId = UUID.randomUUID();
-        UUID instanceId = UUID.randomUUID();
-        Node node = buildNode(nodeId, "http://node-1.internal");
-        Instance instance = buildInstance(instanceId, node);
+  @Test
+  void sendStartInstanceSendsExpectedPayload() throws Exception {
+    UUID nodeId = UUID.randomUUID();
+    UUID instanceId = UUID.randomUUID();
+    Node node = buildNode(nodeId, "http://node-1.internal");
+    Instance instance = buildInstance(instanceId, node);
 
-        NodeInstanceCommandRequest expected = new NodeInstanceCommandRequest(instanceId, instance.getName());
+    NodeInstanceCommandRequest expected =
+        new NodeInstanceCommandRequest(instanceId, instance.getName());
 
-        server.expect(requestTo("http://node-1.internal/api/instances/" + instanceId + "/start"))
-                .andExpect(method(HttpMethod.POST))
-                .andExpect(content().json(objectMapper.writeValueAsString(expected)))
-                .andRespond(withSuccess());
+    server
+        .expect(requestTo("http://node-1.internal/api/instances/" + instanceId + "/start"))
+        .andExpect(method(HttpMethod.POST))
+        .andExpect(content().json(objectMapper.writeValueAsString(expected)))
+        .andRespond(withSuccess());
 
-        dispatcher.sendStartInstance(node, instance);
+    dispatcher.sendStartInstance(node, instance);
 
-        server.verify();
-    }
+    server.verify();
+  }
 
-    @Test
-    void sendStopInstanceSendsExpectedPayload() throws Exception {
-        UUID nodeId = UUID.randomUUID();
-        UUID instanceId = UUID.randomUUID();
-        Node node = buildNode(nodeId, "http://node-1.internal");
-        Instance instance = buildInstance(instanceId, node);
+  @Test
+  void sendStopInstanceSendsExpectedPayload() throws Exception {
+    UUID nodeId = UUID.randomUUID();
+    UUID instanceId = UUID.randomUUID();
+    Node node = buildNode(nodeId, "http://node-1.internal");
+    Instance instance = buildInstance(instanceId, node);
 
-        NodeInstanceCommandRequest expected = new NodeInstanceCommandRequest(instanceId, instance.getName());
+    NodeInstanceCommandRequest expected =
+        new NodeInstanceCommandRequest(instanceId, instance.getName());
 
-        server.expect(requestTo("http://node-1.internal/api/instances/" + instanceId + "/stop"))
-                .andExpect(method(HttpMethod.POST))
-                .andExpect(content().json(objectMapper.writeValueAsString(expected)))
-                .andRespond(withSuccess());
+    server
+        .expect(requestTo("http://node-1.internal/api/instances/" + instanceId + "/stop"))
+        .andExpect(method(HttpMethod.POST))
+        .andExpect(content().json(objectMapper.writeValueAsString(expected)))
+        .andRespond(withSuccess());
 
-        dispatcher.sendStopInstance(node, instance);
+    dispatcher.sendStopInstance(node, instance);
 
-        server.verify();
-    }
+    server.verify();
+  }
 
-    @Test
-    void sendDestroyInstanceSendsExpectedPayload() throws Exception {
-        UUID nodeId = UUID.randomUUID();
-        UUID instanceId = UUID.randomUUID();
-        Node node = buildNode(nodeId, "http://node-1.internal");
-        Instance instance = buildInstance(instanceId, node);
+  @Test
+  void sendDestroyInstanceSendsExpectedPayload() throws Exception {
+    UUID nodeId = UUID.randomUUID();
+    UUID instanceId = UUID.randomUUID();
+    Node node = buildNode(nodeId, "http://node-1.internal");
+    Instance instance = buildInstance(instanceId, node);
 
-        NodeInstanceCommandRequest expected = new NodeInstanceCommandRequest(instanceId, instance.getName());
+    NodeInstanceCommandRequest expected =
+        new NodeInstanceCommandRequest(instanceId, instance.getName());
 
-        server.expect(requestTo("http://node-1.internal/api/instances/" + instanceId + "/destroy"))
-                .andExpect(method(HttpMethod.POST))
-                .andExpect(content().json(objectMapper.writeValueAsString(expected)))
-                .andRespond(withSuccess());
+    server
+        .expect(requestTo("http://node-1.internal/api/instances/" + instanceId + "/destroy"))
+        .andExpect(method(HttpMethod.POST))
+        .andExpect(content().json(objectMapper.writeValueAsString(expected)))
+        .andRespond(withSuccess());
 
-        dispatcher.sendDestroyInstance(node, instance);
+    dispatcher.sendDestroyInstance(node, instance);
 
-        server.verify();
-    }
+    server.verify();
+  }
 
-    @Test
-    void retriesOnServerError() {
-        UUID nodeId = UUID.randomUUID();
-        UUID instanceId = UUID.randomUUID();
-        Node node = buildNode(nodeId, "http://node-1.internal");
-        Instance instance = buildInstance(instanceId, node);
+  @Test
+  void retriesOnServerError() {
+    UUID nodeId = UUID.randomUUID();
+    UUID instanceId = UUID.randomUUID();
+    Node node = buildNode(nodeId, "http://node-1.internal");
+    Instance instance = buildInstance(instanceId, node);
 
-        AtomicInteger attempts = new AtomicInteger();
-        server.expect(ExpectedCount.times(2), requestTo("http://node-1.internal/api/instances/" + instanceId + "/start"))
-                .andExpect(method(HttpMethod.POST))
-                .andRespond(request -> {
-                    if (attempts.getAndIncrement() == 0) {
-                        return withStatus(HttpStatus.SERVICE_UNAVAILABLE).createResponse(request);
-                    }
-                    return withSuccess().createResponse(request);
-                });
+    AtomicInteger attempts = new AtomicInteger();
+    server
+        .expect(
+            ExpectedCount.times(2),
+            requestTo("http://node-1.internal/api/instances/" + instanceId + "/start"))
+        .andExpect(method(HttpMethod.POST))
+        .andRespond(
+            request -> {
+              if (attempts.getAndIncrement() == 0) {
+                return withStatus(HttpStatus.SERVICE_UNAVAILABLE).createResponse(request);
+              }
+              return withSuccess().createResponse(request);
+            });
 
-        dispatcher.sendStartInstance(node, instance);
+    dispatcher.sendStartInstance(node, instance);
 
-        server.verify();
-    }
+    server.verify();
+  }
 
-    private Node buildNode(UUID nodeId, String baseUrl) {
-        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        Node node = new Node(
-                "node-1",
-                "eu-west-1",
-                NodeStatus.ONLINE,
-                false,
-                4,
-                1,
-                now,
-                "1.0.0",
-                null,
-                baseUrl
-        );
-        ReflectionTestUtils.setField(node, "id", nodeId);
-        return node;
-    }
+  private Node buildNode(UUID nodeId, String baseUrl) {
+    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    Node node =
+        new Node(
+            "node-1", "eu-west-1", NodeStatus.ONLINE, false, 4, 1, now, "1.0.0", null, baseUrl);
+    ReflectionTestUtils.setField(node, "id", nodeId);
+    return node;
+  }
 
-    private Instance buildInstance(UUID instanceId, Node node) {
-        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        Instance instance = new Instance(
-                "instance-1",
-                "Instance 1",
-                InstanceState.REQUESTED,
-                UUID.randomUUID(),
-                node,
-                node.getRegion(),
-                null,
-                false,
-                null,
-                null,
-                now,
-                now
-        );
-        ReflectionTestUtils.setField(instance, "id", instanceId);
-        instance.applyBlueprintAndRuntime(
-                null,
-                null,
-                2,
-                "ghcr.io/spookly/hytale:latest",
-                "echo install",
-                "[\"./start.sh\",\"--port\",\"25565\"]",
-                "[{\"name\":\"game\",\"protocol\":\"tcp\",\"containerPort\":25565,"
-                        + "\"hostRange\":{\"min\":25565,\"max\":25565,\"step\":1}}]"
-        );
-        return instance;
-    }
+  private Instance buildInstance(UUID instanceId, Node node) {
+    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    Instance instance =
+        new Instance(
+            "instance-1",
+            "Instance 1",
+            InstanceState.REQUESTED,
+            UUID.randomUUID(),
+            node,
+            node.getRegion(),
+            null,
+            false,
+            null,
+            null,
+            now,
+            now);
+    ReflectionTestUtils.setField(instance, "id", instanceId);
+    instance.applyBlueprintAndRuntime(
+        null,
+        null,
+        2,
+        "ghcr.io/spookly/hytale:latest",
+        "echo install",
+        "[\"./start.sh\",\"--port\",\"25565\"]",
+        "[{\"name\":\"game\",\"protocol\":\"tcp\",\"containerPort\":25565,"
+            + "\"hostRange\":{\"min\":25565,\"max\":25565,\"step\":1}}]");
+    return instance;
+  }
 
-    private ResolvedTemplateLayer buildLayer(Instance instance, UUID templateId, UUID templateVersionId) {
-        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        Template template = new Template(
-                "template-1",
-                "Template 1",
-                TemplateType.CUSTOM,
-                now,
-                TEMPLATE_CREATOR_USERNAME
-        );
-        ReflectionTestUtils.setField(template, "id", templateId);
-        TemplateVersion version = new TemplateVersion(
-                template,
-                "1.0.0",
-                "checksum",
-                "s3://templates/template-1-1.0.0.tar.gz",
-                "{\"hello\":\"world\"}",
-                now
-        );
-        ReflectionTestUtils.setField(version, "id", templateVersionId);
-        return new ResolvedTemplateLayer(
-                UUID.randomUUID(),
-                templateId,
-                version,
-                0,
-                0,
-                TemplateAssignmentSource.INSTANCE
-        );
-    }
+  private ResolvedTemplateLayer buildLayer(
+      Instance instance, UUID templateId, UUID templateVersionId) {
+    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    Template template =
+        new Template(
+            "template-1", "Template 1", TemplateType.CUSTOM, now, TEMPLATE_CREATOR_USERNAME);
+    ReflectionTestUtils.setField(template, "id", templateId);
+    TemplateVersion version =
+        new TemplateVersion(
+            template,
+            "1.0.0",
+            "checksum",
+            "s3://templates/template-1-1.0.0.tar.gz",
+            "{\"hello\":\"world\"}",
+            now);
+    ReflectionTestUtils.setField(version, "id", templateVersionId);
+    return new ResolvedTemplateLayer(
+        UUID.randomUUID(), templateId, version, 0, 0, TemplateAssignmentSource.INSTANCE);
+  }
 }

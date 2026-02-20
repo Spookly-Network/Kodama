@@ -14,31 +14,30 @@ import net.spookly.kodama.brain.domain.node.NodeStatus;
 @NoArgsConstructor
 public class NodeDto {
 
-    private UUID id;
-    private String name;
-    private String region;
-    private NodeStatus status;
-    private boolean devMode;
-    private int capacitySlots;
-    private int usedSlots;
-    private OffsetDateTime lastHeartbeatAt;
-    private String nodeVersion;
-    private String tags;
-    private String baseUrl;
+  private UUID id;
+  private String name;
+  private String region;
+  private NodeStatus status;
+  private boolean devMode;
+  private int capacitySlots;
+  private int usedSlots;
+  private OffsetDateTime lastHeartbeatAt;
+  private String nodeVersion;
+  private String tags;
+  private String baseUrl;
 
-    public static NodeDto fromEntity(Node node) {
-        return new NodeDto(
-                node.getId(),
-                node.getName(),
-                node.getRegion(),
-                node.getStatus(),
-                node.isDevMode(),
-                node.getCapacitySlots(),
-                node.getUsedSlots(),
-                node.getLastHeartbeatAt(),
-                node.getNodeVersion(),
-                node.getTags(),
-                node.getBaseUrl()
-        );
-    }
+  public static NodeDto fromEntity(Node node) {
+    return new NodeDto(
+        node.getId(),
+        node.getName(),
+        node.getRegion(),
+        node.getStatus(),
+        node.isDevMode(),
+        node.getCapacitySlots(),
+        node.getUsedSlots(),
+        node.getLastHeartbeatAt(),
+        node.getNodeVersion(),
+        node.getTags(),
+        node.getBaseUrl());
+  }
 }

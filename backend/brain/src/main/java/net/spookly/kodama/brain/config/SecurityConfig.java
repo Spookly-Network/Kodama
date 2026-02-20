@@ -21,57 +21,67 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 public class SecurityConfig {
 
-    private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
+  private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http,
-            BrainSecurityProperties securityProperties,
-            JwtAuthFilter jwtAuthFilter,
-            NodeAuthFilter nodeAuthFilter
-    ) throws Exception {
-        http.cors(Customizer.withDefaults())
-                .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));
+  @Bean
+  public SecurityFilterChain securityFilterChain(
+      HttpSecurity http,
+      BrainSecurityProperties securityProperties,
+      JwtAuthFilter jwtAuthFilter,
+      NodeAuthFilter nodeAuthFilter)
+      throws Exception {
+    http.cors(Customizer.withDefaults())
+        .csrf(AbstractHttpConfigurer::disable)
+        .sessionManagement(
+            session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .exceptionHandling(
+            exceptions ->
+                exceptions.authenticationEntryPoint(
+                    new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)));
 
-        if (!securityProperties.isEnabled()) {
-            http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
-            return http.build();
-        }
-
-        http.authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login").permitAll()
-                        .requestMatchers(
-                                "/actuator/health",
-                                "/actuator/info",
-                                "/actuator/metrics",
-                                "/actuator/metrics/**"
-                        ).permitAll()
-                        .anyRequest().permitAll()
-                )
-                .addFilterBefore(nodeAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-
-        return http.build();
+    if (!securityProperties.isEnabled()) {
+      http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+      return http.build();
     }
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
-    }
+    http.authorizeHttpRequests(
+            auth ->
+                auth.requestMatchers("/api/auth/login")
+                    .permitAll()
+                    .requestMatchers(
+                        "/actuator/health",
+                        "/actuator/info",
+                        "/actuator/metrics",
+                        "/actuator/metrics/**")
+                    .permitAll()
+                    .anyRequest()
+                    .permitAll())
+        .addFilterBefore(nodeAuthFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
-    @Bean
-    public FilterRegistrationBean<NodeAuthFilter> nodeAuthFilterRegistration(NodeAuthFilter nodeAuthFilter) {
-        FilterRegistrationBean<NodeAuthFilter> registration = new FilterRegistrationBean<>(nodeAuthFilter);
-        registration.setEnabled(false);
-        return registration;
-    }
+    return http.build();
+  }
 
-    @Bean
-    public FilterRegistrationBean<JwtAuthFilter> jwtAuthFilterRegistration(JwtAuthFilter jwtAuthFilter) {
-        FilterRegistrationBean<JwtAuthFilter> registration = new FilterRegistrationBean<>(jwtAuthFilter);
-        registration.setEnabled(false);
-        return registration;
-    }
+  @Bean
+  public PasswordEncoder passwordEncoder() {
+    return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+  }
+
+  @Bean
+  public FilterRegistrationBean<NodeAuthFilter> nodeAuthFilterRegistration(
+      NodeAuthFilter nodeAuthFilter) {
+    FilterRegistrationBean<NodeAuthFilter> registration =
+        new FilterRegistrationBean<>(nodeAuthFilter);
+    registration.setEnabled(false);
+    return registration;
+  }
+
+  @Bean
+  public FilterRegistrationBean<JwtAuthFilter> jwtAuthFilterRegistration(
+      JwtAuthFilter jwtAuthFilter) {
+    FilterRegistrationBean<JwtAuthFilter> registration =
+        new FilterRegistrationBean<>(jwtAuthFilter);
+    registration.setEnabled(false);
+    return registration;
+  }
 }

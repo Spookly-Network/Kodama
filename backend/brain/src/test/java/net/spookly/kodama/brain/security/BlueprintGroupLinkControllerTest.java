@@ -34,74 +34,76 @@ import org.springframework.web.server.ResponseStatusException;
 @WebMvcTest(controllers = BlueprintGroupLinkController.class)
 @EnableConfigurationProperties(BrainSecurityProperties.class)
 @Import({
-        ApiExceptionHandler.class,
-        SecurityConfig.class,
-        MethodSecurityConfig.class,
-        JwtAuthFilter.class,
-        JwtTokenService.class,
-        ConfiguredUserStore.class,
-        TestSecurityBootstrapConfig.class
+  ApiExceptionHandler.class,
+  SecurityConfig.class,
+  MethodSecurityConfig.class,
+  JwtAuthFilter.class,
+  JwtTokenService.class,
+  ConfiguredUserStore.class,
+  TestSecurityBootstrapConfig.class
 })
 @TestPropertySource(properties = "brain.security.enabled=false")
 class BlueprintGroupLinkControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+  @Autowired private MockMvc mockMvc;
 
-    @MockitoBean
-    private BlueprintGroupLinkService blueprintGroupLinkService;
+  @MockitoBean private BlueprintGroupLinkService blueprintGroupLinkService;
 
-    @Test
-    void listGroupsReturnsLinkedGroups() throws Exception {
-        UUID blueprintId = UUID.fromString("00000000-0000-0000-0000-000000001551");
-        UUID groupId = UUID.fromString("00000000-0000-0000-0000-000000001552");
-        InstanceGroupDto group = new InstanceGroupDto(
-                groupId,
-                "group-one",
-                "primary",
-                OffsetDateTime.parse("2025-01-01T00:00:00Z"),
-                OffsetDateTime.parse("2025-01-01T00:00:00Z")
-        );
-        given(blueprintGroupLinkService.listGroupLinks(blueprintId)).willReturn(List.of(group));
+  @Test
+  void listGroupsReturnsLinkedGroups() throws Exception {
+    UUID blueprintId = UUID.fromString("00000000-0000-0000-0000-000000001551");
+    UUID groupId = UUID.fromString("00000000-0000-0000-0000-000000001552");
+    InstanceGroupDto group =
+        new InstanceGroupDto(
+            groupId,
+            "group-one",
+            "primary",
+            OffsetDateTime.parse("2025-01-01T00:00:00Z"),
+            OffsetDateTime.parse("2025-01-01T00:00:00Z"));
+    given(blueprintGroupLinkService.listGroupLinks(blueprintId)).willReturn(List.of(group));
 
-        mockMvc.perform(get("/api/blueprints/{id}/groups", blueprintId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(groupId.toString()))
-                .andExpect(jsonPath("$[0].name").value("group-one"));
-    }
+    mockMvc
+        .perform(get("/api/blueprints/{id}/groups", blueprintId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].id").value(groupId.toString()))
+        .andExpect(jsonPath("$[0].name").value("group-one"));
+  }
 
-    @Test
-    void addGroupLinkReturnsNoContent() throws Exception {
-        UUID blueprintId = UUID.fromString("00000000-0000-0000-0000-000000001553");
-        UUID groupId = UUID.fromString("00000000-0000-0000-0000-000000001554");
+  @Test
+  void addGroupLinkReturnsNoContent() throws Exception {
+    UUID blueprintId = UUID.fromString("00000000-0000-0000-0000-000000001553");
+    UUID groupId = UUID.fromString("00000000-0000-0000-0000-000000001554");
 
-        mockMvc.perform(put("/api/blueprints/{id}/groups/{groupId}", blueprintId, groupId))
-                .andExpect(status().isNoContent());
+    mockMvc
+        .perform(put("/api/blueprints/{id}/groups/{groupId}", blueprintId, groupId))
+        .andExpect(status().isNoContent());
 
-        verify(blueprintGroupLinkService).addGroupLink(blueprintId, groupId);
-    }
+    verify(blueprintGroupLinkService).addGroupLink(blueprintId, groupId);
+  }
 
-    @Test
-    void removeGroupLinkReturnsNoContent() throws Exception {
-        UUID blueprintId = UUID.fromString("00000000-0000-0000-0000-000000001555");
-        UUID groupId = UUID.fromString("00000000-0000-0000-0000-000000001556");
+  @Test
+  void removeGroupLinkReturnsNoContent() throws Exception {
+    UUID blueprintId = UUID.fromString("00000000-0000-0000-0000-000000001555");
+    UUID groupId = UUID.fromString("00000000-0000-0000-0000-000000001556");
 
-        mockMvc.perform(delete("/api/blueprints/{id}/groups/{groupId}", blueprintId, groupId))
-                .andExpect(status().isNoContent());
+    mockMvc
+        .perform(delete("/api/blueprints/{id}/groups/{groupId}", blueprintId, groupId))
+        .andExpect(status().isNoContent());
 
-        verify(blueprintGroupLinkService).removeGroupLink(blueprintId, groupId);
-    }
+    verify(blueprintGroupLinkService).removeGroupLink(blueprintId, groupId);
+  }
 
-    @Test
-    void addGroupLinkReturnsNotFoundForMissingGroup() throws Exception {
-        UUID blueprintId = UUID.fromString("00000000-0000-0000-0000-000000001557");
-        UUID groupId = UUID.fromString("00000000-0000-0000-0000-000000001558");
-        willThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"))
-                .given(blueprintGroupLinkService)
-                .addGroupLink(blueprintId, groupId);
+  @Test
+  void addGroupLinkReturnsNotFoundForMissingGroup() throws Exception {
+    UUID blueprintId = UUID.fromString("00000000-0000-0000-0000-000000001557");
+    UUID groupId = UUID.fromString("00000000-0000-0000-0000-000000001558");
+    willThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"))
+        .given(blueprintGroupLinkService)
+        .addGroupLink(blueprintId, groupId);
 
-        mockMvc.perform(put("/api/blueprints/{id}/groups/{groupId}", blueprintId, groupId))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("Group not found"));
-    }
+    mockMvc
+        .perform(put("/api/blueprints/{id}/groups/{groupId}", blueprintId, groupId))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.message").value("Group not found"));
+  }
 }

@@ -20,22 +20,21 @@ import net.spookly.kodama.brain.domain.instance.InstanceGroup;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class BlueprintGroupLink {
 
-    @EmbeddedId
-    private BlueprintGroupLinkId id = new BlueprintGroupLinkId();
+  @EmbeddedId private BlueprintGroupLinkId id = new BlueprintGroupLinkId();
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("blueprintId")
-    @JoinColumn(name = "blueprint_id", nullable = false)
-    private Blueprint blueprint;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @MapsId("blueprintId")
+  @JoinColumn(name = "blueprint_id", nullable = false)
+  private Blueprint blueprint;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("groupId")
-    @JoinColumn(name = "group_id", nullable = false)
-    private InstanceGroup group;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @MapsId("groupId")
+  @JoinColumn(name = "group_id", nullable = false)
+  private InstanceGroup group;
 
-    public BlueprintGroupLink(Blueprint blueprint, InstanceGroup group) {
-        this.blueprint = Objects.requireNonNull(blueprint, "blueprint");
-        this.group = Objects.requireNonNull(group, "group");
-        this.id = new BlueprintGroupLinkId(blueprint.getId(), group.getId());
-    }
+  public BlueprintGroupLink(Blueprint blueprint, InstanceGroup group) {
+    this.blueprint = Objects.requireNonNull(blueprint, "blueprint");
+    this.group = Objects.requireNonNull(group, "group");
+    this.id = new BlueprintGroupLinkId(blueprint.getId(), group.getId());
+  }
 }

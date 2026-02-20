@@ -16,39 +16,24 @@ import lombok.Setter;
 @AllArgsConstructor
 public class BlueprintPortDefinitionRequest {
 
-    @NotBlank
-    private String name;
+  @NotBlank private String name;
 
-    @NotBlank
-    private String protocol;
+  @NotBlank private String protocol;
 
-    @NotNull
-    @Min(1)
-    @Max(65535)
-    private Integer containerPort;
+  @NotNull @Min(1) @Max(65535) private Integer containerPort;
 
-    @NotNull
-    @Valid
-    private HostRangeRequest hostRange;
+  @NotNull @Valid private HostRangeRequest hostRange;
 
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class HostRangeRequest {
+  @Getter
+  @Setter
+  @NoArgsConstructor
+  @AllArgsConstructor
+  public static class HostRangeRequest {
 
-        @NotNull
-        @Min(1)
-        @Max(65535)
-        private Integer min;
+    @NotNull @Min(1) @Max(65535) private Integer min;
 
-        @NotNull
-        @Min(1)
-        @Max(65535)
-        private Integer max;
+    @NotNull @Min(1) @Max(65535) private Integer max;
 
-        @NotNull
-        @Min(1)
-        private Integer step;
-    }
+    @NotNull @Min(1) private Integer step;
+  }
 }

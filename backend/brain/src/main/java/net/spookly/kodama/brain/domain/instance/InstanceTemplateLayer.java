@@ -19,34 +19,32 @@ import org.hibernate.annotations.UuidGenerator;
 
 @Entity
 @Table(
-        name = "instance_template_layers",
-        uniqueConstraints = {
-                @UniqueConstraint(name = "uq_instance_order", columnNames = {"instance_id", "order_index"})
-        }
-)
+    name = "instance_template_layers",
+    uniqueConstraints = {
+      @UniqueConstraint(
+          name = "uq_instance_order",
+          columnNames = {"instance_id", "order_index"})
+    })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class InstanceTemplateLayer {
 
-    @Id
-    @GeneratedValue
-    @UuidGenerator
-    private UUID id;
+  @Id @GeneratedValue @UuidGenerator private UUID id;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "instance_id", nullable = false)
-    private Instance instance;
+  @ManyToOne(optional = false, fetch = FetchType.LAZY)
+  @JoinColumn(name = "instance_id", nullable = false)
+  private Instance instance;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "template_version_id", nullable = false)
-    private TemplateVersion templateVersion;
+  @ManyToOne(optional = false, fetch = FetchType.LAZY)
+  @JoinColumn(name = "template_version_id", nullable = false)
+  private TemplateVersion templateVersion;
 
-    @Column(name = "order_index", nullable = false)
-    private int orderIndex;
+  @Column(name = "order_index", nullable = false)
+  private int orderIndex;
 
-    public InstanceTemplateLayer(Instance instance, TemplateVersion templateVersion, int orderIndex) {
-        this.instance = instance;
-        this.templateVersion = templateVersion;
-        this.orderIndex = orderIndex;
-    }
+  public InstanceTemplateLayer(Instance instance, TemplateVersion templateVersion, int orderIndex) {
+    this.instance = instance;
+    this.templateVersion = templateVersion;
+    this.orderIndex = orderIndex;
+  }
 }

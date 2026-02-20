@@ -17,51 +17,47 @@ import lombok.*;
 @AllArgsConstructor
 public class CreateInstanceRequest {
 
-    @NotBlank
-    private String name;
+  @NotBlank private String name;
 
-    private String displayName;
+  private String displayName;
 
-    private UUID blueprintId;
+  private UUID blueprintId;
 
-    private UUID requestedBy;
+  private UUID requestedBy;
 
-    private UUID nodeId;
+  private UUID nodeId;
 
-    private String region;
+  private String region;
 
-    private String tags;
+  private String tags;
 
-    private Boolean devModeAllowed;
+  private Boolean devModeAllowed;
 
-    private Boolean permanent;
+  private Boolean permanent;
 
-    @Min(1)
-    private Integer slotsRequired;
+  @Min(1) private Integer slotsRequired;
 
-    private String containerImage;
+  private String containerImage;
 
-    private String installScript;
+  private String installScript;
 
-    private List<@NotBlank String> startCommand;
+  private List<@NotBlank String> startCommand;
 
-    @Valid
-    private List<PortDefinitionRequest> portDefinitions;
+  @Valid private List<PortDefinitionRequest> portDefinitions;
 
-    private List<@NotNull UUID> groupIds;
+  private List<@NotNull UUID> groupIds;
 
-    @Valid
-    @JsonAlias("templateAssignments")
-    private List<TemplateAssignmentRequest> templateLayers;
+  @Valid @JsonAlias("templateAssignments")
+  private List<TemplateAssignmentRequest> templateLayers;
 
-    private Map<String, String> variables;
+  private Map<String, String> variables;
 
-    private String variablesJson;
+  private String variablesJson;
 
-    private String portsJson;
+  private String portsJson;
 
-    public CreateInstanceRequest(String name, List<TemplateAssignmentRequest> templateLayers) {
-        this.name = name;
-        this.templateLayers = templateLayers;
-    }
+  public CreateInstanceRequest(String name, List<TemplateAssignmentRequest> templateLayers) {
+    this.name = name;
+    this.templateLayers = templateLayers;
+  }
 }

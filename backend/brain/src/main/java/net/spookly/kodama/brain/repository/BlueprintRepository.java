@@ -10,9 +10,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface BlueprintRepository extends JpaRepository<@NonNull Blueprint, @NonNull UUID> {
 
-    Optional<Blueprint> findByName(String name);
+  Optional<Blueprint> findByName(String name);
 
-    Optional<Blueprint> findByIdAndDeletedAtIsNull(UUID id);
+  Optional<Blueprint> findByIdAndDeletedAtIsNull(UUID id);
 
-    List<Blueprint> findAllByDeletedAtIsNullOrderByCreatedAtAsc();
+  List<Blueprint> findAllByDeletedAtIsNullOrderByCreatedAtAsc();
 }

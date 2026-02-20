@@ -10,13 +10,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface BlueprintTemplateAssignmentRepository
-        extends JpaRepository<@NonNull BlueprintTemplateAssignment, @NonNull UUID> {
+    extends JpaRepository<@NonNull BlueprintTemplateAssignment, @NonNull UUID> {
 
-    @Query("""
+  @Query(
+      """
             select a
             from BlueprintTemplateAssignment a
             where a.blueprint.id = :blueprintId
             order by a.priority asc, a.id asc
             """)
-    List<BlueprintTemplateAssignment> findAllByBlueprintId(@Param("blueprintId") UUID blueprintId);
+  List<BlueprintTemplateAssignment> findAllByBlueprintId(@Param("blueprintId") UUID blueprintId);
 }

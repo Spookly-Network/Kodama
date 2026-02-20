@@ -29,276 +29,288 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional(readOnly = true)
 public class TemplateAssignmentResolver {
 
-    private static final Comparator<TemplateAssignmentCandidate> GROUP_DEDUP_ORDER = Comparator
-            .comparingInt(TemplateAssignmentCandidate::priority)
-            .thenComparing(candidate -> candidate.groupId() == null ? null : candidate.groupId(),
-                    Comparator.nullsLast(Comparator.naturalOrder()))
-            .thenComparing(TemplateAssignmentCandidate::assignmentId, Comparator.nullsLast(Comparator.naturalOrder()));
+  private static final Comparator<TemplateAssignmentCandidate> GROUP_DEDUP_ORDER =
+      Comparator.comparingInt(TemplateAssignmentCandidate::priority)
+          .thenComparing(
+              candidate -> candidate.groupId() == null ? null : candidate.groupId(),
+              Comparator.nullsLast(Comparator.naturalOrder()))
+          .thenComparing(
+              TemplateAssignmentCandidate::assignmentId,
+              Comparator.nullsLast(Comparator.naturalOrder()));
 
-    private static final Comparator<TemplateAssignmentCandidate> EFFECTIVE_ORDER = Comparator
-            .comparingInt(TemplateAssignmentCandidate::priority)
-            .thenComparing(TemplateAssignmentCandidate::source)
-            .thenComparing(TemplateAssignmentCandidate::templateId)
-            .thenComparing(TemplateAssignmentCandidate::assignmentId, Comparator.nullsLast(Comparator.naturalOrder()));
+  private static final Comparator<TemplateAssignmentCandidate> EFFECTIVE_ORDER =
+      Comparator.comparingInt(TemplateAssignmentCandidate::priority)
+          .thenComparing(TemplateAssignmentCandidate::source)
+          .thenComparing(TemplateAssignmentCandidate::templateId)
+          .thenComparing(
+              TemplateAssignmentCandidate::assignmentId,
+              Comparator.nullsLast(Comparator.naturalOrder()));
 
-    private final InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository;
-    private final GroupTemplateAssignmentRepository groupTemplateAssignmentRepository;
-    private final InstanceGroupMembershipRepository instanceGroupMembershipRepository;
-    private final TemplateService templateService;
+  private final InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository;
+  private final GroupTemplateAssignmentRepository groupTemplateAssignmentRepository;
+  private final InstanceGroupMembershipRepository instanceGroupMembershipRepository;
+  private final TemplateService templateService;
 
-    public TemplateAssignmentResolver(
-            InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository,
-            GroupTemplateAssignmentRepository groupTemplateAssignmentRepository,
-            InstanceGroupMembershipRepository instanceGroupMembershipRepository,
-            TemplateService templateService
-    ) {
-        this.instanceTemplateAssignmentRepository = instanceTemplateAssignmentRepository;
-        this.groupTemplateAssignmentRepository = groupTemplateAssignmentRepository;
-        this.instanceGroupMembershipRepository = instanceGroupMembershipRepository;
-        this.templateService = templateService;
+  public TemplateAssignmentResolver(
+      InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository,
+      GroupTemplateAssignmentRepository groupTemplateAssignmentRepository,
+      InstanceGroupMembershipRepository instanceGroupMembershipRepository,
+      TemplateService templateService) {
+    this.instanceTemplateAssignmentRepository = instanceTemplateAssignmentRepository;
+    this.groupTemplateAssignmentRepository = groupTemplateAssignmentRepository;
+    this.instanceGroupMembershipRepository = instanceGroupMembershipRepository;
+    this.templateService = templateService;
+  }
+
+  public List<ResolvedTemplateLayer> resolveForInstance(UUID instanceId) {
+    if (instanceId == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "instanceId is required");
+    }
+    List<InstanceTemplateAssignment> instanceAssignments =
+        instanceTemplateAssignmentRepository.findAllByInstanceId(instanceId);
+    List<UUID> groupIds = instanceGroupMembershipRepository.findGroupIdsByInstanceId(instanceId);
+    List<GroupTemplateAssignment> groupAssignments =
+        groupIds.isEmpty()
+            ? List.of()
+            : groupTemplateAssignmentRepository.findAllByGroupIds(groupIds);
+    return resolveEffectiveLayers(instanceAssignments, groupAssignments);
+  }
+
+  public Map<UUID, List<ResolvedTemplateLayer>> resolveForInstances(Collection<UUID> instanceIds) {
+    if (instanceIds == null || instanceIds.isEmpty()) {
+      return Map.of();
+    }
+    List<InstanceTemplateAssignment> instanceAssignments =
+        instanceTemplateAssignmentRepository.findAllByInstanceIds(instanceIds);
+    Map<UUID, List<InstanceTemplateAssignment>> instanceAssignmentsByInstance =
+        instanceAssignments.stream()
+            .collect(Collectors.groupingBy(assignment -> assignment.getInstance().getId()));
+
+    List<InstanceGroupMembership> memberships =
+        instanceGroupMembershipRepository.findAllByInstanceIds(instanceIds);
+    Map<UUID, List<UUID>> groupIdsByInstance = new HashMap<>();
+    Set<UUID> groupIds = new HashSet<>();
+    for (InstanceGroupMembership membership : memberships) {
+      UUID instanceId = membership.getInstance().getId();
+      UUID groupId = membership.getGroup().getId();
+      groupIdsByInstance.computeIfAbsent(instanceId, key -> new ArrayList<>()).add(groupId);
+      groupIds.add(groupId);
     }
 
-    public List<ResolvedTemplateLayer> resolveForInstance(UUID instanceId) {
-        if (instanceId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "instanceId is required");
-        }
-        List<InstanceTemplateAssignment> instanceAssignments =
-                instanceTemplateAssignmentRepository.findAllByInstanceId(instanceId);
-        List<UUID> groupIds = instanceGroupMembershipRepository.findGroupIdsByInstanceId(instanceId);
-        List<GroupTemplateAssignment> groupAssignments = groupIds.isEmpty()
-                ? List.of()
-                : groupTemplateAssignmentRepository.findAllByGroupIds(groupIds);
-        return resolveEffectiveLayers(instanceAssignments, groupAssignments);
-    }
-
-    public Map<UUID, List<ResolvedTemplateLayer>> resolveForInstances(Collection<UUID> instanceIds) {
-        if (instanceIds == null || instanceIds.isEmpty()) {
-            return Map.of();
-        }
-        List<InstanceTemplateAssignment> instanceAssignments =
-                instanceTemplateAssignmentRepository.findAllByInstanceIds(instanceIds);
-        Map<UUID, List<InstanceTemplateAssignment>> instanceAssignmentsByInstance = instanceAssignments.stream()
-                .collect(Collectors.groupingBy(assignment -> assignment.getInstance().getId()));
-
-        List<InstanceGroupMembership> memberships =
-                instanceGroupMembershipRepository.findAllByInstanceIds(instanceIds);
-        Map<UUID, List<UUID>> groupIdsByInstance = new HashMap<>();
-        Set<UUID> groupIds = new HashSet<>();
-        for (InstanceGroupMembership membership : memberships) {
-            UUID instanceId = membership.getInstance().getId();
-            UUID groupId = membership.getGroup().getId();
-            groupIdsByInstance.computeIfAbsent(instanceId, key -> new ArrayList<>()).add(groupId);
-            groupIds.add(groupId);
-        }
-
-        Map<UUID, List<GroupTemplateAssignment>> groupAssignmentsByGroup = groupIds.isEmpty()
-                ? Map.of()
-                : groupTemplateAssignmentRepository.findAllByGroupIds(groupIds).stream()
+    Map<UUID, List<GroupTemplateAssignment>> groupAssignmentsByGroup =
+        groupIds.isEmpty()
+            ? Map.of()
+            : groupTemplateAssignmentRepository.findAllByGroupIds(groupIds).stream()
                 .collect(Collectors.groupingBy(assignment -> assignment.getGroup().getId()));
 
-        Map<UUID, List<TemplateAssignmentCandidate>> effectiveCandidatesByInstance = new HashMap<>();
-        List<TemplateAssignmentCandidate> allEffectiveCandidates = new ArrayList<>();
-        for (UUID instanceId : instanceIds) {
-            List<InstanceTemplateAssignment> directAssignments =
-                    instanceAssignmentsByInstance.getOrDefault(instanceId, List.of());
-            List<UUID> instanceGroupIds = groupIdsByInstance.getOrDefault(instanceId, List.of());
-            List<GroupTemplateAssignment> groupedAssignments = new ArrayList<>();
-            for (UUID groupId : instanceGroupIds) {
-                groupedAssignments.addAll(groupAssignmentsByGroup.getOrDefault(groupId, List.of()));
-            }
-            List<TemplateAssignmentCandidate> ordered = resolveEffectiveCandidates(directAssignments, groupedAssignments);
-            effectiveCandidatesByInstance.put(instanceId, ordered);
-            allEffectiveCandidates.addAll(ordered);
-        }
-
-        Map<UUID, TemplateVersion> versionsByAssignmentId = allEffectiveCandidates.isEmpty()
-                ? Map.of()
-                : resolveTemplateVersions(allEffectiveCandidates);
-
-        Map<UUID, List<ResolvedTemplateLayer>> resolved = new HashMap<>();
-        for (UUID instanceId : instanceIds) {
-            List<TemplateAssignmentCandidate> ordered =
-                    effectiveCandidatesByInstance.getOrDefault(instanceId, List.of());
-            resolved.put(instanceId, buildResolvedLayers(ordered, versionsByAssignmentId));
-        }
-
-        return resolved;
+    Map<UUID, List<TemplateAssignmentCandidate>> effectiveCandidatesByInstance = new HashMap<>();
+    List<TemplateAssignmentCandidate> allEffectiveCandidates = new ArrayList<>();
+    for (UUID instanceId : instanceIds) {
+      List<InstanceTemplateAssignment> directAssignments =
+          instanceAssignmentsByInstance.getOrDefault(instanceId, List.of());
+      List<UUID> instanceGroupIds = groupIdsByInstance.getOrDefault(instanceId, List.of());
+      List<GroupTemplateAssignment> groupedAssignments = new ArrayList<>();
+      for (UUID groupId : instanceGroupIds) {
+        groupedAssignments.addAll(groupAssignmentsByGroup.getOrDefault(groupId, List.of()));
+      }
+      List<TemplateAssignmentCandidate> ordered =
+          resolveEffectiveCandidates(directAssignments, groupedAssignments);
+      effectiveCandidatesByInstance.put(instanceId, ordered);
+      allEffectiveCandidates.addAll(ordered);
     }
 
-    private List<ResolvedTemplateLayer> resolveEffectiveLayers(
-            List<InstanceTemplateAssignment> instanceAssignments,
-            List<GroupTemplateAssignment> groupAssignments
-    ) {
-        List<TemplateAssignmentCandidate> ordered = resolveEffectiveCandidates(instanceAssignments, groupAssignments);
-        if (ordered.isEmpty()) {
-            return List.of();
-        }
+    Map<UUID, TemplateVersion> versionsByAssignmentId =
+        allEffectiveCandidates.isEmpty()
+            ? Map.of()
+            : resolveTemplateVersions(allEffectiveCandidates);
 
-        Map<UUID, TemplateVersion> versionsByAssignmentId = resolveTemplateVersions(ordered);
-        return buildResolvedLayers(ordered, versionsByAssignmentId);
+    Map<UUID, List<ResolvedTemplateLayer>> resolved = new HashMap<>();
+    for (UUID instanceId : instanceIds) {
+      List<TemplateAssignmentCandidate> ordered =
+          effectiveCandidatesByInstance.getOrDefault(instanceId, List.of());
+      resolved.put(instanceId, buildResolvedLayers(ordered, versionsByAssignmentId));
     }
 
-    private List<TemplateAssignmentCandidate> resolveEffectiveCandidates(
-            List<InstanceTemplateAssignment> instanceAssignments,
-            List<GroupTemplateAssignment> groupAssignments
-    ) {
-        List<TemplateAssignmentCandidate> instanceCandidates = new ArrayList<>(instanceAssignments.size());
-        for (InstanceTemplateAssignment assignment : instanceAssignments) {
-            instanceCandidates.add(toCandidate(assignment));
-        }
+    return resolved;
+  }
 
-        List<TemplateAssignmentCandidate> groupCandidates = new ArrayList<>(groupAssignments.size());
-        for (GroupTemplateAssignment assignment : groupAssignments) {
-            groupCandidates.add(toCandidate(assignment));
-        }
-
-        if (instanceCandidates.isEmpty() && groupCandidates.isEmpty()) {
-            return List.of();
-        }
-
-        Set<UUID> instanceTemplateIds = instanceCandidates.stream()
-                .map(TemplateAssignmentCandidate::templateId)
-                .collect(Collectors.toSet());
-
-        List<TemplateAssignmentCandidate> eligibleGroupCandidates = groupCandidates.stream()
-                .filter(candidate -> !instanceTemplateIds.contains(candidate.templateId()))
-                .toList();
-
-        Map<UUID, TemplateAssignmentCandidate> bestGroupAssignments =
-                selectBest(eligibleGroupCandidates, GROUP_DEDUP_ORDER);
-
-        List<TemplateAssignmentCandidate> ordered = new ArrayList<>(instanceCandidates.size()
-                + bestGroupAssignments.size());
-        ordered.addAll(instanceCandidates);
-        ordered.addAll(bestGroupAssignments.values());
-        ordered.sort(EFFECTIVE_ORDER);
-        return ordered;
+  private List<ResolvedTemplateLayer> resolveEffectiveLayers(
+      List<InstanceTemplateAssignment> instanceAssignments,
+      List<GroupTemplateAssignment> groupAssignments) {
+    List<TemplateAssignmentCandidate> ordered =
+        resolveEffectiveCandidates(instanceAssignments, groupAssignments);
+    if (ordered.isEmpty()) {
+      return List.of();
     }
 
-    private List<ResolvedTemplateLayer> buildResolvedLayers(
-            List<TemplateAssignmentCandidate> ordered,
-            Map<UUID, TemplateVersion> versionsByAssignmentId
-    ) {
-        if (ordered.isEmpty()) {
-            return List.of();
+    Map<UUID, TemplateVersion> versionsByAssignmentId = resolveTemplateVersions(ordered);
+    return buildResolvedLayers(ordered, versionsByAssignmentId);
+  }
+
+  private List<TemplateAssignmentCandidate> resolveEffectiveCandidates(
+      List<InstanceTemplateAssignment> instanceAssignments,
+      List<GroupTemplateAssignment> groupAssignments) {
+    List<TemplateAssignmentCandidate> instanceCandidates =
+        new ArrayList<>(instanceAssignments.size());
+    for (InstanceTemplateAssignment assignment : instanceAssignments) {
+      instanceCandidates.add(toCandidate(assignment));
+    }
+
+    List<TemplateAssignmentCandidate> groupCandidates = new ArrayList<>(groupAssignments.size());
+    for (GroupTemplateAssignment assignment : groupAssignments) {
+      groupCandidates.add(toCandidate(assignment));
+    }
+
+    if (instanceCandidates.isEmpty() && groupCandidates.isEmpty()) {
+      return List.of();
+    }
+
+    Set<UUID> instanceTemplateIds =
+        instanceCandidates.stream()
+            .map(TemplateAssignmentCandidate::templateId)
+            .collect(Collectors.toSet());
+
+    List<TemplateAssignmentCandidate> eligibleGroupCandidates =
+        groupCandidates.stream()
+            .filter(candidate -> !instanceTemplateIds.contains(candidate.templateId()))
+            .toList();
+
+    Map<UUID, TemplateAssignmentCandidate> bestGroupAssignments =
+        selectBest(eligibleGroupCandidates, GROUP_DEDUP_ORDER);
+
+    List<TemplateAssignmentCandidate> ordered =
+        new ArrayList<>(instanceCandidates.size() + bestGroupAssignments.size());
+    ordered.addAll(instanceCandidates);
+    ordered.addAll(bestGroupAssignments.values());
+    ordered.sort(EFFECTIVE_ORDER);
+    return ordered;
+  }
+
+  private List<ResolvedTemplateLayer> buildResolvedLayers(
+      List<TemplateAssignmentCandidate> ordered,
+      Map<UUID, TemplateVersion> versionsByAssignmentId) {
+    if (ordered.isEmpty()) {
+      return List.of();
+    }
+
+    List<ResolvedTemplateLayer> resolved = new ArrayList<>(ordered.size());
+    for (int index = 0; index < ordered.size(); index++) {
+      TemplateAssignmentCandidate candidate = ordered.get(index);
+      TemplateVersion version = versionsByAssignmentId.get(candidate.assignmentId());
+      resolved.add(
+          new ResolvedTemplateLayer(
+              candidate.assignmentId(),
+              candidate.templateId(),
+              version,
+              candidate.priority(),
+              index,
+              candidate.source()));
+    }
+
+    return resolved;
+  }
+
+  private Map<UUID, TemplateAssignmentCandidate> selectBest(
+      List<TemplateAssignmentCandidate> candidates,
+      Comparator<TemplateAssignmentCandidate> ordering) {
+    Map<UUID, TemplateAssignmentCandidate> bestByTemplate = new HashMap<>();
+    for (TemplateAssignmentCandidate candidate : candidates) {
+      UUID templateId = candidate.templateId();
+      TemplateAssignmentCandidate current = bestByTemplate.get(templateId);
+      if (current == null || ordering.compare(candidate, current) < 0) {
+        bestByTemplate.put(templateId, candidate);
+      }
+    }
+    return bestByTemplate;
+  }
+
+  private Map<UUID, TemplateVersion> resolveTemplateVersions(
+      List<TemplateAssignmentCandidate> candidates) {
+    Set<UUID> templateVersionIds =
+        candidates.stream()
+            .map(TemplateAssignmentCandidate::templateVersionId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+
+    Map<UUID, TemplateVersion> versionsById =
+        templateService.loadTemplateVersionsById(templateVersionIds);
+
+    Set<UUID> templateIdsWithoutVersion =
+        candidates.stream()
+            .filter(candidate -> candidate.templateVersionId() == null)
+            .map(TemplateAssignmentCandidate::templateId)
+            .collect(Collectors.toSet());
+
+    Map<UUID, TemplateVersion> latestVersions =
+        templateIdsWithoutVersion.isEmpty()
+            ? Map.of()
+            : templateService.loadLatestTemplateVersionsByTemplateIds(templateIdsWithoutVersion);
+
+    Map<UUID, TemplateVersion> resolved = new HashMap<>();
+    for (TemplateAssignmentCandidate candidate : candidates) {
+      TemplateVersion version;
+      if (candidate.templateVersionId() != null) {
+        version = versionsById.get(candidate.templateVersionId());
+        if (!candidate.templateId().equals(version.getTemplate().getId())) {
+          throw new ResponseStatusException(
+              HttpStatus.BAD_REQUEST, "templateVersionId does not belong to templateId");
         }
-
-        List<ResolvedTemplateLayer> resolved = new ArrayList<>(ordered.size());
-        for (int index = 0; index < ordered.size(); index++) {
-            TemplateAssignmentCandidate candidate = ordered.get(index);
-            TemplateVersion version = versionsByAssignmentId.get(candidate.assignmentId());
-            resolved.add(new ResolvedTemplateLayer(
-                    candidate.assignmentId(),
-                    candidate.templateId(),
-                    version,
-                    candidate.priority(),
-                    index,
-                    candidate.source()
-            ));
-        }
-
-        return resolved;
+      } else {
+        version = latestVersions.get(candidate.templateId());
+      }
+      resolved.put(candidate.assignmentId(), version);
     }
+    return resolved;
+  }
 
-    private Map<UUID, TemplateAssignmentCandidate> selectBest(
-            List<TemplateAssignmentCandidate> candidates,
-            Comparator<TemplateAssignmentCandidate> ordering
-    ) {
-        Map<UUID, TemplateAssignmentCandidate> bestByTemplate = new HashMap<>();
-        for (TemplateAssignmentCandidate candidate : candidates) {
-            UUID templateId = candidate.templateId();
-            TemplateAssignmentCandidate current = bestByTemplate.get(templateId);
-            if (current == null || ordering.compare(candidate, current) < 0) {
-                bestByTemplate.put(templateId, candidate);
-            }
-        }
-        return bestByTemplate;
+  private TemplateAssignmentCandidate toCandidate(InstanceTemplateAssignment assignment) {
+    return new TemplateAssignmentCandidate(
+        requireAssignmentId(assignment.getId()),
+        requireTemplateId(assignment.getTemplate().getId()),
+        assignment.getTemplateVersion() == null ? null : assignment.getTemplateVersion().getId(),
+        assignment.getPriority(),
+        TemplateAssignmentSource.INSTANCE,
+        null);
+  }
+
+  private TemplateAssignmentCandidate toCandidate(GroupTemplateAssignment assignment) {
+    return new TemplateAssignmentCandidate(
+        requireAssignmentId(assignment.getId()),
+        requireTemplateId(assignment.getTemplate().getId()),
+        assignment.getTemplateVersion() == null ? null : assignment.getTemplateVersion().getId(),
+        assignment.getPriority(),
+        TemplateAssignmentSource.GROUP,
+        requireGroupId(assignment.getGroup().getId()));
+  }
+
+  private UUID requireAssignmentId(UUID assignmentId) {
+    if (assignmentId == null) {
+      throw new ResponseStatusException(
+          HttpStatus.INTERNAL_SERVER_ERROR, "Assignment id is required");
     }
+    return assignmentId;
+  }
 
-    private Map<UUID, TemplateVersion> resolveTemplateVersions(List<TemplateAssignmentCandidate> candidates) {
-        Set<UUID> templateVersionIds = candidates.stream()
-                .map(TemplateAssignmentCandidate::templateVersionId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        Map<UUID, TemplateVersion> versionsById = templateService.loadTemplateVersionsById(templateVersionIds);
-
-        Set<UUID> templateIdsWithoutVersion = candidates.stream()
-                .filter(candidate -> candidate.templateVersionId() == null)
-                .map(TemplateAssignmentCandidate::templateId)
-                .collect(Collectors.toSet());
-
-        Map<UUID, TemplateVersion> latestVersions = templateIdsWithoutVersion.isEmpty()
-                ? Map.of()
-                : templateService.loadLatestTemplateVersionsByTemplateIds(templateIdsWithoutVersion);
-
-        Map<UUID, TemplateVersion> resolved = new HashMap<>();
-        for (TemplateAssignmentCandidate candidate : candidates) {
-            TemplateVersion version;
-            if (candidate.templateVersionId() != null) {
-                version = versionsById.get(candidate.templateVersionId());
-                if (!candidate.templateId().equals(version.getTemplate().getId())) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                            "templateVersionId does not belong to templateId");
-                }
-            } else {
-                version = latestVersions.get(candidate.templateId());
-            }
-            resolved.put(candidate.assignmentId(), version);
-        }
-        return resolved;
+  private UUID requireTemplateId(UUID templateId) {
+    if (templateId == null) {
+      throw new ResponseStatusException(
+          HttpStatus.INTERNAL_SERVER_ERROR, "Template id is required");
     }
+    return templateId;
+  }
 
-    private TemplateAssignmentCandidate toCandidate(InstanceTemplateAssignment assignment) {
-        return new TemplateAssignmentCandidate(
-                requireAssignmentId(assignment.getId()),
-                requireTemplateId(assignment.getTemplate().getId()),
-                assignment.getTemplateVersion() == null ? null : assignment.getTemplateVersion().getId(),
-                assignment.getPriority(),
-                TemplateAssignmentSource.INSTANCE,
-                null
-        );
+  private UUID requireGroupId(UUID groupId) {
+    if (groupId == null) {
+      throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Group id is required");
     }
+    return groupId;
+  }
 
-    private TemplateAssignmentCandidate toCandidate(GroupTemplateAssignment assignment) {
-        return new TemplateAssignmentCandidate(
-                requireAssignmentId(assignment.getId()),
-                requireTemplateId(assignment.getTemplate().getId()),
-                assignment.getTemplateVersion() == null ? null : assignment.getTemplateVersion().getId(),
-                assignment.getPriority(),
-                TemplateAssignmentSource.GROUP,
-                requireGroupId(assignment.getGroup().getId())
-        );
-    }
-
-    private UUID requireAssignmentId(UUID assignmentId) {
-        if (assignmentId == null) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Assignment id is required");
-        }
-        return assignmentId;
-    }
-
-    private UUID requireTemplateId(UUID templateId) {
-        if (templateId == null) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Template id is required");
-        }
-        return templateId;
-    }
-
-    private UUID requireGroupId(UUID groupId) {
-        if (groupId == null) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Group id is required");
-        }
-        return groupId;
-    }
-
-    private record TemplateAssignmentCandidate(
-            UUID assignmentId,
-            UUID templateId,
-            UUID templateVersionId,
-            int priority,
-            TemplateAssignmentSource source,
-            UUID groupId
-    ) {
-    }
+  private record TemplateAssignmentCandidate(
+      UUID assignmentId,
+      UUID templateId,
+      UUID templateVersionId,
+      int priority,
+      TemplateAssignmentSource source,
+      UUID groupId) {}
 }

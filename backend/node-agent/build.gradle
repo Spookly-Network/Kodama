@@ -30,6 +30,7 @@ bootJar {
 
 springBoot {
     mainClass = 'net.spookly.kodama.nodeagent.NodeAgentApplication'
+    buildInfo()
 }
 
 jar {

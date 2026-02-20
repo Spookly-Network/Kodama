@@ -16,21 +16,17 @@ import lombok.Setter;
 @AllArgsConstructor
 public class CreateBlueprintRequest {
 
-    @NotBlank
-    private String name;
+  @NotBlank private String name;
 
-    private Boolean permanent;
+  private Boolean permanent;
 
-    @Min(1)
-    private Integer slotsRequired;
+  @Min(1) private Integer slotsRequired;
 
-    @NotBlank
-    private String containerImage;
+  @NotBlank private String containerImage;
 
-    private String installScript;
+  private String installScript;
 
-    @NotEmpty
-    private List<@NotBlank String> startCommand;
+  @NotEmpty private List<@NotBlank String> startCommand;
 
-    private String variablesJson;
+  private String variablesJson;
 }

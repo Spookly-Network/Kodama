@@ -22,32 +22,34 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/blueprints/{id}/ports")
 public class BlueprintPortDefinitionController {
 
-    private final BlueprintPortDefinitionService blueprintPortDefinitionService;
+  private final BlueprintPortDefinitionService blueprintPortDefinitionService;
 
-    public BlueprintPortDefinitionController(BlueprintPortDefinitionService blueprintPortDefinitionService) {
-        this.blueprintPortDefinitionService = blueprintPortDefinitionService;
-    }
+  public BlueprintPortDefinitionController(
+      BlueprintPortDefinitionService blueprintPortDefinitionService) {
+    this.blueprintPortDefinitionService = blueprintPortDefinitionService;
+  }
 
-    @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
-    public List<BlueprintPortDefinitionDto> listPortDefinitions(@PathVariable("id") UUID blueprintId) {
-        return blueprintPortDefinitionService.listPortDefinitions(blueprintId);
-    }
+  @GetMapping
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
+  public List<BlueprintPortDefinitionDto> listPortDefinitions(
+      @PathVariable("id") UUID blueprintId) {
+    return blueprintPortDefinitionService.listPortDefinitions(blueprintId);
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
-    public BlueprintPortDefinitionDto addPortDefinition(
-            @PathVariable("id") UUID blueprintId,
-            @Valid @RequestBody BlueprintPortDefinitionRequest request
-    ) {
-        return blueprintPortDefinitionService.addPortDefinition(blueprintId, request);
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+  public BlueprintPortDefinitionDto addPortDefinition(
+      @PathVariable("id") UUID blueprintId,
+      @Valid @RequestBody BlueprintPortDefinitionRequest request) {
+    return blueprintPortDefinitionService.addPortDefinition(blueprintId, request);
+  }
 
-    @DeleteMapping("/{portId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
-    public void removePortDefinition(@PathVariable("id") UUID blueprintId, @PathVariable UUID portId) {
-        blueprintPortDefinitionService.removePortDefinition(blueprintId, portId);
-    }
+  @DeleteMapping("/{portId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+  public void removePortDefinition(
+      @PathVariable("id") UUID blueprintId, @PathVariable UUID portId) {
+    blueprintPortDefinitionService.removePortDefinition(blueprintId, portId);
+  }
 }

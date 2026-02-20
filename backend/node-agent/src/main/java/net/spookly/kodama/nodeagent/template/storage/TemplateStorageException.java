@@ -3,5 +3,4 @@ package net.spookly.kodama.nodeagent.template.storage;
 import lombok.experimental.StandardException;
 
 @StandardException
-public class TemplateStorageException extends RuntimeException {
-}
+public class TemplateStorageException extends RuntimeException {}

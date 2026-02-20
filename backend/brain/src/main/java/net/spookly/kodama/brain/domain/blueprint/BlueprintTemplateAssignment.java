@@ -24,35 +24,28 @@ import org.hibernate.annotations.UuidGenerator;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class BlueprintTemplateAssignment {
 
-    @Id
-    @GeneratedValue
-    @UuidGenerator
-    private UUID id;
+  @Id @GeneratedValue @UuidGenerator private UUID id;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "blueprint_id", nullable = false)
-    private Blueprint blueprint;
+  @ManyToOne(optional = false, fetch = FetchType.LAZY)
+  @JoinColumn(name = "blueprint_id", nullable = false)
+  private Blueprint blueprint;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "template_id", nullable = false)
-    private Template template;
+  @ManyToOne(optional = false, fetch = FetchType.LAZY)
+  @JoinColumn(name = "template_id", nullable = false)
+  private Template template;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "template_version_id")
-    private TemplateVersion templateVersion;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "template_version_id")
+  private TemplateVersion templateVersion;
 
-    @Column(nullable = false)
-    private int priority;
+  @Column(nullable = false)
+  private int priority;
 
-    public BlueprintTemplateAssignment(
-            Blueprint blueprint,
-            Template template,
-            TemplateVersion templateVersion,
-            int priority
-    ) {
-        this.blueprint = Objects.requireNonNull(blueprint, "blueprint");
-        this.template = Objects.requireNonNull(template, "template");
-        this.templateVersion = templateVersion;
-        this.priority = priority;
-    }
+  public BlueprintTemplateAssignment(
+      Blueprint blueprint, Template template, TemplateVersion templateVersion, int priority) {
+    this.blueprint = Objects.requireNonNull(blueprint, "blueprint");
+    this.template = Objects.requireNonNull(template, "template");
+    this.templateVersion = templateVersion;
+    this.priority = priority;
+  }
 }

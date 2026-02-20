@@ -13,35 +13,32 @@ import org.springframework.stereotype.Component;
 @Order(Ordered.HIGHEST_PRECEDENCE + 2)
 public class TemplateCacheCheckRunner implements ApplicationRunner {
 
-    private static final Logger logger = LoggerFactory.getLogger(TemplateCacheCheckRunner.class);
+  private static final Logger logger = LoggerFactory.getLogger(TemplateCacheCheckRunner.class);
 
-    private final NodeConfig config;
-    private final TemplateCacheLookupService lookupService;
+  private final NodeConfig config;
+  private final TemplateCacheLookupService lookupService;
 
-    public TemplateCacheCheckRunner(NodeConfig config, TemplateCacheLookupService lookupService) {
-        this.config = config;
-        this.lookupService = lookupService;
+  public TemplateCacheCheckRunner(NodeConfig config, TemplateCacheLookupService lookupService) {
+    this.config = config;
+    this.lookupService = lookupService;
+  }
+
+  @Override
+  public void run(ApplicationArguments args) {
+    NodeConfig.TemplateCacheCheck check = config.getTemplateCacheCheck();
+    if (check == null || !check.isEnabled()) {
+      return;
     }
 
-    @Override
-    public void run(ApplicationArguments args) {
-        NodeConfig.TemplateCacheCheck check = config.getTemplateCacheCheck();
-        if (check == null || !check.isEnabled()) {
-            return;
-        }
+    TemplateCacheLookupResult result =
+        lookupService.findCachedTemplate(
+            check.getTemplateId(), check.getVersion(), check.getChecksum());
 
-        TemplateCacheLookupResult result = lookupService.findCachedTemplate(
-                check.getTemplateId(),
-                check.getVersion(),
-                check.getChecksum()
-        );
-
-        logger.info(
-                "Template cache check completed. templateId={}, version={}, hit={}, reason={}",
-                result.templateId(),
-                result.version(),
-                result.isCacheHit(),
-                result.missReason()
-        );
-    }
+    logger.info(
+        "Template cache check completed. templateId={}, version={}, hit={}, reason={}",
+        result.templateId(),
+        result.version(),
+        result.isCacheHit(),
+        result.missReason());
+  }
 }

@@ -30,7 +30,6 @@ The Node Agent is a lightweight Java service that runs on each node and executes
 - Configure via environment variables or CLI args (`--node-agent.<key>=...`).
   - Required:
     - `NODE_AGENT_NAME`
-    - `NODE_AGENT_NODE_VERSION`
     - `NODE_AGENT_REGION`
     - `NODE_AGENT_CAPACITY_SLOTS`
     - `NODE_AGENT_BRAIN_BASE_URL`
@@ -65,6 +64,7 @@ The Node Agent is a lightweight Java service that runs on each node and executes
     - `PLUGINS_DIR`
     - `PLUGINS_ENABLED`
 - See `docs/node/operations/configuration.md` for the full mapping.
+- Node version is taken from node-agent build metadata and is sent during registration automatically.
 - Health check is available at `GET /health` on the configured node-agent HTTP port.
 - Local instance registry listing is available at `GET /api/instances/registry` (Brain auth required) and returns workspace paths relative to `node-agent.workspace-dir`.
 

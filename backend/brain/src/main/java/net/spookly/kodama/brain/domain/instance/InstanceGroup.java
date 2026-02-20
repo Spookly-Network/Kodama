@@ -21,34 +21,32 @@ import org.hibernate.annotations.UuidGenerator;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class InstanceGroup {
 
-    @Id
-    @GeneratedValue
-    @UuidGenerator
-    private UUID id;
+  @Id @GeneratedValue @UuidGenerator private UUID id;
 
-    @Column(nullable = false)
-    private String name;
+  @Column(nullable = false)
+  private String name;
 
-    @Lob
-    @Column(columnDefinition = "TEXT")
-    private String description;
+  @Lob
+  @Column(columnDefinition = "TEXT")
+  private String description;
 
-    @Column(nullable = false)
-    private OffsetDateTime createdAt;
+  @Column(nullable = false)
+  private OffsetDateTime createdAt;
 
-    @Column(nullable = false)
-    private OffsetDateTime updatedAt;
+  @Column(nullable = false)
+  private OffsetDateTime updatedAt;
 
-    public InstanceGroup(String name, String description, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
-        this.name = Objects.requireNonNull(name, "name");
-        this.description = description;
-        this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
-        this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt");
-    }
+  public InstanceGroup(
+      String name, String description, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+    this.name = Objects.requireNonNull(name, "name");
+    this.description = description;
+    this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
+    this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt");
+  }
 
-    public void updateDetails(String name, String description, OffsetDateTime updatedAt) {
-        this.name = Objects.requireNonNull(name, "name");
-        this.description = description;
-        this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt");
-    }
+  public void updateDetails(String name, String description, OffsetDateTime updatedAt) {
+    this.name = Objects.requireNonNull(name, "name");
+    this.description = description;
+    this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt");
+  }
 }

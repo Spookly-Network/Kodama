@@ -17,52 +17,48 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/nodes/{nodeId}/instances/{instanceId}")
 public class NodeCallbackController {
 
-    private final InstanceService instanceService;
+  private final InstanceService instanceService;
 
-    public NodeCallbackController(InstanceService instanceService) {
-        this.instanceService = instanceService;
-    }
+  public NodeCallbackController(InstanceService instanceService) {
+    this.instanceService = instanceService;
+  }
 
-    @PostMapping("/prepared")
-    @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAuthority('ROLE_NODE')")
-    public void prepared(
-            @PathVariable UUID nodeId,
-            @PathVariable UUID instanceId,
-            @RequestBody(required = false) InstancePreparedCallbackRequest request
-    ) {
-        instanceService.reportInstancePrepared(
-                nodeId,
-                instanceId,
-                request == null ? null : request.getPortsJson()
-        );
-    }
+  @PostMapping("/prepared")
+  @ResponseStatus(HttpStatus.OK)
+  @PreAuthorize("hasAuthority('ROLE_NODE')")
+  public void prepared(
+      @PathVariable UUID nodeId,
+      @PathVariable UUID instanceId,
+      @RequestBody(required = false) InstancePreparedCallbackRequest request) {
+    instanceService.reportInstancePrepared(
+        nodeId, instanceId, request == null ? null : request.getPortsJson());
+  }
 
-    @PostMapping("/running")
-    @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAuthority('ROLE_NODE')")
-    public void running(@PathVariable UUID nodeId, @PathVariable UUID instanceId) {
-        instanceService.reportInstanceRunning(nodeId, instanceId);
-    }
+  @PostMapping("/running")
+  @ResponseStatus(HttpStatus.OK)
+  @PreAuthorize("hasAuthority('ROLE_NODE')")
+  public void running(@PathVariable UUID nodeId, @PathVariable UUID instanceId) {
+    instanceService.reportInstanceRunning(nodeId, instanceId);
+  }
 
-    @PostMapping("/stopped")
-    @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAuthority('ROLE_NODE')")
-    public void stopped(@PathVariable UUID nodeId, @PathVariable UUID instanceId) {
-        instanceService.reportInstanceStopped(nodeId, instanceId);
-    }
+  @PostMapping("/stopped")
+  @ResponseStatus(HttpStatus.OK)
+  @PreAuthorize("hasAuthority('ROLE_NODE')")
+  public void stopped(@PathVariable UUID nodeId, @PathVariable UUID instanceId) {
+    instanceService.reportInstanceStopped(nodeId, instanceId);
+  }
 
-    @PostMapping("/destroyed")
-    @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAuthority('ROLE_NODE')")
-    public void destroyed(@PathVariable UUID nodeId, @PathVariable UUID instanceId) {
-        instanceService.reportInstanceDestroyed(nodeId, instanceId);
-    }
+  @PostMapping("/destroyed")
+  @ResponseStatus(HttpStatus.OK)
+  @PreAuthorize("hasAuthority('ROLE_NODE')")
+  public void destroyed(@PathVariable UUID nodeId, @PathVariable UUID instanceId) {
+    instanceService.reportInstanceDestroyed(nodeId, instanceId);
+  }
 
-    @PostMapping("/failed")
-    @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAuthority('ROLE_NODE')")
-    public void failed(@PathVariable UUID nodeId, @PathVariable UUID instanceId) {
-        instanceService.reportInstanceFailed(nodeId, instanceId);
-    }
+  @PostMapping("/failed")
+  @ResponseStatus(HttpStatus.OK)
+  @PreAuthorize("hasAuthority('ROLE_NODE')")
+  public void failed(@PathVariable UUID nodeId, @PathVariable UUID instanceId) {
+    instanceService.reportInstanceFailed(nodeId, instanceId);
+  }
 }

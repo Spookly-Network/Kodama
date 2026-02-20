@@ -12,14 +12,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface InstanceGroupMembershipRepository
-        extends JpaRepository<@NonNull InstanceGroupMembership, @NonNull InstanceGroupMembershipId> {
+    extends JpaRepository<@NonNull InstanceGroupMembership, @NonNull InstanceGroupMembershipId> {
 
-    @Query("select m from InstanceGroupMembership m where m.instance.id = :instanceId")
-    List<InstanceGroupMembership> findAllByInstanceId(@Param("instanceId") UUID instanceId);
+  @Query("select m from InstanceGroupMembership m where m.instance.id = :instanceId")
+  List<InstanceGroupMembership> findAllByInstanceId(@Param("instanceId") UUID instanceId);
 
-    @Query("select m from InstanceGroupMembership m where m.instance.id in :instanceIds")
-    List<InstanceGroupMembership> findAllByInstanceIds(@Param("instanceIds") Collection<UUID> instanceIds);
+  @Query("select m from InstanceGroupMembership m where m.instance.id in :instanceIds")
+  List<InstanceGroupMembership> findAllByInstanceIds(
+      @Param("instanceIds") Collection<UUID> instanceIds);
 
-    @Query("select m.group.id from InstanceGroupMembership m where m.instance.id = :instanceId")
-    List<UUID> findGroupIdsByInstanceId(@Param("instanceId") UUID instanceId);
+  @Query("select m.group.id from InstanceGroupMembership m where m.instance.id = :instanceId")
+  List<UUID> findGroupIdsByInstanceId(@Param("instanceId") UUID instanceId);
 }

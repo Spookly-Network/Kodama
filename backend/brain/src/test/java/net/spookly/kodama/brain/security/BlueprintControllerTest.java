@@ -39,30 +39,29 @@ import org.springframework.web.server.ResponseStatusException;
 @WebMvcTest(controllers = BlueprintController.class)
 @EnableConfigurationProperties(BrainSecurityProperties.class)
 @Import({
-        ApiExceptionHandler.class,
-        SecurityConfig.class,
-        MethodSecurityConfig.class,
-        JwtAuthFilter.class,
-        JwtTokenService.class,
-        ConfiguredUserStore.class,
-        TestSecurityBootstrapConfig.class
+  ApiExceptionHandler.class,
+  SecurityConfig.class,
+  MethodSecurityConfig.class,
+  JwtAuthFilter.class,
+  JwtTokenService.class,
+  ConfiguredUserStore.class,
+  TestSecurityBootstrapConfig.class
 })
 @TestPropertySource(properties = "brain.security.enabled=false")
 class BlueprintControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+  @Autowired private MockMvc mockMvc;
 
-    @MockitoBean
-    private BlueprintService blueprintService;
+  @MockitoBean private BlueprintService blueprintService;
 
-    @Test
-    void createBlueprintReturnsCreatedStatusAndPayload() throws Exception {
-        UUID blueprintId = UUID.fromString("00000000-0000-0000-0000-000000001501");
-        given(blueprintService.createBlueprint(any()))
-                .willReturn(sampleDto(blueprintId, "bp-created", List.of("./run.sh")));
+  @Test
+  void createBlueprintReturnsCreatedStatusAndPayload() throws Exception {
+    UUID blueprintId = UUID.fromString("00000000-0000-0000-0000-000000001501");
+    given(blueprintService.createBlueprint(any()))
+        .willReturn(sampleDto(blueprintId, "bp-created", List.of("./run.sh")));
 
-        String body = """
+    String body =
+        """
                 {
                   "name": "bp-created",
                   "permanent": false,
@@ -72,23 +71,23 @@ class BlueprintControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/api/blueprints")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(blueprintId.toString()))
-                .andExpect(jsonPath("$.name").value("bp-created"))
-                .andExpect(jsonPath("$.containerImage").value("ghcr.io/spookly/hytale:latest"))
-                .andExpect(jsonPath("$.startCommand[0]").value("./run.sh"));
-    }
+    mockMvc
+        .perform(post("/api/blueprints").contentType(MediaType.APPLICATION_JSON).content(body))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.id").value(blueprintId.toString()))
+        .andExpect(jsonPath("$.name").value("bp-created"))
+        .andExpect(jsonPath("$.containerImage").value("ghcr.io/spookly/hytale:latest"))
+        .andExpect(jsonPath("$.startCommand[0]").value("./run.sh"));
+  }
 
-    @Test
-    void updateBlueprintReturnsOkStatusAndPayload() throws Exception {
-        UUID blueprintId = UUID.fromString("00000000-0000-0000-0000-000000001502");
-        given(blueprintService.updateBlueprint(eq(blueprintId), any()))
-                .willReturn(sampleDto(blueprintId, "bp-updated", List.of("java", "-jar", "server.jar")));
+  @Test
+  void updateBlueprintReturnsOkStatusAndPayload() throws Exception {
+    UUID blueprintId = UUID.fromString("00000000-0000-0000-0000-000000001502");
+    given(blueprintService.updateBlueprint(eq(blueprintId), any()))
+        .willReturn(sampleDto(blueprintId, "bp-updated", List.of("java", "-jar", "server.jar")));
 
-        String body = """
+    String body =
+        """
                 {
                   "name": "bp-updated",
                   "permanent": true,
@@ -98,32 +97,35 @@ class BlueprintControllerTest {
                 }
                 """;
 
-        mockMvc.perform(put("/api/blueprints/{id}", blueprintId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(blueprintId.toString()))
-                .andExpect(jsonPath("$.name").value("bp-updated"))
-                .andExpect(jsonPath("$.startCommand[0]").value("java"));
-    }
+    mockMvc
+        .perform(
+            put("/api/blueprints/{id}", blueprintId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(blueprintId.toString()))
+        .andExpect(jsonPath("$.name").value("bp-updated"))
+        .andExpect(jsonPath("$.startCommand[0]").value("java"));
+  }
 
-    @Test
-    void deleteBlueprintReturnsNoContent() throws Exception {
-        UUID blueprintId = UUID.fromString("00000000-0000-0000-0000-000000001503");
+  @Test
+  void deleteBlueprintReturnsNoContent() throws Exception {
+    UUID blueprintId = UUID.fromString("00000000-0000-0000-0000-000000001503");
 
-        mockMvc.perform(delete("/api/blueprints/{id}", blueprintId))
-                .andExpect(status().isNoContent());
+    mockMvc.perform(delete("/api/blueprints/{id}", blueprintId)).andExpect(status().isNoContent());
 
-        verify(blueprintService).deleteBlueprint(blueprintId);
-    }
+    verify(blueprintService).deleteBlueprint(blueprintId);
+  }
 
-    @Test
-    void duplicateNameReturnsConflict() throws Exception {
-        given(blueprintService.createBlueprint(any()))
-                .willThrow(new ResponseStatusException(HttpStatus.CONFLICT,
-                        "Blueprint with the same name already exists"));
+  @Test
+  void duplicateNameReturnsConflict() throws Exception {
+    given(blueprintService.createBlueprint(any()))
+        .willThrow(
+            new ResponseStatusException(
+                HttpStatus.CONFLICT, "Blueprint with the same name already exists"));
 
-        String body = """
+    String body =
+        """
                 {
                   "name": "bp-duplicate",
                   "permanent": false,
@@ -133,16 +135,16 @@ class BlueprintControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/api/blueprints")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.message").value("Blueprint with the same name already exists"));
-    }
+    mockMvc
+        .perform(post("/api/blueprints").contentType(MediaType.APPLICATION_JSON).content(body))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.message").value("Blueprint with the same name already exists"));
+  }
 
-    @Test
-    void invalidFieldsReturnBadRequestWithClearErrors() throws Exception {
-        String body = """
+  @Test
+  void invalidFieldsReturnBadRequestWithClearErrors() throws Exception {
+    String body =
+        """
                 {
                   "name": " ",
                   "slotsRequired": 0,
@@ -151,32 +153,30 @@ class BlueprintControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/api/blueprints")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message", containsString("name")))
-                .andExpect(jsonPath("$.message", containsString("slotsRequired")))
-                .andExpect(jsonPath("$.message", containsString("containerImage")))
-                .andExpect(jsonPath("$.message", containsString("startCommand")));
+    mockMvc
+        .perform(post("/api/blueprints").contentType(MediaType.APPLICATION_JSON).content(body))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message", containsString("name")))
+        .andExpect(jsonPath("$.message", containsString("slotsRequired")))
+        .andExpect(jsonPath("$.message", containsString("containerImage")))
+        .andExpect(jsonPath("$.message", containsString("startCommand")));
 
-        verifyNoInteractions(blueprintService);
-    }
+    verifyNoInteractions(blueprintService);
+  }
 
-    private BlueprintDto sampleDto(UUID id, String name, List<String> startCommand) {
-        OffsetDateTime now = OffsetDateTime.of(2025, 2, 11, 10, 4, 53, 0, ZoneOffset.UTC);
-        return new BlueprintDto(
-                id,
-                name,
-                false,
-                1,
-                "ghcr.io/spookly/hytale:latest",
-                null,
-                startCommand,
-                null,
-                null,
-                now,
-                now
-        );
-    }
+  private BlueprintDto sampleDto(UUID id, String name, List<String> startCommand) {
+    OffsetDateTime now = OffsetDateTime.of(2025, 2, 11, 10, 4, 53, 0, ZoneOffset.UTC);
+    return new BlueprintDto(
+        id,
+        name,
+        false,
+        1,
+        "ghcr.io/spookly/hytale:latest",
+        null,
+        startCommand,
+        null,
+        null,
+        now,
+        now);
+  }
 }

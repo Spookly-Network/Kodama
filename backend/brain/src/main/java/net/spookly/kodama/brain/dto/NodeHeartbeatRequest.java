@@ -12,9 +12,7 @@ import net.spookly.kodama.brain.domain.node.NodeStatus;
 @NoArgsConstructor
 public class NodeHeartbeatRequest {
 
-    @NotNull
-    private NodeStatus status;
+  @NotNull private NodeStatus status;
 
-    @Min(0)
-    private int usedSlots;
+  @Min(0) private int usedSlots;
 }

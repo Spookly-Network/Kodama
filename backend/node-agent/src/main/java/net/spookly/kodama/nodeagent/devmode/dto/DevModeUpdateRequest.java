@@ -1,4 +1,3 @@
 package net.spookly.kodama.nodeagent.devmode.dto;
 
-public record DevModeUpdateRequest(Boolean devMode) {
-}
+public record DevModeUpdateRequest(Boolean devMode) {}

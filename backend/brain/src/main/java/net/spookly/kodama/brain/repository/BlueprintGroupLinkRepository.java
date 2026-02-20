@@ -11,8 +11,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface BlueprintGroupLinkRepository
-        extends JpaRepository<@NonNull BlueprintGroupLink, @NonNull BlueprintGroupLinkId> {
+    extends JpaRepository<@NonNull BlueprintGroupLink, @NonNull BlueprintGroupLinkId> {
 
-    @Query("select l from BlueprintGroupLink l where l.blueprint.id = :blueprintId order by l.group.id asc")
-    List<BlueprintGroupLink> findAllByBlueprintId(@Param("blueprintId") UUID blueprintId);
+  @Query(
+      "select l from BlueprintGroupLink l where l.blueprint.id = :blueprintId order by l.group.id asc")
+  List<BlueprintGroupLink> findAllByBlueprintId(@Param("blueprintId") UUID blueprintId);
 }

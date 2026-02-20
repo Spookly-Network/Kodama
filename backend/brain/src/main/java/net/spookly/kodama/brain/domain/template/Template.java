@@ -21,32 +21,34 @@ import org.hibernate.annotations.UuidGenerator;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Template {
 
-    @Id
-    @GeneratedValue
-    @UuidGenerator
-    private UUID id;
+  @Id @GeneratedValue @UuidGenerator private UUID id;
 
-    @Column(nullable = false, unique = true)
-    private String name;
+  @Column(nullable = false, unique = true)
+  private String name;
 
-    @Column(nullable = false)
-    private String description;
+  @Column(nullable = false)
+  private String description;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private TemplateType type;
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  private TemplateType type;
 
-    @Column(nullable = false)
-    private OffsetDateTime createdAt;
+  @Column(nullable = false)
+  private OffsetDateTime createdAt;
 
-    @Column(nullable = false)
-    private String createdBy;
+  @Column(nullable = false)
+  private String createdBy;
 
-    public Template(String name, String description, TemplateType type, OffsetDateTime createdAt, String createdBy) {
-        this.name = name;
-        this.description = description;
-        this.type = type;
-        this.createdAt = createdAt;
-        this.createdBy = createdBy;
-    }
+  public Template(
+      String name,
+      String description,
+      TemplateType type,
+      OffsetDateTime createdAt,
+      String createdBy) {
+    this.name = name;
+    this.description = description;
+    this.type = type;
+    this.createdAt = createdAt;
+    this.createdBy = createdBy;
+  }
 }
