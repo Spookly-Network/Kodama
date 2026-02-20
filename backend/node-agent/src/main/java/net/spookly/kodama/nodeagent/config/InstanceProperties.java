@@ -24,6 +24,9 @@ public class InstanceProperties {
         if (instanceRuntime == null) {
             errors.add("instances.instance-runtime is required");
         } else {
+            if (instanceRuntime.getInstallScriptTimeoutSeconds() <= 0) {
+                errors.add("instances.instance-runtime.install-script-timeout-seconds must be greater than 0");
+            }
             Integer stopTimeoutSeconds = instanceRuntime.getStopTimeoutSeconds();
             if (stopTimeoutSeconds != null && stopTimeoutSeconds < 0) {
                 errors.add("instances.instance-runtime.stop-timeout-seconds must be 0 or greater");
@@ -58,6 +61,7 @@ public class InstanceProperties {
         private String image;
         private String workspaceMountPath = "/workspace";
         private String workingDir;
+        private int installScriptTimeoutSeconds = 300;
         private Integer stopTimeoutSeconds;
     }
 

@@ -38,6 +38,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - Start now:
   - validates `containerImage` and `startCommand` from `instance.json` before running any install step,
   - when `installCompleted=false` and `installScript` is present, runs the script from the merged workspace with `/bin/sh -c` and marks the registry as installed only after a zero exit code,
+  - bounds install script execution with `node-agent.instance-runtime.install-script-timeout-seconds` and terminates timed out scripts,
   - reads `instance.json` from the workspace,
   - requires `containerImage` and `startCommand` from the instance registry runtime fields,
   - creates a Docker container with the merged workspace mounted,
@@ -72,6 +73,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - Start fails when `containerImage` is missing in the registry runtime fields.
 - Start fails when `startCommand` is missing or contains empty command parts.
 - If the install script exits non-zero, start fails, `/failed` is attempted, and `installCompleted` remains `false`.
+- If the install script exceeds the configured install timeout, the node agent terminates it, start fails, `/failed` is attempted, and `installCompleted` remains `false`.
 - Start fails if the prepared workspace or `instance.json` registry record is missing.
 - Stop fails if the registry is missing or does not contain a container id.
 - If the container is missing at stop time, the node agent logs a warning, marks the registry as stopped, and preserves any

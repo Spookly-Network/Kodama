@@ -11,6 +11,7 @@ instances:
     image: ${NODE_AGENT_INSTANCE_RUNTIME_IMAGE:}
     workspace-mount-path: ${NODE_AGENT_INSTANCE_RUNTIME_WORKSPACE_MOUNT_PATH:/workspace}
     working-dir: ${NODE_AGENT_INSTANCE_RUNTIME_WORKING_DIR:}
+    install-script-timeout-seconds: ${NODE_AGENT_INSTANCE_RUNTIME_INSTALL_SCRIPT_TIMEOUT_SECONDS:300}
     stop-timeout-seconds: ${NODE_AGENT_INSTANCE_RUNTIME_STOP_TIMEOUT_SECONDS:}
   instance-callbacks:
     max-attempts: ${NODE_AGENT_INSTANCE_CALLBACKS_MAX_ATTEMPTS:1}

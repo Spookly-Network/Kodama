@@ -7,6 +7,16 @@ import org.junit.jupiter.api.Test;
 class InstancePropertiesTest {
 
     @Test
+    void validateRejectsNonPositiveInstallScriptTimeout() {
+        InstanceProperties properties = new InstanceProperties();
+        properties.getInstanceRuntime().setInstallScriptTimeoutSeconds(0);
+
+        assertThatThrownBy(properties::validate)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("instances.instance-runtime.install-script-timeout-seconds must be greater than 0");
+    }
+
+    @Test
     void validateRejectsNegativeStopTimeout() {
         InstanceProperties properties = new InstanceProperties();
         properties.getInstanceRuntime().setStopTimeoutSeconds(-1);
