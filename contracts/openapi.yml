@@ -128,6 +128,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        "502":
+          $ref: "#/components/responses/BadGateway"
   /api/instances/{id}:
     parameters:
       - $ref: "#/components/parameters/InstanceId"
@@ -147,6 +149,76 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /api/instances/{id}/start:
+    parameters:
+      - $ref: "#/components/parameters/InstanceId"
+    post:
+      tags: [Instances]
+      summary: Start instance
+      description: Dispatch a prepare or start command depending on the instance state.
+      responses:
+        "200":
+          description: Start command dispatched.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Instance"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+  /api/instances/{id}/stop:
+    parameters:
+      - $ref: "#/components/parameters/InstanceId"
+    post:
+      tags: [Instances]
+      summary: Stop instance
+      description: Dispatch a stop command to the assigned node.
+      responses:
+        "200":
+          description: Stop command dispatched.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Instance"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+  /api/instances/{id}/destroy:
+    parameters:
+      - $ref: "#/components/parameters/InstanceId"
+    post:
+      tags: [Instances]
+      summary: Destroy instance
+      description: Dispatch a destroy command to the assigned node.
+      responses:
+        "200":
+          description: Destroy command dispatched.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Instance"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /api/instances/{id}/template-assignments:
     parameters:
       - $ref: "#/components/parameters/InstanceId"
@@ -421,6 +493,34 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "400":
           $ref: "#/components/responses/BadRequest"
+  /api/nodes/{nodeId}:
+    parameters:
+      - $ref: "#/components/parameters/NodeId"
+    put:
+      tags: [Nodes]
+      summary: Update node metadata
+      description: Update operator-controlled node metadata such as region, capacity, tags, and base URL.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NodeUpdateRequest"
+      responses:
+        "200":
+          description: Node updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Node"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/nodes/{nodeId}/heartbeat:
     parameters:
       - $ref: "#/components/parameters/NodeId"
@@ -883,6 +983,28 @@ components:
         status:
           $ref: "#/components/schemas/NodeStatus"
           description: Optional override; defaults to ONLINE.
+    NodeUpdateRequest:
+      type: object
+      required: [region, capacitySlots, nodeVersion]
+      properties:
+        region:
+          type: string
+        capacitySlots:
+          type: integer
+          format: int32
+          minimum: 1
+        nodeVersion:
+          type: string
+        devMode:
+          type: boolean
+          default: false
+        tags:
+          type: string
+          nullable: true
+        baseUrl:
+          type: string
+          format: uri
+          nullable: true
     NodeHeartbeatRequest:
       type: object
       required: [status, usedSlots]
@@ -1213,7 +1335,13 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
     Conflict:
-      description: Resource already exists.
+      description: Request conflicts with the current state (for example, the resource already exists or no eligible nodes are available).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    BadGateway:
+      description: Upstream node command failed.
       content:
         application/json:
           schema:

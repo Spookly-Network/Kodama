@@ -52,6 +52,7 @@ class InstanceStateMachineTest {
 
     private static final Set<Transition> ALLOWED_TRANSITIONS = Set.of(
             new Transition(InstanceState.REQUESTED, InstanceState.PREPARING),
+            new Transition(InstanceState.REQUESTED, InstanceState.STARTING),
             new Transition(InstanceState.PREPARING, InstanceState.STARTING),
             new Transition(InstanceState.STARTING, InstanceState.RUNNING),
             new Transition(InstanceState.RUNNING, InstanceState.STOPPING),
@@ -65,7 +66,8 @@ class InstanceStateMachineTest {
             new Transition(InstanceState.RUNNING, InstanceState.FAILED),
             new Transition(InstanceState.STOPPING, InstanceState.FAILED),
             new Transition(InstanceState.STOPPED, InstanceState.FAILED),
-            new Transition(InstanceState.PREPARED, InstanceState.FAILED)
+            new Transition(InstanceState.PREPARED, InstanceState.FAILED),
+            new Transition(InstanceState.FAILED, InstanceState.DESTROYED)
     );
 
     @Autowired

@@ -14,6 +14,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.spookly.kodama.brain.config.BrainSecurityProperties;
 import net.spookly.kodama.brain.config.NodeProperties;
 import net.spookly.kodama.brain.config.PluginsProperties;
 import net.spookly.kodama.brain.domain.instance.Instance;
@@ -53,8 +54,9 @@ class CommandDispatcherServiceTest {
         nodeProperties = new NodeProperties();
         nodeProperties.setCommandRetryBackoffMillis(0);
         PluginsProperties pluginsProperties = new PluginsProperties();
+        BrainSecurityProperties securityProperties = new BrainSecurityProperties();
         BrainPluginRegistry registry = new BrainPluginRegistry(pluginsProperties, objectMapper);
-        dispatcher = new CommandDispatcherService(restTemplate, nodeProperties, registry);
+        dispatcher = new CommandDispatcherService(restTemplate, nodeProperties, registry, securityProperties);
     }
 
     @Test

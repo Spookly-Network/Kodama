@@ -31,6 +31,7 @@ public class InstancePrepareService {
     private final InstanceVariablesResolver variablesResolver;
     private final InstanceCallbackService callbackService;
     private final InstanceRegistryService registryService;
+    private final InstanceStartService instanceStartService;
 
     public InstancePrepareService(
             TemplateCachePopulateService cachePopulateService,
@@ -38,7 +39,8 @@ public class InstancePrepareService {
             InstanceWorkspaceManager workspaceManager,
             InstanceVariablesResolver variablesResolver,
             InstanceCallbackService callbackService,
-            InstanceRegistryService registryService
+            InstanceRegistryService registryService,
+            InstanceStartService instanceStartService
     ) {
         this.cachePopulateService = Objects.requireNonNull(cachePopulateService, "cachePopulateService");
         this.mergeService = Objects.requireNonNull(mergeService, "mergeService");
@@ -46,6 +48,7 @@ public class InstancePrepareService {
         this.variablesResolver = Objects.requireNonNull(variablesResolver, "variablesResolver");
         this.callbackService = Objects.requireNonNull(callbackService, "callbackService");
         this.registryService = Objects.requireNonNull(registryService, "registryService");
+        this.instanceStartService = Objects.requireNonNull(instanceStartService, "instanceStartService");
     }
 
     public void prepare(NodePrepareInstanceRequest request) {
@@ -92,6 +95,7 @@ public class InstancePrepareService {
             logger.warn("Prepared callback failed. instanceId={}", instanceId, ex);
         }
         logger.info("Instance preparation complete. instanceId={} layers={}", instanceId, layerCount);
+        instanceStartService.startInstance(instanceId, request.displayName());
     }
 
     private TemplateLayerSource resolveLayerSource(NodePrepareInstanceLayer layer) {

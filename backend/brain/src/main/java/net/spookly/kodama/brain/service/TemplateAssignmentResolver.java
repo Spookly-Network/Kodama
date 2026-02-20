@@ -44,6 +44,10 @@ public class TemplateAssignmentResolver {
             .thenComparing(TemplateAssignmentCandidate::templateId)
             .thenComparing(TemplateAssignmentCandidate::assignmentId, Comparator.nullsLast(Comparator.naturalOrder()));
 
+    private static final Comparator<TemplateVersion> LATEST_VERSION_ORDER = Comparator
+            .comparing(TemplateVersion::getCreatedAt)
+            .thenComparing(TemplateVersion::getId);
+
     private final InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository;
     private final GroupTemplateAssignmentRepository groupTemplateAssignmentRepository;
     private final InstanceGroupMembershipRepository instanceGroupMembershipRepository;
@@ -256,12 +260,7 @@ public class TemplateAssignmentResolver {
 
         Map<UUID, TemplateVersion> latestVersions = templateIdsWithoutVersion.isEmpty()
                 ? Map.of()
-                : templateVersionRepository.findLatestForTemplateIds(templateIdsWithoutVersion).stream()
-                .collect(Collectors.toMap(
-                        version -> version.getTemplate().getId(),
-                        version -> version,
-                        (left, right) -> left
-                ));
+                : selectLatestVersions(templateVersionRepository.findLatestForTemplateIds(templateIdsWithoutVersion));
 
         if (!templateIdsWithoutVersion.isEmpty() && latestVersions.size() != templateIdsWithoutVersion.size()) {
             Set<UUID> missingIds = new HashSet<>(templateIdsWithoutVersion);
@@ -286,6 +285,18 @@ public class TemplateAssignmentResolver {
             resolved.put(candidate.assignmentId(), version);
         }
         return resolved;
+    }
+
+    private Map<UUID, TemplateVersion> selectLatestVersions(List<TemplateVersion> versions) {
+        Map<UUID, TemplateVersion> latestByTemplate = new HashMap<>();
+        for (TemplateVersion version : versions) {
+            UUID templateId = version.getTemplate().getId();
+            TemplateVersion current = latestByTemplate.get(templateId);
+            if (current == null || LATEST_VERSION_ORDER.compare(version, current) > 0) {
+                latestByTemplate.put(templateId, version);
+            }
+        }
+        return latestByTemplate;
     }
 
     private TemplateAssignmentCandidate toCandidate(InstanceTemplateAssignment assignment) {

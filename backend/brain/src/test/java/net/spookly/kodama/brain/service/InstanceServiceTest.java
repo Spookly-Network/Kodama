@@ -10,6 +10,9 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.spookly.kodama.brain.config.BrainSecurityProperties;
+import net.spookly.kodama.brain.config.NodeProperties;
+import net.spookly.kodama.brain.config.PluginsProperties;
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceEvent;
 import net.spookly.kodama.brain.domain.instance.InstanceEventType;
@@ -23,6 +26,7 @@ import net.spookly.kodama.brain.domain.template.TemplateVersion;
 import net.spookly.kodama.brain.dto.CreateInstanceRequest;
 import net.spookly.kodama.brain.dto.InstanceDto;
 import net.spookly.kodama.brain.dto.TemplateAssignmentRequest;
+import net.spookly.kodama.brain.plugin.BrainPluginRegistry;
 import net.spookly.kodama.brain.repository.InstanceEventRepository;
 import net.spookly.kodama.brain.repository.InstanceRepository;
 import net.spookly.kodama.brain.repository.InstanceTemplateAssignmentRepository;
@@ -39,6 +43,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -50,6 +55,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Import({
         InstanceService.class,
         InstanceStateMachine.class,
+        SchedulingService.class,
         TemplateAssignmentResolver.class,
         InstanceServiceTest.ObjectMapperTestConfig.class
 })
@@ -96,10 +102,28 @@ class InstanceServiceTest {
         ObjectMapper objectMapper() {
             return new ObjectMapper();
         }
+
+        @Bean
+        CommandDispatcherService commandDispatcherService(ObjectMapper objectMapper) {
+            return new CommandDispatcherService(
+                    new RestTemplate(),
+                    new NodeProperties(),
+                    new BrainPluginRegistry(new PluginsProperties(), objectMapper),
+                    new BrainSecurityProperties()
+            );
+        }
     }
 
     @Test
     void createInstancePersistsLayersAndRequestedEvent() {
+        createOnlineNode(
+                "node-primary",
+                "eu-west-1",
+                true,
+                "primary,ssd",
+                10,
+                0
+        );
         TemplateVersion version = createTemplateVersion("Base Template", "1.0.0");
 
         TemplateAssignmentRequest assignment = new TemplateAssignmentRequest(
@@ -143,6 +167,7 @@ class InstanceServiceTest {
 
     @Test
     void createInstanceAppliesListOrderWhenOrderIndexMissing() {
+        createOnlineNode("node-ordering");
         TemplateVersion base = createTemplateVersion("Base Template", "1.0.0");
         TemplateVersion overlay = createTemplateVersion("Overlay Template", "1.0.0");
 
@@ -172,6 +197,7 @@ class InstanceServiceTest {
 
     @Test
     void createInstanceUsesLatestTemplateVersionWhenOnlyTemplateIdProvided() {
+        createOnlineNode("node-latest");
         Template template = createTemplate("Template With Versions");
         OffsetDateTime earlier = OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(5);
         TemplateVersion first = templateVersionRepository.save(new TemplateVersion(
@@ -216,6 +242,7 @@ class InstanceServiceTest {
 
     @Test
     void createInstanceAllowsDuplicatePriorities() {
+        createOnlineNode("node-duplicate-priority");
         TemplateVersion base = createTemplateVersion("Priority Base", "1.0.0");
         TemplateVersion overlay = createTemplateVersion("Priority Overlay", "1.0.0");
 
@@ -246,6 +273,7 @@ class InstanceServiceTest {
 
     @Test
     void createInstanceRejectsDuplicateNames() {
+        createOnlineNode("node-duplicate-names");
         TemplateVersion version = createTemplateVersion("Dupe Template", "1.0.0");
         TemplateAssignmentRequest assignment = new TemplateAssignmentRequest(
                 version.getTemplate().getId(),
@@ -315,7 +343,67 @@ class InstanceServiceTest {
     }
 
     @Test
+    void createInstanceSelectsNodeWhenNodeIdMissing() {
+        Node selectedNode = createOnlineNode(
+                "node-low",
+                "eu-west-1",
+                false,
+                "primary,ssd",
+                10,
+                1
+        );
+        createOnlineNode(
+                "node-high",
+                "eu-west-1",
+                false,
+                "primary,ssd",
+                10,
+                5
+        );
+        TemplateVersion version = createTemplateVersion("Schedule Template", "1.0.0");
+
+        TemplateAssignmentRequest assignment = new TemplateAssignmentRequest(
+                version.getTemplate().getId(),
+                version.getId(),
+                0
+        );
+        CreateInstanceRequest request = new CreateInstanceRequest(
+                "scheduled-instance",
+                List.of(assignment)
+        );
+        request.setRegion("eu-west-1");
+        request.setTags("primary,ssd");
+        request.setDevModeAllowed(Boolean.FALSE);
+
+        InstanceDto created = instanceService.createInstance(request);
+        Instance persisted = instanceRepository.findById(created.getId()).orElseThrow();
+        assertThat(persisted.getNode()).isNotNull();
+        assertThat(persisted.getNode().getId()).isEqualTo(selectedNode.getId());
+    }
+
+    @Test
+    void createInstanceRejectsWhenNoEligibleNodesAvailable() {
+        TemplateVersion version = createTemplateVersion("No Node Template", "1.0.0");
+
+        TemplateAssignmentRequest assignment = new TemplateAssignmentRequest(
+                version.getTemplate().getId(),
+                version.getId(),
+                0
+        );
+        CreateInstanceRequest request = new CreateInstanceRequest(
+                "no-node",
+                List.of(assignment)
+        );
+
+        assertThatThrownBy(() -> instanceService.createInstance(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+    }
+
+    @Test
     void createInstanceRejectsVariablesAndVariablesJsonTogether() {
+        createOnlineNode("node-variables");
         TemplateVersion version = createTemplateVersion("Mixed Variables", "1.0.0");
         TemplateAssignmentRequest assignment = new TemplateAssignmentRequest(
                 version.getTemplate().getId(),
@@ -374,6 +462,48 @@ class InstanceServiceTest {
                 instanceEventRepository.findAllByInstanceIdOrderByTimestampAsc(instance.getId());
         assertThat(events).isNotEmpty();
         assertThat(events.getLast().getType()).isEqualTo(InstanceEventType.PREPARE_COMPLETED);
+    }
+
+    @Test
+    void reportPreparedFromRequestedTransitionsToStarting() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Node node = nodeRepository.save(new Node(
+                "node-fast-callback",
+                "eu-west-1",
+                NodeStatus.ONLINE,
+                false,
+                4,
+                1,
+                now,
+                "1.0.0",
+                null,
+                "http://node.fast"
+        ));
+        Instance instance = instanceRepository.save(new Instance(
+                "instance-fast-callback",
+                "Fast Callback Instance",
+                InstanceState.REQUESTED,
+                REQUESTER_ID,
+                node,
+                null,
+                null,
+                null,
+                null,
+                null,
+                now,
+                now
+        ));
+
+        instanceService.reportInstancePrepared(node.getId(), instance.getId());
+
+        Instance persisted = instanceRepository.findById(instance.getId()).orElseThrow();
+        assertThat(persisted.getState()).isEqualTo(InstanceState.STARTING);
+
+        List<InstanceEvent> events =
+                instanceEventRepository.findAllByInstanceIdOrderByTimestampAsc(instance.getId());
+        assertThat(events).isNotEmpty();
+        assertThat(events).extracting(InstanceEvent::getType)
+                .contains(InstanceEventType.PREPARE_DISPATCHED, InstanceEventType.PREPARE_COMPLETED);
     }
 
     @Test
@@ -509,6 +639,33 @@ class InstanceServiceTest {
     private Template createTemplate(String name) {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         return templateRepository.save(new Template(name, "desc", TemplateType.CUSTOM, now, REQUESTER_USERNAME));
+    }
+
+    private Node createOnlineNode(String name) {
+        return createOnlineNode(name, "eu-west-1", false, null, 10, 0);
+    }
+
+    private Node createOnlineNode(
+            String name,
+            String region,
+            boolean devMode,
+            String tags,
+            int capacitySlots,
+            int usedSlots
+    ) {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        return nodeRepository.save(new Node(
+                name,
+                region,
+                NodeStatus.ONLINE,
+                devMode,
+                capacitySlots,
+                usedSlots,
+                now,
+                "1.0.0",
+                tags,
+                "http://" + name + ".local"
+        ));
     }
 
     private TemplateVersion createTemplateVersion(String templateName, String version) {

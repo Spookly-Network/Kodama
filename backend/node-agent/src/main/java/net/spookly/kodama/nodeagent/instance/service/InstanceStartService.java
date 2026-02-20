@@ -83,7 +83,10 @@ public class InstanceStartService {
                 baseLabels,
                 null
         );
-        NodeInstanceStartSpec spec = pluginRegistry.resolveStartSpec(context, baseEnv, baseLabels, null);
+
+        List<String> commands = List.of("java", "-XX:AOTCache=HytaleServer.aot", "-jar", "./HytaleServer.jar", "--assets", "./Assets.zip");
+
+        NodeInstanceStartSpec spec = pluginRegistry.resolveStartSpec(context, baseEnv, baseLabels, commands);
         List<String> env = toEnvList(spec.env());
         Map<String, String> labels = spec.labels();
         String containerName = "kodama-instance-" + instanceId;
@@ -98,6 +101,7 @@ public class InstanceStartService {
                 portBindings,
                 volumeMounts
         );
+
         DockerContainerCreateResult result = dockerService.createContainer(request);
         String containerId = result.containerId();
         try {

@@ -12,6 +12,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,6 +27,7 @@ final class HytaleAuthClient {
     private final HytaleAuthConfig config;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
+    private String refreshToken;
 
     HytaleAuthClient(HytaleAuthConfig config) {
         this.config = Objects.requireNonNull(config, "config");
@@ -32,6 +35,7 @@ final class HytaleAuthClient {
                 .connectTimeout(config.getTimeout())
                 .build();
         this.objectMapper = new ObjectMapper();
+        this.refreshToken = config.getRefreshToken();
     }
 
     HytaleSession createSession() {
@@ -51,8 +55,8 @@ final class HytaleAuthClient {
         Map<String, String> form = new LinkedHashMap<>();
         form.put("grant_type", "refresh_token");
         form.put("client_id", config.getClientId());
-        form.put("refresh_token", config.getRefreshToken());
-        form.put("scope", config.getScopes());
+        form.put("refresh_token", refreshToken);
+//        form.put("scope", config.getScopes());
 
         HttpRequest request = HttpRequest.newBuilder(config.getTokenUrl())
                 .timeout(config.getTimeout())
@@ -60,10 +64,13 @@ final class HytaleAuthClient {
                 .POST(HttpRequest.BodyPublishers.ofString(formEncode(form)))
                 .build();
 
+        logger.info("Sending OAuth token request to {}: {}; {}", config.getTokenUrl(), request, form);
         OAuthTokenResponse tokenResponse = send(request, OAuthTokenResponse.class, "oauth token");
         if (tokenResponse.accessToken() == null || tokenResponse.accessToken().isBlank()) {
+            logger.error("OAuth token response did not include access_token");
             throw new IllegalStateException("OAuth token response did not include access_token");
         }
+        persistRefreshTokenIfRotated(tokenResponse.refreshToken());
         return tokenResponse.accessToken();
     }
 
@@ -136,6 +143,27 @@ final class HytaleAuthClient {
         }
     }
 
+    private void persistRefreshTokenIfRotated(String refreshToken) {
+        String normalized = normalizeToken(refreshToken);
+        if (normalized == null) {
+            return;
+        }
+        if (normalized.equals(this.refreshToken)) {
+            return;
+        }
+        config.persistRefreshToken(normalized);
+        this.refreshToken = normalized;
+        logger.info("Updated Hytale refresh token in config file");
+    }
+
+    private String normalizeToken(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
     private <T> T send(HttpRequest request, Class<T> responseType, String label) {
         HttpResponse<String> response;
         try {
@@ -172,20 +200,32 @@ final class HytaleAuthClient {
         }
     }
 
-    record OAuthTokenResponse(@JsonProperty("access_token") String accessToken) {
-    }
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record OAuthTokenResponse(
+            @JsonProperty("access_token") String accessToken,
+            @JsonProperty("token_type") String tokenType,
+            @JsonProperty("expires_in") Integer expiresIn,
+            @JsonProperty("refresh_token") String refreshToken,
+            @JsonProperty("scope") String scope,
+            @JsonProperty("id_token") String idToken
+    ) {}
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     record ProfilesResponse(
+            @JsonProperty("owner") String owner,
             @JsonProperty("profiles") List<Profile> profiles
     ) {
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     record Profile(
             @JsonProperty("uuid") String uuid,
-            @JsonProperty("username") String username
+            @JsonProperty("username") String username,
+            @JsonProperty("createdAt") String createdAt
     ) {
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     record GameSessionResponse(
             @JsonProperty("sessionToken") String sessionToken,
             @JsonProperty("identityToken") String identityToken,

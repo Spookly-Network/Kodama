@@ -45,4 +45,22 @@ public class InstanceController {
     public InstanceDto createInstance(@Valid @RequestBody CreateInstanceRequest request) {
         return instanceService.createInstance(request);
     }
+
+    @PostMapping("/{id}/start")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+    public InstanceDto startInstance(@PathVariable UUID id) {
+        return instanceService.startInstance(id);
+    }
+
+    @PostMapping("/{id}/stop")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+    public InstanceDto stopInstance(@PathVariable UUID id) {
+        return instanceService.stopInstance(id);
+    }
+
+    @PostMapping("/{id}/destroy")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+    public InstanceDto destroyInstance(@PathVariable UUID id) {
+        return instanceService.destroyInstance(id);
+    }
 }

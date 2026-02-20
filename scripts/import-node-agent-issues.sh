@@ -215,7 +215,7 @@ while IFS= read -r issue; do
 
   for target in "${blocks_list[@]}"; do
     if [[ -n "${ISSUE_NUMBER_MAP[$target]:-}" && -n "${blocker_issue_id}" ]]; then
-      add_blocked_by "${ISSUE_NUMBER_MAP[$target]}" "${blocker_issue_id}"
+      add_blocked_by "${blocker_issue_id}" "${ISSUE_NUMBER_MAP[$target]}"
     fi
   done
 done <<<"${issues_json}"

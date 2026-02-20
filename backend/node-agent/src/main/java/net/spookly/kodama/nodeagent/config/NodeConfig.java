@@ -3,26 +3,29 @@ package net.spookly.kodama.nodeagent.config;
 import java.util.ArrayList;
 import java.util.List;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+@Getter
 @ConfigurationProperties(prefix = "node-agent")
 public class NodeConfig {
 
-    private String nodeId;
-    private String nodeName;
-    private String nodeVersion;
-    private String region;
-    private int capacitySlots;
-    private boolean devMode;
-    private String tags;
-    private String baseUrl;
-    private String brainBaseUrl;
-    private String dockerHost;
+    @Setter private String nodeId;
+    @Setter private String nodeName;
+    @Setter private String nodeVersion;
+    @Setter private String region;
+    @Setter private int capacitySlots;
+    @Setter private boolean devMode;
+    @Setter private String tags;
+    @Setter private String baseUrl;
+    @Setter private String brainBaseUrl;
+    @Setter private String dockerHost;
     private Docker docker = new Docker();
-    private String workspaceDir = "./data";
-    private String cacheDir;
-    private boolean registrationEnabled = true;
-    private int heartbeatIntervalSeconds;
+    @Setter private String workspaceDir = "./data";
+    @Setter private String cacheDir;
+    @Setter private boolean registrationEnabled = true;
+    @Setter private int heartbeatIntervalSeconds;
     private Auth auth = new Auth();
     private S3 s3 = new S3();
     private TemplateCacheCheck templateCacheCheck = new TemplateCacheCheck();
@@ -91,90 +94,6 @@ public class NodeConfig {
         }
     }
 
-    public String getNodeId() {
-        return nodeId;
-    }
-
-    public void setNodeId(String nodeId) {
-        this.nodeId = nodeId;
-    }
-
-    public String getNodeName() {
-        return nodeName;
-    }
-
-    public void setNodeName(String nodeName) {
-        this.nodeName = nodeName;
-    }
-
-    public String getNodeVersion() {
-        return nodeVersion;
-    }
-
-    public void setNodeVersion(String nodeVersion) {
-        this.nodeVersion = nodeVersion;
-    }
-
-    public String getRegion() {
-        return region;
-    }
-
-    public void setRegion(String region) {
-        this.region = region;
-    }
-
-    public int getCapacitySlots() {
-        return capacitySlots;
-    }
-
-    public void setCapacitySlots(int capacitySlots) {
-        this.capacitySlots = capacitySlots;
-    }
-
-    public boolean isDevMode() {
-        return devMode;
-    }
-
-    public void setDevMode(boolean devMode) {
-        this.devMode = devMode;
-    }
-
-    public String getTags() {
-        return tags;
-    }
-
-    public void setTags(String tags) {
-        this.tags = tags;
-    }
-
-    public String getBaseUrl() {
-        return baseUrl;
-    }
-
-    public void setBaseUrl(String baseUrl) {
-        this.baseUrl = baseUrl;
-    }
-
-    public String getBrainBaseUrl() {
-        return brainBaseUrl;
-    }
-
-    public void setBrainBaseUrl(String brainBaseUrl) {
-        this.brainBaseUrl = brainBaseUrl;
-    }
-
-    public String getDockerHost() {
-        return dockerHost;
-    }
-
-    public void setDockerHost(String dockerHost) {
-        this.dockerHost = dockerHost;
-    }
-
-    public Docker getDocker() {
-        return docker;
-    }
-
     public void setDocker(Docker docker) {
         this.docker = docker == null ? new Docker() : docker;
     }
@@ -186,109 +105,38 @@ public class NodeConfig {
         return dockerHost;
     }
 
-    public String getWorkspaceDir() {
-        return workspaceDir;
-    }
-
-    public void setWorkspaceDir(String workspaceDir) {
-        this.workspaceDir = workspaceDir;
-    }
-
-    public String getCacheDir() {
-        return cacheDir;
-    }
-
-    public void setCacheDir(String cacheDir) {
-        this.cacheDir = cacheDir;
-    }
-
-    public boolean isRegistrationEnabled() {
-        return registrationEnabled;
-    }
-
-    public void setRegistrationEnabled(boolean registrationEnabled) {
-        this.registrationEnabled = registrationEnabled;
-    }
-
-    public int getHeartbeatIntervalSeconds() {
-        return heartbeatIntervalSeconds;
-    }
-
-    public void setHeartbeatIntervalSeconds(int heartbeatIntervalSeconds) {
-        this.heartbeatIntervalSeconds = heartbeatIntervalSeconds;
-    }
-
-    public Auth getAuth() {
-        return auth;
-    }
-
     public void setAuth(Auth auth) {
         this.auth = auth == null ? new Auth() : auth;
-    }
-
-    public S3 getS3() {
-        return s3;
     }
 
     public void setS3(S3 s3) {
         this.s3 = s3 == null ? new S3() : s3;
     }
 
-    public TemplateCacheCheck getTemplateCacheCheck() {
-        return templateCacheCheck;
-    }
-
     public void setTemplateCacheCheck(TemplateCacheCheck templateCacheCheck) {
         this.templateCacheCheck = templateCacheCheck == null ? new TemplateCacheCheck() : templateCacheCheck;
-    }
-
-    public TemplateCacheLimits getTemplateCacheLimits() {
-        return templateCacheLimits;
     }
 
     public void setTemplateCacheLimits(TemplateCacheLimits templateCacheLimits) {
         this.templateCacheLimits = templateCacheLimits == null ? new TemplateCacheLimits() : templateCacheLimits;
     }
 
-    public VariableSubstitution getVariableSubstitution() {
-        return variableSubstitution;
-    }
-
     public void setVariableSubstitution(VariableSubstitution variableSubstitution) {
         this.variableSubstitution = variableSubstitution == null ? new VariableSubstitution() : variableSubstitution;
     }
 
+    @Setter
+    @Getter
     public static class Auth {
 
         private String tokenPath;
         private String certPath;
         private String headerName = "X-Node-Token";
 
-        public String getTokenPath() {
-            return tokenPath;
-        }
-
-        public void setTokenPath(String tokenPath) {
-            this.tokenPath = tokenPath;
-        }
-
-        public String getCertPath() {
-            return certPath;
-        }
-
-        public void setCertPath(String certPath) {
-            this.certPath = certPath;
-        }
-
-        public String getHeaderName() {
-            return headerName;
-        }
-
-        public void setHeaderName(String headerName) {
-            this.headerName = headerName;
-        }
     }
 
+    @Setter
+    @Getter
     public static class S3 {
 
         private String endpoint;
@@ -297,47 +145,10 @@ public class NodeConfig {
         private String accessKey;
         private String secretKey;
 
-        public String getEndpoint() {
-            return endpoint;
-        }
-
-        public void setEndpoint(String endpoint) {
-            this.endpoint = endpoint;
-        }
-
-        public String getRegion() {
-            return region;
-        }
-
-        public void setRegion(String region) {
-            this.region = region;
-        }
-
-        public String getBucket() {
-            return bucket;
-        }
-
-        public void setBucket(String bucket) {
-            this.bucket = bucket;
-        }
-
-        public String getAccessKey() {
-            return accessKey;
-        }
-
-        public void setAccessKey(String accessKey) {
-            this.accessKey = accessKey;
-        }
-
-        public String getSecretKey() {
-            return secretKey;
-        }
-
-        public void setSecretKey(String secretKey) {
-            this.secretKey = secretKey;
-        }
     }
 
+    @Setter
+    @Getter
     public static class TemplateCacheCheck {
 
         private boolean enabled;
@@ -345,74 +156,27 @@ public class NodeConfig {
         private String version;
         private String checksum;
 
-        public boolean isEnabled() {
-            return enabled;
-        }
-
-        public void setEnabled(boolean enabled) {
-            this.enabled = enabled;
-        }
-
-        public String getTemplateId() {
-            return templateId;
-        }
-
-        public void setTemplateId(String templateId) {
-            this.templateId = templateId;
-        }
-
-        public String getVersion() {
-            return version;
-        }
-
-        public void setVersion(String version) {
-            this.version = version;
-        }
-
-        public String getChecksum() {
-            return checksum;
-        }
-
-        public void setChecksum(String checksum) {
-            this.checksum = checksum;
-        }
     }
 
+    @Setter
+    @Getter
     public static class TemplateCacheLimits {
 
         private long maxExtractedBytes = 10L * 1024 * 1024 * 1024;
         private int maxEntries = 100_000;
 
-        public long getMaxExtractedBytes() {
-            return maxExtractedBytes;
-        }
-
-        public void setMaxExtractedBytes(long maxExtractedBytes) {
-            this.maxExtractedBytes = maxExtractedBytes;
-        }
-
-        public int getMaxEntries() {
-            return maxEntries;
-        }
-
-        public void setMaxEntries(int maxEntries) {
-            this.maxEntries = maxEntries;
-        }
     }
 
+    @Setter
+    @Getter
     public static class VariableSubstitution {
 
         private long maxFileBytes = 1024 * 1024;
 
-        public long getMaxFileBytes() {
-            return maxFileBytes;
-        }
-
-        public void setMaxFileBytes(long maxFileBytes) {
-            this.maxFileBytes = maxFileBytes;
-        }
     }
 
+    @Setter
+    @Getter
     public static class Docker {
 
         private String host;
@@ -425,76 +189,5 @@ public class NodeConfig {
         private int connectionTimeoutSeconds = 5;
         private int responseTimeoutSeconds = 30;
 
-        public String getHost() {
-            return host;
-        }
-
-        public void setHost(String host) {
-            this.host = host;
-        }
-
-        public Boolean getTlsVerify() {
-            return tlsVerify;
-        }
-
-        public void setTlsVerify(Boolean tlsVerify) {
-            this.tlsVerify = tlsVerify;
-        }
-
-        public String getCertPath() {
-            return certPath;
-        }
-
-        public void setCertPath(String certPath) {
-            this.certPath = certPath;
-        }
-
-        public String getApiVersion() {
-            return apiVersion;
-        }
-
-        public void setApiVersion(String apiVersion) {
-            this.apiVersion = apiVersion;
-        }
-
-        public String getConfigDir() {
-            return configDir;
-        }
-
-        public void setConfigDir(String configDir) {
-            this.configDir = configDir;
-        }
-
-        public String getContext() {
-            return context;
-        }
-
-        public void setContext(String context) {
-            this.context = context;
-        }
-
-        public Integer getMaxConnections() {
-            return maxConnections;
-        }
-
-        public void setMaxConnections(Integer maxConnections) {
-            this.maxConnections = maxConnections;
-        }
-
-        public int getConnectionTimeoutSeconds() {
-            return connectionTimeoutSeconds;
-        }
-
-        public void setConnectionTimeoutSeconds(int connectionTimeoutSeconds) {
-            this.connectionTimeoutSeconds = connectionTimeoutSeconds;
-        }
-
-        public int getResponseTimeoutSeconds() {
-            return responseTimeoutSeconds;
-        }
-
-        public void setResponseTimeoutSeconds(int responseTimeoutSeconds) {
-            this.responseTimeoutSeconds = responseTimeoutSeconds;
-        }
     }
 }

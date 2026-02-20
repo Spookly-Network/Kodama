@@ -34,13 +34,15 @@ class InstancePrepareServiceTest {
         InstanceVariablesResolver variablesResolver = mock(InstanceVariablesResolver.class);
         InstanceCallbackService callbackService = mock(InstanceCallbackService.class);
         InstanceRegistryService registryService = mock(InstanceRegistryService.class);
+        InstanceStartService instanceStartService = mock(InstanceStartService.class);
         InstancePrepareService service = new InstancePrepareService(
                 cachePopulateService,
                 mergeService,
                 workspaceManager,
                 variablesResolver,
                 callbackService,
-                registryService
+                registryService,
+                instanceStartService
         );
 
         UUID instanceId = UUID.randomUUID();

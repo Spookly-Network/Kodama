@@ -1,6 +1,7 @@
 # Scheduling Service
 
 The scheduling service selects a node for a requested instance using a simple slot-based algorithm.
+When `POST /api/instances` omits `nodeId`, the Brain uses this service to assign a node before persisting the instance.
 
 Selection rules:
 - Only consider nodes with `status=ONLINE`.
@@ -18,3 +19,4 @@ Tag format:
 Implementation:
 - `brain/src/main/java/net/spookly/kodama/brain/service/SchedulingService.java`
 - Returns a `Node` or `null` if no candidate is available.
+- If no candidate is available during instance creation, the request fails with `409 Conflict`.

@@ -40,6 +40,7 @@ Invalid transitions throw `InvalidInstanceStateTransitionException`.
 ## Edge cases / risks
 
 - Terminal states (`FAILED`, `DESTROYED`) do not transition further.
+- Prepared callbacks can arrive before the Brain commits `PREPARING`. In that case the Brain records `PREPARE_DISPATCHED` and transitions `REQUESTED` → `PREPARING` → `STARTING` in the callback path.
 - Instances can transition from `STOPPED` to `STARTING` to restart without re-preparing.
 - Ensure a `STOPPING` transition is recorded before a node reports a stop/destroy callback.
 

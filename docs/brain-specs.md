@@ -77,7 +77,7 @@ brain/
 
 ### 3.1 Templates
 
-Core idea: template = **metadata + S3 key**, never the tarball itself.
+Core idea: template = **metadata + S3 key**, never the archive itself.
 
 Entities:
 

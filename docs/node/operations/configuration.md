@@ -8,7 +8,7 @@ Describe the configuration inputs for the node agent and how they map to environ
 - Added startup validation and a sanitized configuration log line.
 - Added registration-related configuration for Brain startup registration.
 - Added a heartbeat interval override for node-agent heartbeats.
-- Added S3-backed template storage configuration for fetching template tarballs.
+- Added S3-backed template storage configuration for fetching template archives.
 - Added optional template cache check inputs for manual cache validation at startup.
 - Documented runtime dev-mode toggling for cache bypass.
 - Documented Brain authentication requirements for command endpoints.
@@ -97,7 +97,7 @@ Describe the configuration inputs for the node agent and how they map to environ
   resets it to the configured default.
 - When `node-agent.template-cache-check.enabled=true`, the node agent validates a single cached
   template at startup and logs the cache hit/miss outcome.
-- `node-agent.template-cache-limits.*` caps extracted tarball size and entry count to protect disk usage.
+- `node-agent.template-cache-limits.*` caps extracted archive size and entry count to protect disk usage.
 - `node-agent.variable-substitution.max-file-bytes` skips large files during placeholder substitution to avoid memory spikes (set to `0` to disable).
 - `node-agent.instance-runtime.image` provides the default Docker image when the prepare payload does not supply `DOCKER_IMAGE`.
 - `node-agent.instance-runtime.workspace-mount-path` controls where the merged workspace is mounted inside the container.

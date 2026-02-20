@@ -55,6 +55,20 @@ class HytaleAuthConfigTest {
         assertEquals("openid offline auth:server", config.getScopes());
     }
 
+    @Test
+    void persistRefreshTokenUpdatesConfigFile() throws IOException {
+        Path configPath = writeConfig("{\"refreshToken\":\"refresh-token\","
+                + "\"tokenUrl\":\"https://auth.invalid/token\","
+                + "\"profilesUrl\":\"https://auth.invalid/profiles\","
+                + "\"sessionUrl\":\"https://auth.invalid/session\"}");
+
+        HytaleAuthConfig config = HytaleAuthConfig.fromConfigFile(configPath);
+        config.persistRefreshToken("rotated-token");
+
+        HytaleAuthConfig reloaded = HytaleAuthConfig.fromConfigFile(configPath);
+        assertEquals("rotated-token", reloaded.getRefreshToken());
+    }
+
     private Path writeConfig(String json) throws IOException {
         Path configPath = tempDir.resolve("hytale-auth.json");
         Files.writeString(configPath, json);
