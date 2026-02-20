@@ -215,10 +215,10 @@ public class InstanceService {
             instance.getState());
       }
     } else if (state == InstanceState.STOPPED) {
+      transitionOrConflict(
+              instance, InstanceState.STARTING, InstanceEventType.START_DISPATCHED, now);
       dispatchNodeCommand(
           "start", () -> commandDispatcherService.sendStartInstance(node, instance));
-      transitionOrConflict(
-          instance, InstanceState.STARTING, InstanceEventType.START_DISPATCHED, now);
     } else {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT, "Instance cannot be started from state " + state);
@@ -236,8 +236,8 @@ public class InstanceService {
           HttpStatus.CONFLICT, "Instance cannot be stopped from state " + state);
     }
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-    dispatchNodeCommand("stop", () -> commandDispatcherService.sendStopInstance(node, instance));
     transitionOrConflict(instance, InstanceState.STOPPING, InstanceEventType.STOP_DISPATCHED, now);
+    dispatchNodeCommand("stop", () -> commandDispatcherService.sendStopInstance(node, instance));
     return InstanceDto.fromEntity(instance, templateAssignmentResolver.resolveForInstance(id));
   }
 
