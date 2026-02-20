@@ -161,6 +161,47 @@ public class InstanceRegistryService {
         logger.info("Instance registry updated with containerId. instanceId={} containerId={}", instanceId, containerId);
     }
 
+    public void recordInstallCompleted(
+            InstanceWorkspacePaths workspace,
+            UUID instanceId
+    ) {
+        if (workspace == null) {
+            throw new InstanceRegistryException("instance workspace is required");
+        }
+        requireInstanceId(instanceId);
+        requireMatchingInstanceId(instanceId, workspace.instanceId());
+        InstanceRegistryEntry entry = loadRegistry(workspace);
+        if (!instanceId.equals(entry.instanceId())) {
+            throw new InstanceRegistryException("instanceId does not match registry: " + instanceId + " vs " + entry.instanceId());
+        }
+        if (entry.installCompleted()) {
+            return;
+        }
+        InstanceRegistryEntry updated = new InstanceRegistryEntry(
+                entry.instanceId(),
+                entry.name(),
+                entry.displayName(),
+                entry.containerImage(),
+                entry.installScript(),
+                entry.startCommand(),
+                entry.slotsRequired(),
+                entry.portsJson(),
+                true,
+                entry.variables(),
+                entry.layers(),
+                entry.preparedAt(),
+                entry.containerId(),
+                entry.containerStatus(),
+                entry.containerStatusUpdatedAt(),
+                entry.containerExitCode(),
+                entry.containerExitReason(),
+                resolveWorkspacePath(entry.workspacePath(), workspace.instanceRoot())
+        );
+        Path registryFile = workspace.instanceRoot().resolve(REGISTRY_FILENAME);
+        writeRegistry(registryFile, updated);
+        logger.info("Instance registry updated with installCompleted. instanceId={}", instanceId);
+    }
+
     public void recordContainerStatus(
             InstanceWorkspacePaths workspace,
             UUID instanceId,

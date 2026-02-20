@@ -1,8 +1,8 @@
 package net.spookly.kodama.brain.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.List;
 
 import lombok.NonNull;
 import net.spookly.kodama.brain.domain.blueprint.Blueprint;

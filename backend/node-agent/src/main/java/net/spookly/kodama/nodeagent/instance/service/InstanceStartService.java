@@ -1,5 +1,6 @@
 package net.spookly.kodama.nodeagent.instance.service;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -37,6 +38,7 @@ public class InstanceStartService {
     private final NodeConfig config;
     private final InstanceProperties instanceProperties;
     private final NodePluginRegistry pluginRegistry;
+    private final InstanceInstallScriptRunner installScriptRunner;
 
     public InstanceStartService(
             DockerService dockerService,
@@ -45,7 +47,8 @@ public class InstanceStartService {
             InstancePortBindingsResolver portBindingsResolver,
             NodeConfig config,
             InstanceProperties instanceProperties,
-            NodePluginRegistry pluginRegistry
+            NodePluginRegistry pluginRegistry,
+            InstanceInstallScriptRunner installScriptRunner
     ) {
         this.dockerService = Objects.requireNonNull(dockerService, "dockerService");
         this.registryService = Objects.requireNonNull(registryService, "registryService");
@@ -54,6 +57,7 @@ public class InstanceStartService {
         this.config = Objects.requireNonNull(config, "config");
         this.instanceProperties = Objects.requireNonNull(instanceProperties, "instanceProperties");
         this.pluginRegistry = Objects.requireNonNull(pluginRegistry, "pluginRegistry");
+        this.installScriptRunner = Objects.requireNonNull(installScriptRunner, "installScriptRunner");
     }
 
     public String startInstance(UUID instanceId, String requestedName) {
@@ -67,13 +71,20 @@ public class InstanceStartService {
             throw new InstanceStartException("Instance registry does not match instanceId: " + instanceId);
         }
         String image = resolveImage(registry);
+        List<String> startCommand = resolveStartCommand(registry);
+        Map<String, String> baseEnv = buildEnvMap(instanceId, registry, requestedName);
+        boolean installCompleted = runInstallScriptIfRequired(instanceId, workspace, registry, baseEnv);
+        if (installCompleted) {
+            registry = registryService.loadRegistry(workspace);
+            image = resolveImage(registry);
+            startCommand = resolveStartCommand(registry);
+        }
         String mountPath = resolveWorkspaceMountPath();
         String workingDir = resolveWorkingDir(mountPath);
         List<DockerVolumeMount> volumeMounts = List.of(
                 new DockerVolumeMount(workspace.mergedDir().toString(), mountPath, false)
         );
         List<DockerPortBinding> portBindings = portBindingsResolver.resolveBindings(registry);
-        Map<String, String> baseEnv = buildEnvMap(instanceId, registry, requestedName);
         Map<String, String> baseLabels = buildLabels(instanceId, registry);
         NodeInstanceStartContext context = new NodeInstanceStartContext(
                 instanceId,
@@ -83,18 +94,16 @@ public class InstanceStartService {
                 baseLabels,
                 null
         );
-
-        List<String> commands = List.of("java", "-XX:AOTCache=HytaleServer.aot", "-jar", "./HytaleServer.jar", "--assets", "./Assets.zip");
-
-        NodeInstanceStartSpec spec = pluginRegistry.resolveStartSpec(context, baseEnv, baseLabels, commands);
+        NodeInstanceStartSpec spec = pluginRegistry.resolveStartSpec(context, baseEnv, baseLabels, startCommand);
         List<String> env = toEnvList(spec.env());
         Map<String, String> labels = spec.labels();
+        List<String> command = requireCommand(spec.command());
         String containerName = "kodama-instance-" + instanceId;
 
         DockerContainerCreateRequest request = new DockerContainerCreateRequest(
                 image,
                 containerName,
-                spec.command(),
+                command,
                 env,
                 labels,
                 workingDir,
@@ -133,19 +142,69 @@ public class InstanceStartService {
     }
 
     private String resolveImage(InstanceRegistryEntry registry) {
-        Map<String, String> variables = registry.variables() == null ? Map.of() : registry.variables();
-        String image = firstNonBlank(
-                variables.get("DOCKER_IMAGE"),
-                variables.get("CONTAINER_IMAGE"),
-                variables.get("IMAGE")
-        );
+        String image = registry.containerImage();
         if (isBlank(image)) {
-            image = instanceProperties.getInstanceRuntime().getImage();
-        }
-        if (isBlank(image)) {
-            throw new InstanceStartException("Container image is required (variables DOCKER_IMAGE or node-agent.instance-runtime.image)");
+            throw new InstanceStartException("Container image is required in instance registry");
         }
         return image.trim();
+    }
+
+    private List<String> resolveStartCommand(InstanceRegistryEntry registry) {
+        return requireCommand(registry.startCommand());
+    }
+
+    private List<String> requireCommand(List<String> command) {
+        if (command == null || command.isEmpty()) {
+            throw new InstanceStartException("Start command is required in instance registry");
+        }
+        List<String> normalized = command.stream()
+                .map(this::normalizeCommandPart)
+                .toList();
+        if (normalized.isEmpty()) {
+            throw new InstanceStartException("Start command is required in instance registry");
+        }
+        return normalized;
+    }
+
+    private String normalizeCommandPart(String commandPart) {
+        if (commandPart == null || commandPart.isBlank()) {
+            throw new InstanceStartException("Start command contains an empty element");
+        }
+        return commandPart.trim();
+    }
+
+    private boolean runInstallScriptIfRequired(
+            UUID instanceId,
+            InstanceWorkspacePaths workspace,
+            InstanceRegistryEntry registry,
+            Map<String, String> env
+    ) {
+        if (registry.installCompleted()) {
+            return false;
+        }
+        if (isBlank(registry.installScript())) {
+            logger.info("Install script not set, skipping install step. instanceId={}", instanceId);
+            return false;
+        }
+
+        String script = registry.installScript().trim();
+        logger.info("Running install script before first start. instanceId={}", instanceId);
+        try {
+            int exitCode = installScriptRunner.runScript(workspace.mergedDir(), script, env);
+            if (exitCode != 0) {
+                throw new InstanceStartException(
+                        "Install script failed for instance " + instanceId + " with exit code " + exitCode
+                );
+            }
+        } catch (IOException ex) {
+            throw new InstanceStartException("Failed to execute install script for instance " + instanceId, ex);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new InstanceStartException("Install script execution interrupted for instance " + instanceId, ex);
+        }
+        registryService.recordInstallCompleted(workspace, instanceId);
+        logger.info("Install script completed. instanceId={}", instanceId);
+        return true;
     }
 
     private String resolveWorkspaceMountPath() {

@@ -9,6 +9,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - Added a local instance registry record written after successful preparation.
 - Added start/stop/destroy command handlers that send lifecycle callbacks to the Brain.
 - Start now creates and starts a Docker container from the prepared workspace and records its container id locally.
+- Start now executes `installScript` once with `/bin/sh -c` before first container start when `installCompleted` is `false`.
 - Stop now resolves the container id from the local registry, stops the container, and records the stopped state.
 - Added a container monitor that records exit codes and reasons when containers stop outside of stop/destroy commands.
 - Destroy now stops (or force-kills) the container, removes it, deletes the instance workspace, and removes the local registry entry.
@@ -35,14 +36,17 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - Registry listing requires the same Brain authentication as other instance command endpoints.
 - `NodeInstanceCommandRequest` requires `instanceId` and accepts an optional `name` for logging.
 - Start now:
+  - validates `containerImage` and `startCommand` from `instance.json` before running any install step,
+  - when `installCompleted=false` and `installScript` is present, runs the script from the merged workspace with `/bin/sh -c` and marks the registry as installed only after a zero exit code,
+  - bounds install script execution with `node-agent.instance-runtime.install-script-timeout-seconds` and terminates timed out scripts,
   - reads `instance.json` from the workspace,
+  - requires `containerImage` and `startCommand` from the instance registry runtime fields,
   - creates a Docker container with the merged workspace mounted,
   - maps ports from `portsJson` (preferred array format with `containerPort` + `hostPort`; legacy object format remains supported),
   - falls back to `PORT`/`PORT_<NAME>` variables when `portsJson` is absent,
   - injects env vars (including `INSTANCE_ID` and `NODE_NAME`),
   - records the container id to the registry,
   - then calls back with `/api/nodes/{nodeId}/instances/{instanceId}/running`.
-- The container image defaults to `node-agent.instance-runtime.image` when not provided as `DOCKER_IMAGE`/`CONTAINER_IMAGE`/`IMAGE`.
 - The merged workspace is mounted at `node-agent.instance-runtime.workspace-mount-path` and the working directory defaults to the same path.
 - Stop/destroy acknowledge commands by calling back to the Brain:
   - `/api/nodes/{nodeId}/instances/{instanceId}/stopped` (after stopping the container locally)
@@ -66,8 +70,10 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - Invalid payloads (missing instanceId, empty layers, invalid JSON) return HTTP 400 and trigger a `/failed` callback when possible.
 - Cache download/merge failures result in HTTP 500 and a `/failed` callback attempt.
 - Missing node auth token or invalid Brain base URL prevents callbacks; lifecycle commands still complete locally but the Brain will not receive updates.
-- Start requires a container image from `variables` (`DOCKER_IMAGE`, `CONTAINER_IMAGE`, or `IMAGE`) or
-  `node-agent.instance-runtime.image`; missing values fail the command.
+- Start fails when `containerImage` is missing in the registry runtime fields.
+- Start fails when `startCommand` is missing or contains empty command parts.
+- If the install script exits non-zero, start fails, `/failed` is attempted, and `installCompleted` remains `false`.
+- If the install script exceeds the configured install timeout, the node agent terminates it, start fails, `/failed` is attempted, and `installCompleted` remains `false`.
 - Start fails if the prepared workspace or `instance.json` registry record is missing.
 - Stop fails if the registry is missing or does not contain a container id.
 - If the container is missing at stop time, the node agent logs a warning, marks the registry as stopped, and preserves any
