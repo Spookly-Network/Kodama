@@ -1,6 +1,7 @@
 package net.spookly.kodama.nodeagent.instance.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -17,7 +18,7 @@ class InstancePortBindingsResolverTest {
     private final InstancePortBindingsResolver resolver = new InstancePortBindingsResolver(new ObjectMapper());
 
     @Test
-    void resolvesPortsFromPortsJsonAndVariables() {
+    void rejectsLegacyObjectPortsJson() {
         InstanceRegistryEntry entry = new InstanceRegistryEntry(
                 UUID.randomUUID(),
                 "instance-name",
@@ -34,12 +35,9 @@ class InstancePortBindingsResolverTest {
                 null
         );
 
-        List<DockerPortBinding> bindings = resolver.resolveBindings(entry);
-
-        assertThat(bindings).hasSize(1);
-        DockerPortBinding binding = bindings.get(0);
-        assertThat(binding.containerPort()).isEqualTo(25565);
-        assertThat(binding.hostPort()).isEqualTo(30000);
+        assertThatThrownBy(() -> resolver.resolveBindings(entry))
+                .isInstanceOf(InstanceStartException.class)
+                .hasMessageContaining("portsJson must be a JSON array");
     }
 
     @Test
@@ -129,5 +127,82 @@ class InstancePortBindingsResolverTest {
         assertThat(bindings.get(1).containerPort()).isEqualTo(25566);
         assertThat(bindings.get(1).hostPort()).isEqualTo(30002);
         assertThat(bindings.get(1).protocol()).isEqualTo("tcp");
+    }
+
+    @Test
+    void arrayFormatDoesNotFallBackToVariablesWhenArrayIsEmpty() {
+        InstanceRegistryEntry entry = new InstanceRegistryEntry(
+                UUID.randomUUID(),
+                "instance-name",
+                null,
+                "[]",
+                Map.of("PORT", "25565"),
+                List.of(),
+                OffsetDateTime.now(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        List<DockerPortBinding> bindings = resolver.resolveBindings(entry);
+
+        assertThat(bindings).isEmpty();
+    }
+
+    @Test
+    void rejectsArrayProtocolWhenInvalid() {
+        InstanceRegistryEntry entry = new InstanceRegistryEntry(
+                UUID.randomUUID(),
+                "instance-name",
+                null,
+                """
+                        [
+                          {"name":"game","protocol":"icmp","containerPort":25565,"hostPort":30001}
+                        ]
+                        """,
+                Map.of(),
+                List.of(),
+                OffsetDateTime.now(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> resolver.resolveBindings(entry))
+                .isInstanceOf(InstanceStartException.class)
+                .hasMessageContaining("protocol must be tcp or udp");
+    }
+
+    @Test
+    void rejectsArrayEntryWhenNameMissing() {
+        InstanceRegistryEntry entry = new InstanceRegistryEntry(
+                UUID.randomUUID(),
+                "instance-name",
+                null,
+                """
+                        [
+                          {"protocol":"udp","containerPort":25565,"hostPort":30001}
+                        ]
+                        """,
+                Map.of(),
+                List.of(),
+                OffsetDateTime.now(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> resolver.resolveBindings(entry))
+                .isInstanceOf(InstanceStartException.class)
+                .hasMessageContaining("name is required");
     }
 }
