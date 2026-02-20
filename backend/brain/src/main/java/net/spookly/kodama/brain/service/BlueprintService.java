@@ -2,8 +2,8 @@ package net.spookly.kodama.brain.service;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.Locale;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
