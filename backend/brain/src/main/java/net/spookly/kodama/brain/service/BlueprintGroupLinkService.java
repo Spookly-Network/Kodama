@@ -23,6 +23,8 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional
 public class BlueprintGroupLinkService {
 
+    private static final String BLUEPRINT_NOT_FOUND_MESSAGE = "Blueprint not found";
+    private static final String GROUP_NOT_FOUND_MESSAGE = "Group not found";
     private static final String GROUP_LINK_PRIMARY_KEY_CONSTRAINT = "pk_blueprint_group_links";
     private static final String GROUP_LINK_PRIMARY_INDEX = "blueprint_group_links.primary";
 
@@ -42,7 +44,7 @@ public class BlueprintGroupLinkService {
 
     @Transactional(readOnly = true)
     public List<InstanceGroupDto> listGroupLinks(UUID blueprintId) {
-        ensureBlueprintExists(blueprintId);
+        loadBlueprint(blueprintId);
         return blueprintGroupLinkRepository.findAllByBlueprintId(blueprintId).stream()
                 .map(BlueprintGroupLink::getGroup)
                 .map(InstanceGroupDto::fromEntity)
@@ -51,7 +53,7 @@ public class BlueprintGroupLinkService {
 
     @Transactional(readOnly = true)
     public List<UUID> listLinkedGroupIds(UUID blueprintId) {
-        ensureBlueprintExists(blueprintId);
+        loadBlueprint(blueprintId);
         return blueprintGroupLinkRepository.findAllByBlueprintId(blueprintId).stream()
                 .map(link -> link.getGroup().getId())
                 .toList();
@@ -75,8 +77,8 @@ public class BlueprintGroupLinkService {
     }
 
     public void removeGroupLink(UUID blueprintId, UUID groupId) {
-        ensureBlueprintExists(blueprintId);
-        ensureGroupExists(groupId);
+        loadBlueprint(blueprintId);
+        loadGroup(groupId);
 
         BlueprintGroupLinkId linkId = new BlueprintGroupLinkId(blueprintId, groupId);
         if (blueprintGroupLinkRepository.existsById(linkId)) {
@@ -86,24 +88,12 @@ public class BlueprintGroupLinkService {
 
     private Blueprint loadBlueprint(UUID blueprintId) {
         return blueprintRepository.findByIdAndDeletedAtIsNull(blueprintId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blueprint not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, BLUEPRINT_NOT_FOUND_MESSAGE));
     }
 
     private InstanceGroup loadGroup(UUID groupId) {
         return instanceGroupRepository.findById(groupId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
-    }
-
-    private void ensureBlueprintExists(UUID blueprintId) {
-        if (blueprintRepository.findByIdAndDeletedAtIsNull(blueprintId).isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Blueprint not found");
-        }
-    }
-
-    private void ensureGroupExists(UUID groupId) {
-        if (!instanceGroupRepository.existsById(groupId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found");
-        }
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, GROUP_NOT_FOUND_MESSAGE));
     }
 
     private boolean isDuplicateGroupLinkViolation(Throwable ex) {

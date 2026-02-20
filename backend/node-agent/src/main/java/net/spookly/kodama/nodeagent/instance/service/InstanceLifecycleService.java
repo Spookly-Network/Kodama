@@ -33,67 +33,65 @@ public class InstanceLifecycleService {
 
     public void start(NodeInstanceCommandRequest request) {
         UUID instanceId = requireInstanceId(request);
-        logger.info("Start command received. instanceId={} name={}", instanceId, valueOrDash(request.name()));
-        try {
-            startService.startInstance(instanceId, request.name());
-        } catch (RuntimeException ex) {
-            try {
-                callbackService.sendFailed(instanceId);
-            } catch (RuntimeException callbackEx) {
-                logger.warn("Start command failure callback failed. instanceId={}", instanceId, callbackEx);
-            }
-            logger.warn("Start command failed. instanceId={}", instanceId, ex);
-            throw ex;
-        }
-        try {
-            callbackService.sendRunning(instanceId);
-            logger.info("Start command acknowledged. instanceId={}", instanceId);
-        } catch (RuntimeException ex) {
-            logger.warn("Start command callback failed. instanceId={}", instanceId, ex);
-        }
+        executeLifecycleCommand(
+                "Start",
+                instanceId,
+                request.name(),
+                () -> startService.startInstance(instanceId, request.name()),
+                () -> callbackService.sendRunning(instanceId)
+        );
     }
 
     public void stop(NodeInstanceCommandRequest request) {
         UUID instanceId = requireInstanceId(request);
-        logger.info("Stop command received. instanceId={} name={}", instanceId, valueOrDash(request.name()));
-        try {
-            stopService.stopInstance(instanceId);
-        } catch (RuntimeException ex) {
-            try {
-                callbackService.sendFailed(instanceId);
-            } catch (RuntimeException callbackEx) {
-                logger.warn("Stop command failure callback failed. instanceId={}", instanceId, callbackEx);
-            }
-            logger.warn("Stop command failed. instanceId={}", instanceId, ex);
-            throw ex;
-        }
-        try {
-            callbackService.sendStopped(instanceId);
-            logger.info("Stop command acknowledged. instanceId={}", instanceId);
-        } catch (RuntimeException ex) {
-            logger.warn("Stop command callback failed. instanceId={}", instanceId, ex);
-        }
+        executeLifecycleCommand(
+                "Stop",
+                instanceId,
+                request.name(),
+                () -> stopService.stopInstance(instanceId),
+                () -> callbackService.sendStopped(instanceId)
+        );
     }
 
     public void destroy(NodeInstanceCommandRequest request) {
         UUID instanceId = requireInstanceId(request);
-        logger.info("Destroy command received. instanceId={} name={}", instanceId, valueOrDash(request.name()));
+        executeLifecycleCommand(
+                "Destroy",
+                instanceId,
+                request.name(),
+                () -> destroyService.destroyInstance(instanceId),
+                () -> callbackService.sendDestroyed(instanceId)
+        );
+    }
+
+    private void executeLifecycleCommand(
+            String commandName,
+            UUID instanceId,
+            String requestName,
+            Runnable commandAction,
+            Runnable callbackAction
+    ) {
+        logger.info("{} command received. instanceId={} name={}", commandName, instanceId, valueOrDash(requestName));
         try {
-            destroyService.destroyInstance(instanceId);
+            commandAction.run();
         } catch (RuntimeException ex) {
-            try {
-                callbackService.sendFailed(instanceId);
-            } catch (RuntimeException callbackEx) {
-                logger.warn("Destroy command failure callback failed. instanceId={}", instanceId, callbackEx);
-            }
-            logger.warn("Destroy command failed. instanceId={}", instanceId, ex);
+            sendFailedCallback(commandName, instanceId);
+            logger.warn("{} command failed. instanceId={}", commandName, instanceId, ex);
             throw ex;
         }
         try {
-            callbackService.sendDestroyed(instanceId);
-            logger.info("Destroy command acknowledged. instanceId={}", instanceId);
+            callbackAction.run();
+            logger.info("{} command acknowledged. instanceId={}", commandName, instanceId);
         } catch (RuntimeException ex) {
-            logger.warn("Destroy command callback failed. instanceId={}", instanceId, ex);
+            logger.warn("{} command callback failed. instanceId={}", commandName, instanceId, ex);
+        }
+    }
+
+    private void sendFailedCallback(String commandName, UUID instanceId) {
+        try {
+            callbackService.sendFailed(instanceId);
+        } catch (RuntimeException callbackEx) {
+            logger.warn("{} command failure callback failed. instanceId={}", commandName, instanceId, callbackEx);
         }
     }
 

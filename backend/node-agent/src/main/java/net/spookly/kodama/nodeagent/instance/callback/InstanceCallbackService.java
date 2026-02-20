@@ -70,16 +70,11 @@ public class InstanceCallbackService {
     private void sendCallback(UUID instanceId, String action, String requestBody) {
         UUID nodeId = resolveNodeId();
         URI endpoint = buildEndpoint(nodeId, instanceId, action);
-        String authToken = tokenReader.readToken();
         String headerName = config.getAuth().getHeaderName();
-        if (authToken != null && !authToken.isBlank() && (headerName == null || headerName.isBlank())) {
-            throw new InstancePrepareException("node-agent.auth.header-name is required for instance callbacks");
-        }
-        if (authToken == null || authToken.isBlank()) {
-            authToken = null;
-        }
-        int maxAttempts = resolveMaxAttempts();
-        long backoffMillis = resolveBackoffMillis();
+        String authToken = resolveAuthToken(headerName);
+        CallbackRetrySettings retrySettings = resolveRetrySettings();
+        int maxAttempts = retrySettings.maxAttempts();
+        long backoffMillis = retrySettings.initialBackoffMillis();
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
                 callbackClient.sendCallback(endpoint, headerName, authToken, requestBody);
@@ -130,6 +125,21 @@ public class InstanceCallbackService {
         } catch (JsonProcessingException ex) {
             throw new InstancePrepareException("Failed to serialize prepared callback payload", ex);
         }
+    }
+
+    private String resolveAuthToken(String headerName) {
+        String authToken = tokenReader.readToken();
+        if (authToken == null || authToken.isBlank()) {
+            return null;
+        }
+        if (headerName == null || headerName.isBlank()) {
+            throw new InstancePrepareException("node-agent.auth.header-name is required for instance callbacks");
+        }
+        return authToken;
+    }
+
+    private CallbackRetrySettings resolveRetrySettings() {
+        return new CallbackRetrySettings(resolveMaxAttempts(), resolveBackoffMillis());
     }
 
     private int resolveMaxAttempts() {
@@ -200,6 +210,9 @@ public class InstanceCallbackService {
         } catch (IllegalArgumentException ex) {
             throw new InstancePrepareException("Invalid Brain base URL: " + brainBaseUrl, ex);
         }
+    }
+
+    private record CallbackRetrySettings(int maxAttempts, long initialBackoffMillis) {
     }
 
     private record InstancePreparedCallbackRequest(String portsJson) {

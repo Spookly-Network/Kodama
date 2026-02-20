@@ -25,6 +25,8 @@ public class BlueprintPortDefinitionService {
 
     private static final int MIN_PORT = 1;
     private static final int MAX_PORT = 65_535;
+    private static final String BLUEPRINT_NOT_FOUND_MESSAGE = "Blueprint not found";
+    private static final String PORT_DEFINITION_NOT_FOUND_MESSAGE = "Port definition not found";
     private static final String DUPLICATE_PORT_NAME_CONSTRAINT = "uq_blueprint_port_definitions_blueprint_name";
     private static final String DUPLICATE_PORT_NAME_MESSAGE = "Port definition name already exists for blueprint";
 
@@ -41,7 +43,7 @@ public class BlueprintPortDefinitionService {
 
     @Transactional(readOnly = true)
     public List<BlueprintPortDefinitionDto> listPortDefinitions(UUID blueprintId) {
-        ensureBlueprintExists(blueprintId);
+        loadBlueprint(blueprintId);
         return blueprintPortDefinitionRepository.findAllByBlueprintId(blueprintId).stream()
                 .map(BlueprintPortDefinitionDto::fromEntity)
                 .toList();
@@ -49,7 +51,7 @@ public class BlueprintPortDefinitionService {
 
     @Transactional(readOnly = true)
     public List<PortDefinitionRequest> listPortDefinitionRequests(UUID blueprintId) {
-        ensureBlueprintExists(blueprintId);
+        loadBlueprint(blueprintId);
         return blueprintPortDefinitionRepository.findAllByBlueprintId(blueprintId).stream()
                 .map(definition -> new PortDefinitionRequest(
                         definition.getName(),
@@ -95,24 +97,18 @@ public class BlueprintPortDefinitionService {
     }
 
     public void removePortDefinition(UUID blueprintId, UUID portId) {
-        ensureBlueprintExists(blueprintId);
+        loadBlueprint(blueprintId);
         BlueprintPortDefinition portDefinition = blueprintPortDefinitionRepository.findById(portId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Port definition not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, PORT_DEFINITION_NOT_FOUND_MESSAGE));
         if (!portDefinition.getBlueprint().getId().equals(blueprintId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Port definition not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, PORT_DEFINITION_NOT_FOUND_MESSAGE);
         }
         blueprintPortDefinitionRepository.delete(portDefinition);
     }
 
     private Blueprint loadBlueprint(UUID blueprintId) {
         return blueprintRepository.findByIdAndDeletedAtIsNull(blueprintId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blueprint not found"));
-    }
-
-    private void ensureBlueprintExists(UUID blueprintId) {
-        if (blueprintRepository.findByIdAndDeletedAtIsNull(blueprintId).isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Blueprint not found");
-        }
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, BLUEPRINT_NOT_FOUND_MESSAGE));
     }
 
     private String normalizeName(String name) {

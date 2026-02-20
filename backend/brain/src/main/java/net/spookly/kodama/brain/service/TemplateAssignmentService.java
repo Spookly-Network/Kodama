@@ -28,6 +28,8 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional
 public class TemplateAssignmentService {
 
+    private static final String ASSIGNMENT_NOT_FOUND_MESSAGE = "Assignment not found";
+
     private final BlueprintTemplateAssignmentRepository blueprintTemplateAssignmentRepository;
     private final InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository;
     private final GroupTemplateAssignmentRepository groupTemplateAssignmentRepository;
@@ -90,9 +92,9 @@ public class TemplateAssignmentService {
     public void removeBlueprintAssignment(UUID blueprintId, UUID assignmentId) {
         ensureBlueprintExists(blueprintId);
         BlueprintTemplateAssignment assignment = blueprintTemplateAssignmentRepository.findById(assignmentId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found"));
+                .orElseThrow(this::assignmentNotFound);
         if (!assignment.getBlueprint().getId().equals(blueprintId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found");
+            throw assignmentNotFound();
         }
         blueprintTemplateAssignmentRepository.delete(assignment);
     }
@@ -106,8 +108,7 @@ public class TemplateAssignmentService {
     }
 
     public TemplateAssignmentDto addInstanceAssignment(UUID instanceId, TemplateAssignmentRequest request) {
-        Instance instance = instanceRepository.findById(instanceId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Instance not found"));
+        Instance instance = loadInstance(instanceId);
         AssignmentTarget target = resolveAssignmentTarget(request);
         InstanceTemplateAssignment assignment = new InstanceTemplateAssignment(
                 instance,
@@ -122,9 +123,9 @@ public class TemplateAssignmentService {
     public void removeInstanceAssignment(UUID instanceId, UUID assignmentId) {
         ensureInstanceExists(instanceId);
         InstanceTemplateAssignment assignment = instanceTemplateAssignmentRepository.findById(assignmentId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found"));
+                .orElseThrow(this::assignmentNotFound);
         if (!assignment.getInstance().getId().equals(instanceId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found");
+            throw assignmentNotFound();
         }
         instanceTemplateAssignmentRepository.delete(assignment);
     }
@@ -138,8 +139,7 @@ public class TemplateAssignmentService {
     }
 
     public TemplateAssignmentDto addGroupAssignment(UUID groupId, TemplateAssignmentRequest request) {
-        InstanceGroup group = instanceGroupRepository.findById(groupId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
+        InstanceGroup group = loadGroup(groupId);
         AssignmentTarget target = resolveAssignmentTarget(request);
         GroupTemplateAssignment assignment = new GroupTemplateAssignment(
                 group,
@@ -154,9 +154,9 @@ public class TemplateAssignmentService {
     public void removeGroupAssignment(UUID groupId, UUID assignmentId) {
         ensureGroupExists(groupId);
         GroupTemplateAssignment assignment = groupTemplateAssignmentRepository.findById(assignmentId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found"));
+                .orElseThrow(this::assignmentNotFound);
         if (!assignment.getGroup().getId().equals(groupId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found");
+            throw assignmentNotFound();
         }
         groupTemplateAssignmentRepository.delete(assignment);
     }
@@ -197,6 +197,11 @@ public class TemplateAssignmentService {
         }
     }
 
+    private Instance loadInstance(UUID instanceId) {
+        return instanceRepository.findById(instanceId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Instance not found"));
+    }
+
     private Blueprint loadBlueprint(UUID blueprintId) {
         return blueprintRepository.findByIdAndDeletedAtIsNull(blueprintId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blueprint not found"));
@@ -212,6 +217,15 @@ public class TemplateAssignmentService {
         if (!instanceGroupRepository.existsById(groupId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found");
         }
+    }
+
+    private InstanceGroup loadGroup(UUID groupId) {
+        return instanceGroupRepository.findById(groupId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
+    }
+
+    private ResponseStatusException assignmentNotFound() {
+        return new ResponseStatusException(HttpStatus.NOT_FOUND, ASSIGNMENT_NOT_FOUND_MESSAGE);
     }
 
     private record AssignmentTarget(Template template, TemplateVersion templateVersion, int priority) {

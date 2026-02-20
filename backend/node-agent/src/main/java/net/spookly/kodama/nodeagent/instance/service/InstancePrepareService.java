@@ -68,10 +68,7 @@ public class InstancePrepareService {
             logger.info("Preparing instance workspace. instanceId={} layers={}", instanceId, layerCount);
             InstanceWorkspacePaths workspace = workspaceManager.prepareWorkspace(instanceId.toString());
             Map<String, String> resolvedVariables = variablesResolver.resolve(request.variables(), request.variablesJson());
-            List<TemplateLayerSource> sources = new ArrayList<>(layers.size());
-            for (NodePrepareInstanceLayer layer : layers) {
-                sources.add(resolveLayerSource(layer));
-            }
+            List<TemplateLayerSource> sources = resolveLayerSources(layers);
             // Keep allocation and reservation persistence in one critical section to prevent duplicate hostPort claims.
             portsJson = registryService.withPortReservationLock(() -> {
                 InstancePortAllocationService.PortAllocationResult allocation = portAllocationService.allocate(
@@ -84,31 +81,47 @@ public class InstancePrepareService {
                 registryService.recordPrepared(workspace, request, layers, variables, resolvedPortsJson);
                 return resolvedPortsJson;
             });
-        } catch (InstancePrepareValidationException ex) {
-            logger.warn("Instance preparation rejected. instanceId={}", instanceId, ex);
-            try {
-                callbackService.sendFailed(instanceId);
-            } catch (RuntimeException callbackEx) {
-                logger.warn("Failed to send prepare failure callback. instanceId={}", instanceId, callbackEx);
-            }
-            throw ex;
         } catch (RuntimeException ex) {
-            logger.warn("Instance preparation failed. instanceId={}", instanceId, ex);
-            try {
-                callbackService.sendFailed(instanceId);
-            } catch (RuntimeException callbackEx) {
-                logger.warn("Failed to send prepare failure callback. instanceId={}", instanceId, callbackEx);
-            }
+            handlePrepareFailure(instanceId, ex);
             throw ex;
         }
 
+        sendPreparedCallback(instanceId, portsJson);
+        logger.info("Instance preparation complete. instanceId={} layers={}", instanceId, layerCount);
+        instanceStartService.startInstance(instanceId, request.displayName());
+    }
+
+    private List<TemplateLayerSource> resolveLayerSources(List<NodePrepareInstanceLayer> layers) {
+        List<TemplateLayerSource> sources = new ArrayList<>(layers.size());
+        for (NodePrepareInstanceLayer layer : layers) {
+            sources.add(resolveLayerSource(layer));
+        }
+        return sources;
+    }
+
+    private void handlePrepareFailure(UUID instanceId, RuntimeException ex) {
+        if (ex instanceof InstancePrepareValidationException) {
+            logger.warn("Instance preparation rejected. instanceId={}", instanceId, ex);
+        } else {
+            logger.warn("Instance preparation failed. instanceId={}", instanceId, ex);
+        }
+        sendFailedCallback(instanceId);
+    }
+
+    private void sendFailedCallback(UUID instanceId) {
+        try {
+            callbackService.sendFailed(instanceId);
+        } catch (RuntimeException callbackEx) {
+            logger.warn("Failed to send prepare failure callback. instanceId={}", instanceId, callbackEx);
+        }
+    }
+
+    private void sendPreparedCallback(UUID instanceId, String portsJson) {
         try {
             callbackService.sendPrepared(instanceId, portsJson);
         } catch (RuntimeException ex) {
             logger.warn("Prepared callback failed. instanceId={}", instanceId, ex);
         }
-        logger.info("Instance preparation complete. instanceId={} layers={}", instanceId, layerCount);
-        instanceStartService.startInstance(instanceId, request.displayName());
     }
 
     private TemplateLayerSource resolveLayerSource(NodePrepareInstanceLayer layer) {

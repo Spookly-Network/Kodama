@@ -38,6 +38,10 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class CommandDispatcherService {
 
     private static final Logger logger = LoggerFactory.getLogger(CommandDispatcherService.class);
+    private static final TypeReference<List<String>> START_COMMAND_TYPE = new TypeReference<>() {
+    };
+    private static final TypeReference<List<PortDefinitionRequest>> PORT_DEFINITIONS_TYPE = new TypeReference<>() {
+    };
 
     private final RestTemplate restTemplate;
     private final NodeProperties nodeProperties;
@@ -103,21 +107,21 @@ public class CommandDispatcherService {
     }
 
     public void sendStartInstance(Node node, Instance instance) {
-        UUID instanceId = requireInstanceId(instance);
-        NodeInstanceCommandRequest payload = new NodeInstanceCommandRequest(instanceId, instance.getName());
-        sendCommand(node, instance, "start", HttpMethod.POST, buildCommandUri(node, instanceId, "start"), payload);
+        sendInstanceCommand(node, instance, "start");
     }
 
     public void sendStopInstance(Node node, Instance instance) {
-        UUID instanceId = requireInstanceId(instance);
-        NodeInstanceCommandRequest payload = new NodeInstanceCommandRequest(instanceId, instance.getName());
-        sendCommand(node, instance, "stop", HttpMethod.POST, buildCommandUri(node, instanceId, "stop"), payload);
+        sendInstanceCommand(node, instance, "stop");
     }
 
     public void sendDestroyInstance(Node node, Instance instance) {
+        sendInstanceCommand(node, instance, "destroy");
+    }
+
+    private void sendInstanceCommand(Node node, Instance instance, String action) {
         UUID instanceId = requireInstanceId(instance);
         NodeInstanceCommandRequest payload = new NodeInstanceCommandRequest(instanceId, instance.getName());
-        sendCommand(node, instance, "destroy", HttpMethod.POST, buildCommandUri(node, instanceId, "destroy"), payload);
+        sendCommand(node, instance, action, HttpMethod.POST, buildCommandUri(node, instanceId, action), payload);
     }
 
     private void sendCommand(
@@ -239,12 +243,7 @@ public class CommandDispatcherService {
         if (startCommandJson == null) {
             return null;
         }
-        try {
-            return objectMapper.readValue(startCommandJson, new TypeReference<List<String>>() {
-            });
-        } catch (JsonProcessingException ex) {
-            throw new IllegalStateException("Instance startCommandJson is invalid JSON", ex);
-        }
+        return deserializeJson(startCommandJson, START_COMMAND_TYPE, "Instance startCommandJson is invalid JSON");
     }
 
     private List<PortDefinitionRequest> resolvePortDefinitions(Instance instance) {
@@ -252,11 +251,18 @@ public class CommandDispatcherService {
         if (portDefinitionsJson == null) {
             return null;
         }
+        return deserializeJson(
+                portDefinitionsJson,
+                PORT_DEFINITIONS_TYPE,
+                "Instance portDefinitionsJson is invalid JSON"
+        );
+    }
+
+    private <T> T deserializeJson(String json, TypeReference<T> type, String errorMessage) {
         try {
-            return objectMapper.readValue(portDefinitionsJson, new TypeReference<List<PortDefinitionRequest>>() {
-            });
+            return objectMapper.readValue(json, type);
         } catch (JsonProcessingException ex) {
-            throw new IllegalStateException("Instance portDefinitionsJson is invalid JSON", ex);
+            throw new IllegalStateException(errorMessage, ex);
         }
     }
 }
