@@ -89,6 +89,89 @@ class InstancePortAllocationServiceTest {
     }
 
     @Test
+    void allocateUsesStepInAscendingOrderAndSkipsReservedPorts() throws Exception {
+        ObjectMapper objectMapper = objectMapper();
+        InstanceWorkspaceLayout layout = workspaceLayout();
+        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper, layout);
+        InstanceWorkspaceManager workspaceManager = new InstanceWorkspaceManager(layout);
+
+        UUID existingInstanceA = UUID.randomUUID();
+        InstanceWorkspacePaths workspaceA = workspaceManager.prepareWorkspace(existingInstanceA.toString());
+        NodePrepareInstanceRequest requestA = new NodePrepareInstanceRequest(
+                existingInstanceA,
+                "existing-a",
+                "existing-a",
+                "image",
+                null,
+                List.of("run"),
+                1,
+                null,
+                "[{\"name\":\"game\",\"protocol\":\"udp\",\"containerPort\":25565,\"hostPort\":30000}]",
+                Map.of(),
+                null,
+                List.of(sampleLayer())
+        );
+        registryService.recordPrepared(
+                workspaceA,
+                requestA,
+                requestA.layers(),
+                requestA.variables(),
+                requestA.portsJson()
+        );
+
+        UUID existingInstanceB = UUID.randomUUID();
+        InstanceWorkspacePaths workspaceB = workspaceManager.prepareWorkspace(existingInstanceB.toString());
+        NodePrepareInstanceRequest requestB = new NodePrepareInstanceRequest(
+                existingInstanceB,
+                "existing-b",
+                "existing-b",
+                "image",
+                null,
+                List.of("run"),
+                1,
+                null,
+                "[{\"name\":\"query\",\"protocol\":\"udp\",\"containerPort\":25566,\"hostPort\":30002}]",
+                Map.of(),
+                null,
+                List.of(sampleLayer())
+        );
+        registryService.recordPrepared(
+                workspaceB,
+                requestB,
+                requestB.layers(),
+                requestB.variables(),
+                requestB.portsJson()
+        );
+
+        InstancePortAllocationService service = new InstancePortAllocationService(registryService, objectMapper);
+        NodePreparePortDefinition definition = new NodePreparePortDefinition(
+                "game",
+                "udp",
+                25565,
+                new NodePreparePortDefinition.HostRange(30000, 30008, 2)
+        );
+
+        InstancePortAllocationService.PortAllocationResult result = service.allocate(
+                UUID.randomUUID(),
+                List.of(definition)
+        );
+
+        assertThat(result.injectedVariables())
+                .containsEntry("PORT", "30004")
+                .containsEntry("PORT_GAME", "30004");
+
+        List<Map<String, Object>> parsed = objectMapper.readValue(
+                result.portsJson(),
+                new TypeReference<List<Map<String, Object>>>() {
+                }
+        );
+        assertThat(parsed).hasSize(1);
+        assertThat(parsed.getFirst())
+                .containsEntry("protocol", "udp")
+                .containsEntry("hostPort", 30004);
+    }
+
+    @Test
     void allocateFailsWhenRangeHasNoAvailablePort() {
         ObjectMapper objectMapper = objectMapper();
         InstanceWorkspaceLayout layout = workspaceLayout();
@@ -130,6 +213,44 @@ class InstancePortAllocationServiceTest {
         assertThatThrownBy(() -> service.allocate(UUID.randomUUID(), List.of(definition)))
                 .isInstanceOf(InstancePrepareException.class)
                 .hasMessageContaining("No available host port");
+    }
+
+    @Test
+    void allocateRejectsRangeWhenMinIsGreaterThanMax() {
+        ObjectMapper objectMapper = objectMapper();
+        InstanceWorkspaceLayout layout = workspaceLayout();
+        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper, layout);
+        InstancePortAllocationService service = new InstancePortAllocationService(registryService, objectMapper);
+
+        NodePreparePortDefinition definition = new NodePreparePortDefinition(
+                "game",
+                "udp",
+                25565,
+                new NodePreparePortDefinition.HostRange(30010, 30000, 1)
+        );
+
+        assertThatThrownBy(() -> service.allocate(UUID.randomUUID(), List.of(definition)))
+                .isInstanceOf(InstancePrepareValidationException.class)
+                .hasMessageContaining("hostRange min must be <= max for game");
+    }
+
+    @Test
+    void allocateRejectsRangeWhenStepIsNotPositive() {
+        ObjectMapper objectMapper = objectMapper();
+        InstanceWorkspaceLayout layout = workspaceLayout();
+        InstanceRegistryService registryService = new InstanceRegistryService(objectMapper, layout);
+        InstancePortAllocationService service = new InstancePortAllocationService(registryService, objectMapper);
+
+        NodePreparePortDefinition definition = new NodePreparePortDefinition(
+                "game",
+                "udp",
+                25565,
+                new NodePreparePortDefinition.HostRange(30000, 30010, 0)
+        );
+
+        assertThatThrownBy(() -> service.allocate(UUID.randomUUID(), List.of(definition)))
+                .isInstanceOf(InstancePrepareValidationException.class)
+                .hasMessageContaining("hostRange.step for game must be >= 1");
     }
 
     @Test

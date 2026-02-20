@@ -8,6 +8,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -159,6 +160,69 @@ class InstanceStartServiceTest {
 
         verify(installScriptRunner, never()).runScript(any(), any(), any());
         verify(registryService, never()).recordInstallCompleted(any(), any());
+    }
+
+    @Test
+    void startInstanceRunsInstallScriptOnlyOnFirstStart() throws Exception {
+        UUID instanceId = UUID.randomUUID();
+        Path instanceRoot = tempDir.resolve("instances").resolve(instanceId.toString());
+        Path mergedDir = instanceRoot.resolve("merged");
+        Files.createDirectories(mergedDir);
+        InstanceWorkspacePaths workspace = workspace(instanceId, instanceRoot, mergedDir);
+
+        InstanceRegistryEntry pendingInstall = registryEntry(
+                instanceId,
+                instanceRoot,
+                false,
+                "touch .install-sentinel",
+                "ghcr.io/spookly/hytale:registry",
+                List.of("java", "-jar", "server.jar")
+        );
+        InstanceRegistryEntry installComplete = registryEntry(
+                instanceId,
+                instanceRoot,
+                true,
+                pendingInstall.installScript(),
+                pendingInstall.containerImage(),
+                pendingInstall.startCommand()
+        );
+
+        DockerService dockerService = mock(DockerService.class);
+        InstanceRegistryService registryService = mock(InstanceRegistryService.class);
+        InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
+        InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
+        InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
+
+        when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
+        when(registryService.loadRegistry(workspace)).thenReturn(pendingInstall, installComplete, installComplete);
+        when(portBindingsResolver.resolveBindings(installComplete)).thenReturn(List.of());
+        when(dockerService.createContainer(any()))
+                .thenReturn(
+                        new DockerContainerCreateResult("container-1", List.of()),
+                        new DockerContainerCreateResult("container-2", List.of())
+                );
+        when(installScriptRunner.runScript(any(), any(), any())).thenReturn(0);
+
+        InstanceStartService service = new InstanceStartService(
+                dockerService,
+                registryService,
+                workspaceLayout,
+                portBindingsResolver,
+                nodeConfig(),
+                instanceProperties(),
+                pluginRegistry(),
+                installScriptRunner
+        );
+
+        service.startInstance(instanceId, "first-start");
+        service.startInstance(instanceId, "second-start");
+
+        verify(installScriptRunner, times(1))
+                .runScript(eq(mergedDir), eq("touch .install-sentinel"), any());
+        verify(registryService, times(1)).recordInstallCompleted(workspace, instanceId);
+        verify(dockerService, times(2)).createContainer(any());
+        verify(dockerService).startContainer("container-1");
+        verify(dockerService).startContainer("container-2");
     }
 
     @Test

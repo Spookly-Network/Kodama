@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
@@ -25,6 +26,18 @@ class InstanceInstallScriptRunnerTest {
         int exitCode = runner.runScript(tempDir, "test \"$TEST_FLAG\" = \"ok\"", Map.of("TEST_FLAG", "ok"));
 
         assertThat(exitCode).isZero();
+    }
+
+    @Test
+    void runScriptCanCreateSentinelFileInWorkingDirectory() throws Exception {
+        InstanceInstallScriptRunner runner = runnerWithTimeoutSeconds(10);
+        Path sentinelFile = tempDir.resolve(".install-sentinel");
+
+        int exitCode = runner.runScript(tempDir, "printf 'ready' > .install-sentinel", Map.of());
+
+        assertThat(exitCode).isZero();
+        assertThat(Files.exists(sentinelFile)).isTrue();
+        assertThat(Files.readString(sentinelFile)).isEqualTo("ready");
     }
 
     @Test
