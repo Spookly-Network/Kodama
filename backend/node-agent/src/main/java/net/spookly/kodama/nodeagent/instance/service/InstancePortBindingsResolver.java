@@ -27,37 +27,11 @@ public class InstancePortBindingsResolver {
             throw new InstanceStartException("Instance registry is required to resolve ports");
         }
         PortsJsonResult portsJsonResult = parsePortsJson(registry.portsJson());
-        if (!portsJsonResult.directBindings().isEmpty()) {
+        if (portsJsonResult.portsJsonPresent()) {
             return portsJsonResult.directBindings();
         }
-        Map<String, Integer> containerPorts = portsJsonResult.containerPorts();
         Map<String, Integer> hostPorts = parseHostPorts(registry.variables());
-        if (!containerPorts.isEmpty()) {
-            return resolveFromContainerPorts(containerPorts, hostPorts);
-        }
         return resolveFromHostPorts(hostPorts);
-    }
-
-    private List<DockerPortBinding> resolveFromContainerPorts(
-            Map<String, Integer> containerPorts,
-            Map<String, Integer> hostPorts
-    ) {
-        List<DockerPortBinding> bindings = new ArrayList<>();
-        for (Map.Entry<String, Integer> entry : containerPorts.entrySet()) {
-            String portName = entry.getKey();
-            int containerPort = entry.getValue();
-            String normalizedName = normalizePortName(portName);
-            String hostKey = "PORT_" + normalizedName;
-            Integer hostPort = hostPorts.get(hostKey);
-            if (hostPort == null && containerPorts.size() == 1) {
-                hostPort = hostPorts.get("PORT");
-            }
-            if (hostPort == null) {
-                throw new InstanceStartException("Missing host port mapping for " + portName);
-            }
-            bindings.add(new DockerPortBinding(containerPort, hostPort, null));
-        }
-        return bindings;
     }
 
     private List<DockerPortBinding> resolveFromHostPorts(Map<String, Integer> hostPorts) {
@@ -74,22 +48,16 @@ public class InstancePortBindingsResolver {
 
     private PortsJsonResult parsePortsJson(String portsJson) {
         if (portsJson == null || portsJson.isBlank()) {
-            return PortsJsonResult.empty();
+            return PortsJsonResult.empty(false);
         }
         try {
             JsonNode root = objectMapper.readTree(portsJson);
-            if (root == null || root.isNull()) {
-                return PortsJsonResult.empty();
+            if (root != null && root.isArray()) {
+                return new PortsJsonResult(parseDirectBindings(root), true);
             }
-            if (root.isArray()) {
-                return new PortsJsonResult(parseDirectBindings(root), Map.of());
-            }
-            if (root.isObject()) {
-                return new PortsJsonResult(List.of(), parseLegacyContainerPorts(root));
-            }
-            throw new InstanceStartException("portsJson must be a JSON object or array");
+            throw new InstanceStartException("portsJson must be a JSON array");
         } catch (JsonProcessingException ex) {
-            throw new InstanceStartException("portsJson must be a JSON object or array", ex);
+            throw new InstanceStartException("portsJson must be a JSON array", ex);
         }
     }
 
@@ -100,6 +68,7 @@ public class InstancePortBindingsResolver {
             if (entry == null || !entry.isObject()) {
                 throw new InstanceStartException("portsJson array entry must be an object at index " + index);
             }
+            parseName(entry.get("name"), index);
             int containerPort = parsePort(entry.get("containerPort"), "portsJson[" + index + "].containerPort");
             int hostPort = parsePort(entry.get("hostPort"), "portsJson[" + index + "].hostPort");
             String protocol = parseProtocol(entry.get("protocol"), index);
@@ -107,16 +76,6 @@ public class InstancePortBindingsResolver {
             index++;
         }
         return bindings;
-    }
-
-    private Map<String, Integer> parseLegacyContainerPorts(JsonNode root) {
-        Map<String, Integer> ports = new LinkedHashMap<>();
-        root.fields().forEachRemaining(entry -> {
-            String name = entry.getKey();
-            int port = parsePort(entry.getValue(), "portsJson", name);
-            ports.put(name, port);
-        });
-        return ports;
     }
 
     private Map<String, Integer> parseHostPorts(Map<String, String> variables) {
@@ -210,31 +169,26 @@ public class InstancePortBindingsResolver {
         return protocol;
     }
 
-    private String normalizePortName(String name) {
-        if (name == null || name.isBlank()) {
-            return "PORT";
+    private String parseName(JsonNode node, int index) {
+        if (node == null || node.isNull()) {
+            throw new InstanceStartException("portsJson[" + index + "].name is required");
         }
-        StringBuilder normalized = new StringBuilder();
-        for (char ch : name.trim().toCharArray()) {
-            if (Character.isLetterOrDigit(ch)) {
-                normalized.append(Character.toUpperCase(ch));
-            } else {
-                normalized.append('_');
-            }
+        if (!node.isTextual()) {
+            throw new InstanceStartException("portsJson[" + index + "].name must be a string");
         }
-        String value = normalized.toString();
-        if (value.isEmpty()) {
-            return "PORT";
+        String name = node.textValue().trim();
+        if (name.isEmpty()) {
+            throw new InstanceStartException("portsJson[" + index + "].name must not be blank");
         }
-        return value;
+        return name;
     }
 
     private record PortsJsonResult(
             List<DockerPortBinding> directBindings,
-            Map<String, Integer> containerPorts
+            boolean portsJsonPresent
     ) {
-        private static PortsJsonResult empty() {
-            return new PortsJsonResult(List.of(), Map.of());
+        private static PortsJsonResult empty(boolean portsJsonPresent) {
+            return new PortsJsonResult(List.of(), portsJsonPresent);
         }
     }
 }

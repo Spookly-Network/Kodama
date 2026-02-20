@@ -42,8 +42,8 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
   - reads `instance.json` from the workspace,
   - requires `containerImage` and `startCommand` from the instance registry runtime fields,
   - creates a Docker container with the merged workspace mounted,
-  - maps ports from `portsJson` (preferred array format with `containerPort` + `hostPort`; legacy object format remains supported),
-  - falls back to `PORT`/`PORT_<NAME>` variables when `portsJson` is absent,
+  - maps ports from `portsJson` array entries (`containerPort` + `hostPort`),
+  - treats `portsJson` arrays as authoritative and only falls back to `PORT`/`PORT_<NAME>` variables when `portsJson` is absent,
   - injects env vars (including `INSTANCE_ID` and `NODE_NAME`),
   - records the container id to the registry,
   - then calls back with `/api/nodes/{nodeId}/instances/{instanceId}/running`.
@@ -85,6 +85,8 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - Stop errors attempt a `/failed` callback before returning the error.
 - Destroy errors attempt a `/failed` callback before returning the error.
 - Missing `portsJson` is allowed; port bindings fall back to `PORT`/`PORT_*` variables.
+- `portsJson` arrays are authoritative (including empty arrays), so variable fallback is skipped when array format is present.
+- Non-array `portsJson` values are rejected at start with `portsJson must be a JSON array`.
 - Invalid or missing port mappings result in a failed start and a `/failed` callback attempt.
 - Port allocation fails prepare when no free host port exists in a required range, and the node attempts a `/failed` callback.
 - If a success callback (`/prepared`, `/running`, `/stopped`, `/destroyed`) fails after the command completes, the node logs the error but does not send `/failed`.
