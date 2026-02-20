@@ -22,32 +22,31 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/instances/{id}/template-assignments")
 public class InstanceTemplateAssignmentController {
 
-    private final TemplateAssignmentService templateAssignmentService;
+  private final TemplateAssignmentService templateAssignmentService;
 
-    public InstanceTemplateAssignmentController(TemplateAssignmentService templateAssignmentService) {
-        this.templateAssignmentService = templateAssignmentService;
-    }
+  public InstanceTemplateAssignmentController(TemplateAssignmentService templateAssignmentService) {
+    this.templateAssignmentService = templateAssignmentService;
+  }
 
-    @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
-    public List<TemplateAssignmentDto> listAssignments(@PathVariable("id") UUID instanceId) {
-        return templateAssignmentService.listInstanceAssignments(instanceId);
-    }
+  @GetMapping
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
+  public List<TemplateAssignmentDto> listAssignments(@PathVariable("id") UUID instanceId) {
+    return templateAssignmentService.listInstanceAssignments(instanceId);
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
-    public TemplateAssignmentDto addAssignment(
-            @PathVariable("id") UUID instanceId,
-            @Valid @RequestBody TemplateAssignmentRequest request
-    ) {
-        return templateAssignmentService.addInstanceAssignment(instanceId, request);
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+  public TemplateAssignmentDto addAssignment(
+      @PathVariable("id") UUID instanceId, @Valid @RequestBody TemplateAssignmentRequest request) {
+    return templateAssignmentService.addInstanceAssignment(instanceId, request);
+  }
 
-    @DeleteMapping("/{assignmentId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
-    public void removeAssignment(@PathVariable("id") UUID instanceId, @PathVariable UUID assignmentId) {
-        templateAssignmentService.removeInstanceAssignment(instanceId, assignmentId);
-    }
+  @DeleteMapping("/{assignmentId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR')")
+  public void removeAssignment(
+      @PathVariable("id") UUID instanceId, @PathVariable UUID assignmentId) {
+    templateAssignmentService.removeInstanceAssignment(instanceId, assignmentId);
+  }
 }

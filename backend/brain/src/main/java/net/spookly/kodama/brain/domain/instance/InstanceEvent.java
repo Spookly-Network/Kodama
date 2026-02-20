@@ -25,30 +25,28 @@ import org.hibernate.annotations.UuidGenerator;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class InstanceEvent {
 
-    @Id
-    @GeneratedValue
-    @UuidGenerator
-    private UUID id;
+  @Id @GeneratedValue @UuidGenerator private UUID id;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "instance_id", nullable = false)
-    private Instance instance;
+  @ManyToOne(optional = false, fetch = FetchType.LAZY)
+  @JoinColumn(name = "instance_id", nullable = false)
+  private Instance instance;
 
-    @Column(nullable = false)
-    private OffsetDateTime timestamp;
+  @Column(nullable = false)
+  private OffsetDateTime timestamp;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private InstanceEventType type;
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  private InstanceEventType type;
 
-    @Lob
-    @Column(columnDefinition = "TEXT")
-    private String payloadJson;
+  @Lob
+  @Column(columnDefinition = "TEXT")
+  private String payloadJson;
 
-    public InstanceEvent(Instance instance, OffsetDateTime timestamp, InstanceEventType type, String payloadJson) {
-        this.instance = instance;
-        this.timestamp = timestamp;
-        this.type = type;
-        this.payloadJson = payloadJson;
-    }
+  public InstanceEvent(
+      Instance instance, OffsetDateTime timestamp, InstanceEventType type, String payloadJson) {
+    this.instance = instance;
+    this.timestamp = timestamp;
+    this.type = type;
+    this.payloadJson = payloadJson;
+  }
 }

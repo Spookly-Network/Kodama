@@ -23,38 +23,36 @@ import org.hibernate.annotations.UuidGenerator;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User {
 
-    @Id
-    @GeneratedValue
-    @UuidGenerator
-    private UUID id;
+  @Id @GeneratedValue @UuidGenerator private UUID id;
 
-    @Column(nullable = false, unique = true)
-    private String username;
+  @Column(nullable = false, unique = true)
+  private String username;
 
-    @Column(name = "display_name", nullable = false)
-    private String displayName;
+  @Column(name = "display_name", nullable = false)
+  private String displayName;
 
-    @Column(nullable = false, unique = true)
-    private String email;
+  @Column(nullable = false, unique = true)
+  private String email;
 
-    @Column(name = "auth_provider", nullable = false, length = 64)
-    private String authProvider;
+  @Column(name = "auth_provider", nullable = false, length = 64)
+  private String authProvider;
 
-    @Column(name = "external_id")
-    private String externalId;
+  @Column(name = "external_id")
+  private String externalId;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<UserRole> userRoles = new HashSet<>();
+  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+  private Set<UserRole> userRoles = new HashSet<>();
 
-    public User(String username, String displayName, String email, String authProvider, String externalId) {
-        this.username = Objects.requireNonNull(username, "username");
-        this.displayName = Objects.requireNonNull(displayName, "displayName");
-        this.email = Objects.requireNonNull(email, "email");
-        this.authProvider = Objects.requireNonNull(authProvider, "authProvider");
-        this.externalId = externalId;
-    }
+  public User(
+      String username, String displayName, String email, String authProvider, String externalId) {
+    this.username = Objects.requireNonNull(username, "username");
+    this.displayName = Objects.requireNonNull(displayName, "displayName");
+    this.email = Objects.requireNonNull(email, "email");
+    this.authProvider = Objects.requireNonNull(authProvider, "authProvider");
+    this.externalId = externalId;
+  }
 
-    public void addRole(RoleEntity role) {
-        userRoles.add(new UserRole(this, role));
-    }
+  public void addRole(RoleEntity role) {
+    userRoles.add(new UserRole(this, role));
+  }
 }

@@ -13,19 +13,18 @@ import net.spookly.kodama.brain.domain.instance.InstanceGroup;
 @AllArgsConstructor
 public class InstanceGroupDto {
 
-    private UUID id;
-    private String name;
-    private String description;
-    private OffsetDateTime createdAt;
-    private OffsetDateTime updatedAt;
+  private UUID id;
+  private String name;
+  private String description;
+  private OffsetDateTime createdAt;
+  private OffsetDateTime updatedAt;
 
-    public static InstanceGroupDto fromEntity(InstanceGroup group) {
-        return new InstanceGroupDto(
-                group.getId(),
-                group.getName(),
-                group.getDescription(),
-                group.getCreatedAt(),
-                group.getUpdatedAt()
-        );
-    }
+  public static InstanceGroupDto fromEntity(InstanceGroup group) {
+    return new InstanceGroupDto(
+        group.getId(),
+        group.getName(),
+        group.getDescription(),
+        group.getCreatedAt(),
+        group.getUpdatedAt());
+  }
 }

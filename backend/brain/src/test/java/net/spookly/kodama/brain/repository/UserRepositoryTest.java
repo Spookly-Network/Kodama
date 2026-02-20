@@ -20,39 +20,36 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class UserRepositoryTest {
 
-    @Container
-    private static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4.0");
+  @Container private static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4.0");
 
-    @DynamicPropertySource
-    static void configureDatasource(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-        registry.add("spring.datasource.driver-class-name", mysql::getDriverClassName);
-    }
+  @DynamicPropertySource
+  static void configureDatasource(DynamicPropertyRegistry registry) {
+    registry.add("spring.datasource.url", mysql::getJdbcUrl);
+    registry.add("spring.datasource.username", mysql::getUsername);
+    registry.add("spring.datasource.password", mysql::getPassword);
+    registry.add("spring.datasource.driver-class-name", mysql::getDriverClassName);
+  }
 
-    @Autowired
-    private UserRepository userRepository;
+  @Autowired private UserRepository userRepository;
 
-    @Autowired
-    private RoleRepository roleRepository;
+  @Autowired private RoleRepository roleRepository;
 
-    @Test
-    void saveUserWithRoles() {
-        RoleEntity admin = roleRepository.save(new RoleEntity(Role.ADMIN));
-        RoleEntity viewer = roleRepository.save(new RoleEntity(Role.VIEWER));
+  @Test
+  void saveUserWithRoles() {
+    RoleEntity admin = roleRepository.save(new RoleEntity(Role.ADMIN));
+    RoleEntity viewer = roleRepository.save(new RoleEntity(Role.VIEWER));
 
-        User user = new User("nina", "Nina Winters", "nina@example.com", "local", "nina-1");
-        user.addRole(admin);
-        user.addRole(viewer);
+    User user = new User("nina", "Nina Winters", "nina@example.com", "local", "nina-1");
+    user.addRole(admin);
+    user.addRole(viewer);
 
-        User saved = userRepository.save(user);
-        User persisted = userRepository.findById(saved.getId()).orElseThrow();
+    User saved = userRepository.save(user);
+    User persisted = userRepository.findById(saved.getId()).orElseThrow();
 
-        assertThat(persisted.getUsername()).isEqualTo("nina");
-        assertThat(persisted.getEmail()).isEqualTo("nina@example.com");
-        assertThat(persisted.getUserRoles())
-                .extracting(userRole -> userRole.getRole().getName())
-                .containsExactlyInAnyOrder(Role.ADMIN, Role.VIEWER);
-    }
+    assertThat(persisted.getUsername()).isEqualTo("nina");
+    assertThat(persisted.getEmail()).isEqualTo("nina@example.com");
+    assertThat(persisted.getUserRoles())
+        .extracting(userRole -> userRole.getRole().getName())
+        .containsExactlyInAnyOrder(Role.ADMIN, Role.VIEWER);
+  }
 }

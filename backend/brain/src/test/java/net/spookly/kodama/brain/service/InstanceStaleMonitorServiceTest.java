@@ -29,97 +29,84 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class InstanceStaleMonitorServiceTest {
 
-    @Container
-    private static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4.0");
+  @Container private static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4.0");
 
-    @DynamicPropertySource
-    static void configureDatasource(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-        registry.add("spring.datasource.driver-class-name", mysql::getDriverClassName);
-    }
+  @DynamicPropertySource
+  static void configureDatasource(DynamicPropertyRegistry registry) {
+    registry.add("spring.datasource.url", mysql::getJdbcUrl);
+    registry.add("spring.datasource.username", mysql::getUsername);
+    registry.add("spring.datasource.password", mysql::getPassword);
+    registry.add("spring.datasource.driver-class-name", mysql::getDriverClassName);
+  }
 
-    @Autowired
-    private InstanceRepository instanceRepository;
+  @Autowired private InstanceRepository instanceRepository;
 
-    @Autowired
-    private InstanceEventRepository instanceEventRepository;
+  @Autowired private InstanceEventRepository instanceEventRepository;
 
-    private InstanceStaleMonitorService monitorService;
+  private InstanceStaleMonitorService monitorService;
 
-    @BeforeEach
-    void setUp() {
-        InstanceStaleDetectionProperties properties = new InstanceStaleDetectionProperties();
-        properties.setPreparingTimeoutSeconds(60);
-        properties.setStartingTimeoutSeconds(120);
-        InstanceStateMachine instanceStateMachine = new InstanceStateMachine(instanceEventRepository);
-        monitorService = new InstanceStaleMonitorService(instanceRepository, instanceStateMachine, properties);
-    }
+  @BeforeEach
+  void setUp() {
+    InstanceStaleDetectionProperties properties = new InstanceStaleDetectionProperties();
+    properties.setPreparingTimeoutSeconds(60);
+    properties.setStartingTimeoutSeconds(120);
+    InstanceStateMachine instanceStateMachine = new InstanceStateMachine(instanceEventRepository);
+    monitorService =
+        new InstanceStaleMonitorService(instanceRepository, instanceStateMachine, properties);
+  }
 
-    @Test
-    void markStaleInstancesFailedMarksTimedOutPreparingAndStarting() {
-        OffsetDateTime now = OffsetDateTime.of(2025, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC);
-        Instance stalePreparing = instanceRepository.save(buildInstance(
-                "instance-preparing-stale",
-                InstanceState.PREPARING,
-                now.minusSeconds(61)
-        ));
-        Instance staleStarting = instanceRepository.save(buildInstance(
-                "instance-starting-stale",
-                InstanceState.STARTING,
-                now.minusSeconds(121)
-        ));
-        Instance freshPreparing = instanceRepository.save(buildInstance(
-                "instance-preparing-fresh",
-                InstanceState.PREPARING,
-                now.minusSeconds(30)
-        ));
+  @Test
+  void markStaleInstancesFailedMarksTimedOutPreparingAndStarting() {
+    OffsetDateTime now = OffsetDateTime.of(2025, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC);
+    Instance stalePreparing =
+        instanceRepository.save(
+            buildInstance(
+                "instance-preparing-stale", InstanceState.PREPARING, now.minusSeconds(61)));
+    Instance staleStarting =
+        instanceRepository.save(
+            buildInstance(
+                "instance-starting-stale", InstanceState.STARTING, now.minusSeconds(121)));
+    Instance freshPreparing =
+        instanceRepository.save(
+            buildInstance(
+                "instance-preparing-fresh", InstanceState.PREPARING, now.minusSeconds(30)));
 
-        monitorService.markStaleInstancesFailed(now);
+    monitorService.markStaleInstancesFailed(now);
 
-        Instance stalePreparingPersisted = instanceRepository.findById(stalePreparing.getId()).orElseThrow();
-        Instance staleStartingPersisted = instanceRepository.findById(staleStarting.getId()).orElseThrow();
-        Instance freshPreparingPersisted = instanceRepository.findById(freshPreparing.getId()).orElseThrow();
+    Instance stalePreparingPersisted =
+        instanceRepository.findById(stalePreparing.getId()).orElseThrow();
+    Instance staleStartingPersisted =
+        instanceRepository.findById(staleStarting.getId()).orElseThrow();
+    Instance freshPreparingPersisted =
+        instanceRepository.findById(freshPreparing.getId()).orElseThrow();
 
-        assertThat(stalePreparingPersisted.getState()).isEqualTo(InstanceState.FAILED);
-        assertThat(stalePreparingPersisted.getFailureReason()).isEqualTo("timeout");
-        assertThat(stalePreparingPersisted.getUpdatedAt()).isEqualTo(now);
+    assertThat(stalePreparingPersisted.getState()).isEqualTo(InstanceState.FAILED);
+    assertThat(stalePreparingPersisted.getFailureReason()).isEqualTo("timeout");
+    assertThat(stalePreparingPersisted.getUpdatedAt()).isEqualTo(now);
 
-        assertThat(staleStartingPersisted.getState()).isEqualTo(InstanceState.FAILED);
-        assertThat(staleStartingPersisted.getFailureReason()).isEqualTo("timeout");
-        assertThat(staleStartingPersisted.getUpdatedAt()).isEqualTo(now);
+    assertThat(staleStartingPersisted.getState()).isEqualTo(InstanceState.FAILED);
+    assertThat(staleStartingPersisted.getFailureReason()).isEqualTo("timeout");
+    assertThat(staleStartingPersisted.getUpdatedAt()).isEqualTo(now);
 
-        assertThat(freshPreparingPersisted.getState()).isEqualTo(InstanceState.PREPARING);
-        assertThat(freshPreparingPersisted.getFailureReason()).isNull();
+    assertThat(freshPreparingPersisted.getState()).isEqualTo(InstanceState.PREPARING);
+    assertThat(freshPreparingPersisted.getFailureReason()).isNull();
 
-        List<InstanceEvent> preparingEvents =
-                instanceEventRepository.findByInstanceOrderByTimestampAsc(stalePreparingPersisted);
-        assertThat(preparingEvents).hasSize(1);
-        assertThat(preparingEvents.getFirst().getType()).isEqualTo(InstanceEventType.FAILURE_TIMEOUT);
+    List<InstanceEvent> preparingEvents =
+        instanceEventRepository.findByInstanceOrderByTimestampAsc(stalePreparingPersisted);
+    assertThat(preparingEvents).hasSize(1);
+    assertThat(preparingEvents.getFirst().getType()).isEqualTo(InstanceEventType.FAILURE_TIMEOUT);
 
-        List<InstanceEvent> startingEvents =
-                instanceEventRepository.findByInstanceOrderByTimestampAsc(staleStartingPersisted);
-        assertThat(startingEvents).hasSize(1);
-        assertThat(startingEvents.getFirst().getType()).isEqualTo(InstanceEventType.FAILURE_TIMEOUT);
+    List<InstanceEvent> startingEvents =
+        instanceEventRepository.findByInstanceOrderByTimestampAsc(staleStartingPersisted);
+    assertThat(startingEvents).hasSize(1);
+    assertThat(startingEvents.getFirst().getType()).isEqualTo(InstanceEventType.FAILURE_TIMEOUT);
 
-        assertThat(instanceEventRepository.findByInstanceOrderByTimestampAsc(freshPreparingPersisted)).isEmpty();
-    }
+    assertThat(instanceEventRepository.findByInstanceOrderByTimestampAsc(freshPreparingPersisted))
+        .isEmpty();
+  }
 
-    private Instance buildInstance(String name, InstanceState state, OffsetDateTime updatedAt) {
-        return new Instance(
-                name,
-                name,
-                state,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                updatedAt,
-                updatedAt
-        );
-    }
+  private Instance buildInstance(String name, InstanceState state, OffsetDateTime updatedAt) {
+    return new Instance(
+        name, name, state, null, null, null, null, null, null, null, updatedAt, updatedAt);
+  }
 }

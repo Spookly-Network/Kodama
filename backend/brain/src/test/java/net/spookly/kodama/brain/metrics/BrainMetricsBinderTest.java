@@ -29,111 +29,96 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class BrainMetricsBinderTest {
 
-    @Container
-    private static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4.0");
+  @Container private static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4.0");
 
-    @DynamicPropertySource
-    static void configureDatasource(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-        registry.add("spring.datasource.driver-class-name", mysql::getDriverClassName);
-    }
+  @DynamicPropertySource
+  static void configureDatasource(DynamicPropertyRegistry registry) {
+    registry.add("spring.datasource.url", mysql::getJdbcUrl);
+    registry.add("spring.datasource.username", mysql::getUsername);
+    registry.add("spring.datasource.password", mysql::getPassword);
+    registry.add("spring.datasource.driver-class-name", mysql::getDriverClassName);
+  }
 
-    @Autowired
-    private InstanceRepository instanceRepository;
+  @Autowired private InstanceRepository instanceRepository;
 
-    @Autowired
-    private NodeRepository nodeRepository;
+  @Autowired private NodeRepository nodeRepository;
 
-    @Test
-    void gaugesExposeInstanceAndNodeCounts() {
-        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
+  @Test
+  void gaugesExposeInstanceAndNodeCounts() {
+    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS);
 
-        Node onlineNode = new Node(
-                "node-online",
-                "eu-central-1",
-                NodeStatus.ONLINE,
-                false,
-                4,
-                1,
-                now,
-                "1.0.0",
-                null,
-                "http://node-online.internal"
-        );
-        Node offlineNode = new Node(
-                "node-offline",
-                "us-east-1",
-                NodeStatus.OFFLINE,
-                false,
-                2,
-                0,
-                now,
-                "1.0.0",
-                null,
-                "http://node-offline.internal"
-        );
-        nodeRepository.saveAll(List.of(onlineNode, offlineNode));
+    Node onlineNode =
+        new Node(
+            "node-online",
+            "eu-central-1",
+            NodeStatus.ONLINE,
+            false,
+            4,
+            1,
+            now,
+            "1.0.0",
+            null,
+            "http://node-online.internal");
+    Node offlineNode =
+        new Node(
+            "node-offline",
+            "us-east-1",
+            NodeStatus.OFFLINE,
+            false,
+            2,
+            0,
+            now,
+            "1.0.0",
+            null,
+            "http://node-offline.internal");
+    nodeRepository.saveAll(List.of(onlineNode, offlineNode));
 
-        Instance runningInstance = new Instance(
-                "inst-1",
-                "Instance 1",
-                InstanceState.RUNNING,
-                null,
-                onlineNode,
-                null,
-                null,
-                null,
-                null,
-                null,
-                now,
-                now
-        );
-        Instance requestedInstance = new Instance(
-                "inst-2",
-                "Instance 2",
-                InstanceState.REQUESTED,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                now,
-                now
-        );
-        instanceRepository.saveAll(List.of(runningInstance, requestedInstance));
+    Instance runningInstance =
+        new Instance(
+            "inst-1",
+            "Instance 1",
+            InstanceState.RUNNING,
+            null,
+            onlineNode,
+            null,
+            null,
+            null,
+            null,
+            null,
+            now,
+            now);
+    Instance requestedInstance =
+        new Instance(
+            "inst-2",
+            "Instance 2",
+            InstanceState.REQUESTED,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            now,
+            now);
+    instanceRepository.saveAll(List.of(runningInstance, requestedInstance));
 
-        SimpleMeterRegistry registry = new SimpleMeterRegistry();
-        BrainMetricsBinder binder = new BrainMetricsBinder(instanceRepository, nodeRepository);
-        binder.bindTo(registry);
+    SimpleMeterRegistry registry = new SimpleMeterRegistry();
+    BrainMetricsBinder binder = new BrainMetricsBinder(instanceRepository, nodeRepository);
+    binder.bindTo(registry);
 
-        assertThat(registry.get("kodama.instances.state")
-                .tag("state", "RUNNING")
-                .gauge()
-                .value()).isEqualTo(1.0);
-        assertThat(registry.get("kodama.instances.state")
-                .tag("state", "REQUESTED")
-                .gauge()
-                .value()).isEqualTo(1.0);
-        assertThat(registry.get("kodama.instances.state")
-                .tag("state", "FAILED")
-                .gauge()
-                .value()).isEqualTo(0.0);
+    assertThat(registry.get("kodama.instances.state").tag("state", "RUNNING").gauge().value())
+        .isEqualTo(1.0);
+    assertThat(registry.get("kodama.instances.state").tag("state", "REQUESTED").gauge().value())
+        .isEqualTo(1.0);
+    assertThat(registry.get("kodama.instances.state").tag("state", "FAILED").gauge().value())
+        .isEqualTo(0.0);
 
-        assertThat(registry.get("kodama.nodes.status")
-                .tag("status", "ONLINE")
-                .gauge()
-                .value()).isEqualTo(1.0);
-        assertThat(registry.get("kodama.nodes.status")
-                .tag("status", "OFFLINE")
-                .gauge()
-                .value()).isEqualTo(1.0);
-        assertThat(registry.get("kodama.nodes.status")
-                .tag("status", "UNKNOWN")
-                .gauge()
-                .value()).isEqualTo(0.0);
-    }
+    assertThat(registry.get("kodama.nodes.status").tag("status", "ONLINE").gauge().value())
+        .isEqualTo(1.0);
+    assertThat(registry.get("kodama.nodes.status").tag("status", "OFFLINE").gauge().value())
+        .isEqualTo(1.0);
+    assertThat(registry.get("kodama.nodes.status").tag("status", "UNKNOWN").gauge().value())
+        .isEqualTo(0.0);
+  }
 }

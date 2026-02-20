@@ -22,16 +22,13 @@ import org.hibernate.annotations.UuidGenerator;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class RoleEntity {
 
-    @Id
-    @GeneratedValue
-    @UuidGenerator
-    private UUID id;
+  @Id @GeneratedValue @UuidGenerator private UUID id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, unique = true, length = 32)
-    private Role name;
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, unique = true, length = 32)
+  private Role name;
 
-    public RoleEntity(Role name) {
-        this.name = Objects.requireNonNull(name, "name");
-    }
+  public RoleEntity(Role name) {
+    this.name = Objects.requireNonNull(name, "name");
+  }
 }

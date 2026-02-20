@@ -16,7 +16,7 @@ Validation: `name`, `type`, `s3Key`, `version`, and `checksum` must be provided.
 
 - `GET /api/instances` — list instances.
 - `GET /api/instances/{id}` — fetch a single instance (404 if missing).
-- `POST /api/instances` — create an instance. Body: `name`, `requestedBy`, and `templateLayers` (each with required `templateId` and optional `templateVersionId`/`priority`) are required. Optional: `displayName`, `nodeId`, `region`, `tags`, `devModeAllowed`, `variables` (map), `variablesJson`, `portsJson`.
+- `POST /api/instances` — create an instance. `name` is required. Without `blueprintId`, `templateLayers` is required (each with required `templateId` and optional `templateVersionId`/`priority`). With `blueprintId`, blueprint defaults are applied and request fields act as replacement overrides (`templateLayers`, `groupIds`, `portDefinitions`, variables, and runtime fields). Optional: `displayName`, `requestedBy`, `nodeId`, `region`, `tags`, `devModeAllowed`, `variables` (map), `variablesJson`, `portsJson`.
 - `GET /api/instances/{id}/template-assignments` — list direct instance assignments.
 - `POST /api/instances/{id}/template-assignments` — add a direct instance assignment.
 - `DELETE /api/instances/{id}/template-assignments/{assignmentId}` — remove a direct instance assignment.
@@ -30,4 +30,13 @@ Validation: `name`, `type`, `s3Key`, `version`, and `checksum` must be provided.
 - `POST /api/instance-groups/{groupId}/template-assignments` — add a group assignment.
 - `DELETE /api/instance-groups/{groupId}/template-assignments/{assignmentId}` — remove a group assignment.
 
-Validation: at least one template assignment with required `templateId`. Duplicate instance names return HTTP 409. Unknown nodes, templates, or template versions return HTTP 404. `variables` and `variablesJson` are mutually exclusive.
+Validation: at least one template assignment with required `templateId` is required for non-blueprint creation. Deleted blueprints are rejected for new instance creation. Duplicate instance names return HTTP 409. Unknown nodes, templates, template versions, groups, or blueprints return HTTP 404. `variables` and `variablesJson` are mutually exclusive.
+
+## Blueprint API
+
+- `GET /api/blueprints/{id}/template-assignments` — list blueprint assignments.
+- `POST /api/blueprints/{id}/template-assignments` — add a blueprint assignment.
+- `DELETE /api/blueprints/{id}/template-assignments/{assignmentId}` — remove a blueprint assignment.
+- `GET /api/blueprints/{id}/ports` — list blueprint port definitions.
+- `POST /api/blueprints/{id}/ports` — add a blueprint port definition.
+- `DELETE /api/blueprints/{id}/ports/{portId}` — remove a blueprint port definition.

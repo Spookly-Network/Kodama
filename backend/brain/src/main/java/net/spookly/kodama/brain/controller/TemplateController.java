@@ -25,58 +25,55 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/templates")
 public class TemplateController {
 
-    // Used when auth is disabled and no principal is available.
-    private static final String SYSTEM_USERNAME = "system";
+  // Used when auth is disabled and no principal is available.
+  private static final String SYSTEM_USERNAME = "system";
 
-    private final TemplateService templateService;
+  private final TemplateService templateService;
 
-    public TemplateController(TemplateService templateService) {
-        this.templateService = templateService;
+  public TemplateController(TemplateService templateService) {
+    this.templateService = templateService;
+  }
+
+  @GetMapping
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
+  public List<TemplateDto> listTemplates() {
+    return templateService.listTemplates();
+  }
+
+  @GetMapping("/{id}")
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
+  public TemplateDto getTemplate(@PathVariable UUID id) {
+    return templateService.getTemplate(id);
+  }
+
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+  public TemplateDto createTemplate(
+      @Valid @RequestBody CreateTemplateRequest request,
+      @AuthenticationPrincipal UserPrincipal principal) {
+    String createdByUsername = resolveCreatedByUsername(principal);
+    return templateService.createTemplate(request, createdByUsername);
+  }
+
+  @PostMapping("/{id}/versions")
+  @ResponseStatus(HttpStatus.CREATED)
+  @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+  public TemplateVersionDto addVersion(
+      @PathVariable UUID id, @Valid @RequestBody CreateTemplateVersionRequest request) {
+    return templateService.addVersion(id, request);
+  }
+
+  @GetMapping("/{id}/versions")
+  @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
+  public List<TemplateVersionDto> listVersions(@PathVariable UUID id) {
+    return templateService.listVersions(id);
+  }
+
+  private String resolveCreatedByUsername(UserPrincipal principal) {
+    if (principal == null || principal.getUsername() == null || principal.getUsername().isBlank()) {
+      return SYSTEM_USERNAME;
     }
-
-    @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
-    public List<TemplateDto> listTemplates() {
-        return templateService.listTemplates();
-    }
-
-    @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
-    public TemplateDto getTemplate(@PathVariable UUID id) {
-        return templateService.getTemplate(id);
-    }
-
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    public TemplateDto createTemplate(
-            @Valid @RequestBody CreateTemplateRequest request,
-            @AuthenticationPrincipal UserPrincipal principal
-    ) {
-        String createdByUsername = resolveCreatedByUsername(principal);
-        return templateService.createTemplate(request, createdByUsername);
-    }
-
-    @PostMapping("/{id}/versions")
-    @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    public TemplateVersionDto addVersion(
-            @PathVariable UUID id,
-            @Valid @RequestBody CreateTemplateVersionRequest request
-    ) {
-        return templateService.addVersion(id, request);
-    }
-
-    @GetMapping("/{id}/versions")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_OPERATOR','ROLE_VIEWER')")
-    public List<TemplateVersionDto> listVersions(@PathVariable UUID id) {
-        return templateService.listVersions(id);
-    }
-
-    private String resolveCreatedByUsername(UserPrincipal principal) {
-        if (principal == null || principal.getUsername() == null || principal.getUsername().isBlank()) {
-            return SYSTEM_USERNAME;
-        }
-        return principal.getUsername();
-    }
+    return principal.getUsername();
+  }
 }

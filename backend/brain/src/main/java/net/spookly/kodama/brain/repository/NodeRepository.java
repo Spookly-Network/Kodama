@@ -12,9 +12,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface NodeRepository extends JpaRepository<@NonNull Node, @NonNull UUID> {
 
-    Optional<Node> findByName(String name);
+  Optional<Node> findByName(String name);
 
-    long countByStatus(NodeStatus status);
+  long countByStatus(NodeStatus status);
 
-    List<Node> findByStatusNotAndLastHeartbeatAtBefore(NodeStatus status, OffsetDateTime threshold);
+  List<Node> findByStatusNotAndLastHeartbeatAtBefore(NodeStatus status, OffsetDateTime threshold);
 }

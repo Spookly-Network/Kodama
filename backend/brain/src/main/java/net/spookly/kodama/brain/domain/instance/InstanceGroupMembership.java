@@ -19,22 +19,21 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class InstanceGroupMembership {
 
-    @EmbeddedId
-    private InstanceGroupMembershipId id = new InstanceGroupMembershipId();
+  @EmbeddedId private InstanceGroupMembershipId id = new InstanceGroupMembershipId();
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("instanceId")
-    @JoinColumn(name = "instance_id", nullable = false)
-    private Instance instance;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @MapsId("instanceId")
+  @JoinColumn(name = "instance_id", nullable = false)
+  private Instance instance;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("groupId")
-    @JoinColumn(name = "group_id", nullable = false)
-    private InstanceGroup group;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @MapsId("groupId")
+  @JoinColumn(name = "group_id", nullable = false)
+  private InstanceGroup group;
 
-    public InstanceGroupMembership(Instance instance, InstanceGroup group) {
-        this.instance = Objects.requireNonNull(instance, "instance");
-        this.group = Objects.requireNonNull(group, "group");
-        this.id = new InstanceGroupMembershipId(instance.getId(), group.getId());
-    }
+  public InstanceGroupMembership(Instance instance, InstanceGroup group) {
+    this.instance = Objects.requireNonNull(instance, "instance");
+    this.group = Objects.requireNonNull(group, "group");
+    this.id = new InstanceGroupMembershipId(instance.getId(), group.getId());
+  }
 }

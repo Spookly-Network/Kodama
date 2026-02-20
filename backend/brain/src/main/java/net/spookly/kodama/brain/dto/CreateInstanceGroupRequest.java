@@ -12,8 +12,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class CreateInstanceGroupRequest {
 
-    @NotBlank
-    private String name;
+  @NotBlank private String name;
 
-    private String description;
+  private String description;
 }

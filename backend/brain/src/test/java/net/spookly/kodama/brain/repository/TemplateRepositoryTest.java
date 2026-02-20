@@ -23,46 +23,55 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class TemplateRepositoryTest {
 
-    @Container
-    private static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4.0");
+  @Container private static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4.0");
 
-    @DynamicPropertySource
-    static void configureDatasource(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-        registry.add("spring.datasource.driver-class-name", mysql::getDriverClassName);
-    }
+  @DynamicPropertySource
+  static void configureDatasource(DynamicPropertyRegistry registry) {
+    registry.add("spring.datasource.url", mysql::getJdbcUrl);
+    registry.add("spring.datasource.username", mysql::getUsername);
+    registry.add("spring.datasource.password", mysql::getPassword);
+    registry.add("spring.datasource.driver-class-name", mysql::getDriverClassName);
+  }
 
-    private static final String TEMPLATE_CREATOR_USERNAME = "admin";
+  private static final String TEMPLATE_CREATOR_USERNAME = "admin";
 
-    @Autowired
-    private TemplateRepository templateRepository;
+  @Autowired private TemplateRepository templateRepository;
 
-    @Autowired
-    private TemplateVersionRepository templateVersionRepository;
+  @Autowired private TemplateVersionRepository templateVersionRepository;
 
-    @Test
-    void saveAndLoadTemplateWithVersion() {
-        OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC);
+  @Test
+  void saveAndLoadTemplateWithVersion() {
+    OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC);
 
-        Template template =
-                new Template("Base Hytale", "Base server template", TemplateType.CUSTOM, createdAt, TEMPLATE_CREATOR_USERNAME);
-        Template savedTemplate = templateRepository.save(template);
+    Template template =
+        new Template(
+            "Base Hytale",
+            "Base server template",
+            TemplateType.CUSTOM,
+            createdAt,
+            TEMPLATE_CREATOR_USERNAME);
+    Template savedTemplate = templateRepository.save(template);
 
-        TemplateVersion version = new TemplateVersion(
-                savedTemplate, "1.0.0", "checksum123", "templates/base/1.0.0.tar", "{\"map\":\"alpha\"}", createdAt);
-        TemplateVersion savedVersion = templateVersionRepository.save(version);
+    TemplateVersion version =
+        new TemplateVersion(
+            savedTemplate,
+            "1.0.0",
+            "checksum123",
+            "templates/base/1.0.0.tar",
+            "{\"map\":\"alpha\"}",
+            createdAt);
+    TemplateVersion savedVersion = templateVersionRepository.save(version);
 
-        Template persistedTemplate = templateRepository.findById(savedTemplate.getId()).orElseThrow();
-        TemplateVersion persistedVersion = templateVersionRepository.findById(savedVersion.getId()).orElseThrow();
+    Template persistedTemplate = templateRepository.findById(savedTemplate.getId()).orElseThrow();
+    TemplateVersion persistedVersion =
+        templateVersionRepository.findById(savedVersion.getId()).orElseThrow();
 
-        assertThat(persistedTemplate.getName()).isEqualTo("Base Hytale");
-        assertThat(persistedTemplate.getType()).isEqualTo(TemplateType.CUSTOM);
-        assertThat(persistedVersion.getTemplate().getId()).isEqualTo(savedTemplate.getId());
-        assertThat(persistedVersion.getVersion()).isEqualTo("1.0.0");
-        assertThat(persistedVersion.getChecksum()).isEqualTo("checksum123");
-        assertThat(persistedVersion.getS3Key()).isEqualTo("templates/base/1.0.0.tar");
-        assertThat(persistedVersion.getMetadataJson()).contains("alpha");
-    }
+    assertThat(persistedTemplate.getName()).isEqualTo("Base Hytale");
+    assertThat(persistedTemplate.getType()).isEqualTo(TemplateType.CUSTOM);
+    assertThat(persistedVersion.getTemplate().getId()).isEqualTo(savedTemplate.getId());
+    assertThat(persistedVersion.getVersion()).isEqualTo("1.0.0");
+    assertThat(persistedVersion.getChecksum()).isEqualTo("checksum123");
+    assertThat(persistedVersion.getS3Key()).isEqualTo("templates/base/1.0.0.tar");
+    assertThat(persistedVersion.getMetadataJson()).contains("alpha");
+  }
 }

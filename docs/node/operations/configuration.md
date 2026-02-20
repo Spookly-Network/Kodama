@@ -15,6 +15,7 @@ Describe the configuration inputs for the node agent and how they map to environ
 - Added Docker client connection settings for local or TCP Docker Engine access.
 - Added instance runtime settings for container image and workspace mount paths.
 - Added an optional instance stop timeout for graceful shutdowns.
+- Added an install script timeout to bound hung install scripts during start.
 - Added instance callback retry settings for Brain lifecycle callbacks.
 - Added instance monitor settings for container status polling and exit-code capture.
 
@@ -22,7 +23,6 @@ Describe the configuration inputs for the node agent and how they map to environ
 - Configure with environment variables or CLI args (`--node-agent.<key>=...`).
 - Required settings:
   - `node-agent.node-name` (`NODE_AGENT_NAME`)
-  - `node-agent.node-version` (`NODE_AGENT_NODE_VERSION`)
   - `node-agent.region` (`NODE_AGENT_REGION`)
   - `node-agent.capacity-slots` (`NODE_AGENT_CAPACITY_SLOTS`)
   - `node-agent.brain-base-url` (`NODE_AGENT_BRAIN_BASE_URL`)
@@ -61,6 +61,7 @@ Describe the configuration inputs for the node agent and how they map to environ
   - `node-agent.instance-runtime.image` (`NODE_AGENT_INSTANCE_RUNTIME_IMAGE`)
   - `node-agent.instance-runtime.workspace-mount-path` (`NODE_AGENT_INSTANCE_RUNTIME_WORKSPACE_MOUNT_PATH`, default `/workspace`)
   - `node-agent.instance-runtime.working-dir` (`NODE_AGENT_INSTANCE_RUNTIME_WORKING_DIR`, defaults to workspace mount path)
+  - `node-agent.instance-runtime.install-script-timeout-seconds` (`NODE_AGENT_INSTANCE_RUNTIME_INSTALL_SCRIPT_TIMEOUT_SECONDS`, default `300`)
   - `node-agent.instance-runtime.stop-timeout-seconds` (`NODE_AGENT_INSTANCE_RUNTIME_STOP_TIMEOUT_SECONDS`, unset uses Docker defaults)
   - `node-agent.instance-callbacks.max-attempts` (`NODE_AGENT_INSTANCE_CALLBACKS_MAX_ATTEMPTS`, default `1`)
   - `node-agent.instance-callbacks.retry-backoff-millis` (`NODE_AGENT_INSTANCE_CALLBACKS_RETRY_BACKOFF_MILLIS`, default `500`)
@@ -70,6 +71,8 @@ Describe the configuration inputs for the node agent and how they map to environ
   - `node-agent.auth.token-path` (`NODE_AGENT_AUTH_TOKEN_PATH`)
   - `node-agent.auth.cert-path` (`NODE_AGENT_AUTH_CERT_PATH`)
   - `node-agent.s3.region` (`NODE_AGENT_S3_REGION`)
+- `node-agent.node-version` is sourced from the node-agent build metadata and used for registration and diagnostics.
+  It should not be set through environment variables.
 - When registration is enabled, the node agent reads the token from `node-agent.auth.token-path`
   and sends it to the Brain using `node-agent.auth.header-name`.
 - Command endpoints require Brain authentication:
@@ -102,6 +105,7 @@ Describe the configuration inputs for the node agent and how they map to environ
 - `node-agent.instance-runtime.image` provides the default Docker image when the prepare payload does not supply `DOCKER_IMAGE`.
 - `node-agent.instance-runtime.workspace-mount-path` controls where the merged workspace is mounted inside the container.
 - `node-agent.instance-runtime.working-dir` overrides the container working directory (defaults to the workspace mount path).
+- `node-agent.instance-runtime.install-script-timeout-seconds` bounds install script execution time during start; timed out scripts are terminated and start fails.
 - `node-agent.instance-runtime.stop-timeout-seconds` controls the graceful stop timeout before the node agent force-kills a container (unset uses Docker defaults).
 - Instance callbacks to the Brain can be retried by increasing `node-agent.instance-callbacks.max-attempts`.
   `node-agent.instance-callbacks.retry-backoff-millis` controls the backoff between attempts.
@@ -123,6 +127,7 @@ Describe the configuration inputs for the node agent and how they map to environ
 - Invalid instance callback retry values stop the node agent at startup.
 - Missing or invalid S3 settings stop the node agent when template storage is initialized.
 - Invalid Docker timeout values stop the node agent at startup.
+- Non-positive install script timeout values stop the node agent at startup.
 
 ## Links
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/config/NodeConfig.java`

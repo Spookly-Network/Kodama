@@ -12,15 +12,17 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface TemplateVersionRepository extends JpaRepository<@NonNull TemplateVersion, @NonNull UUID> {
+public interface TemplateVersionRepository
+    extends JpaRepository<@NonNull TemplateVersion, @NonNull UUID> {
 
-    Optional<TemplateVersion> findByTemplateAndVersion(Template template, String version);
+  Optional<TemplateVersion> findByTemplateAndVersion(Template template, String version);
 
-    List<TemplateVersion> findAllByTemplateOrderByCreatedAtDesc(Template template);
+  List<TemplateVersion> findAllByTemplateOrderByCreatedAtDesc(Template template);
 
-    Optional<TemplateVersion> findFirstByTemplateOrderByCreatedAtDesc(Template template);
+  Optional<TemplateVersion> findFirstByTemplateOrderByCreatedAtDesc(Template template);
 
-    @Query("""
+  @Query(
+      """
             select version
             from TemplateVersion version
             where version.template.id in :templateIds
@@ -30,5 +32,6 @@ public interface TemplateVersionRepository extends JpaRepository<@NonNull Templa
                 where innerVersion.template.id = version.template.id
               )
             """)
-    List<TemplateVersion> findLatestForTemplateIds(@Param("templateIds") Collection<UUID> templateIds);
+  List<TemplateVersion> findLatestForTemplateIds(
+      @Param("templateIds") Collection<UUID> templateIds);
 }

@@ -13,21 +13,20 @@ import net.spookly.kodama.brain.service.ResolvedTemplateLayer;
 @AllArgsConstructor
 public class InstanceTemplateLayerDto {
 
-    private UUID id;
-    private UUID templateId;
-    private UUID templateVersionId;
-    private int priority;
-    private int orderIndex;
-    private TemplateAssignmentSource source;
+  private UUID id;
+  private UUID templateId;
+  private UUID templateVersionId;
+  private int priority;
+  private int orderIndex;
+  private TemplateAssignmentSource source;
 
-    public static InstanceTemplateLayerDto fromResolved(ResolvedTemplateLayer layer) {
-        return new InstanceTemplateLayerDto(
-                layer.assignmentId(),
-                layer.templateId(),
-                layer.templateVersion().getId(),
-                layer.priority(),
-                layer.orderIndex(),
-                layer.source()
-        );
-    }
+  public static InstanceTemplateLayerDto fromResolved(ResolvedTemplateLayer layer) {
+    return new InstanceTemplateLayerDto(
+        layer.assignmentId(),
+        layer.templateId(),
+        layer.templateVersion().getId(),
+        layer.priority(),
+        layer.orderIndex(),
+        layer.source());
+  }
 }

@@ -151,4 +151,33 @@ If blocked, post:
 
 ---
 
-If you want, paste one of your real issues here (title + template fields) and I’ll respond in that “first response” format so you can copy it as the standard agent behavior.
+## Agent rules: what NOT to do with issues and templates
+
+### General (always)
+
+* **Do not “read between the lines” and add requirements.** Only do what the issue explicitly asks for.
+* **Do not combine multiple issues into one PR.** One issue = one PR.
+* **Do not refactor unrelated code.** No “cleanup while I’m here”.
+* **Do not add new dependencies** unless the issue explicitly requires it.
+* **Do not mark an issue as done** if acceptance criteria are not clearly met and verifiable.
+* **Do not create new issues or restructure epics** unless explicitly told.
+
+---
+
+## Architecture issues: what you must NOT do
+
+Architecture issues are design + contracts + safe scaffolding, not full delivery.
+
+* **Do not implement end to end integration.** No “Brain + Node + Panel + runtime flow” in one go.
+* **Do not make meaningful changes in multiple runtime modules in a single PR.** Avoid real logic changes across Brain and Node and Panel at the same time.
+* **Do not implement production flow when the issue is about model/contracts.**
+  Example: if the Arch issue is “data model + contracts”, then do **not** implement scheduling, instance start, port allocation, Docker flow, or UI wiring.
+* **Do not implement extra endpoints/UI “because it makes sense”.** Define first, implement later in separate Feature issues.
+* **Do not run DB migrations without a rollout plan.** No “change schema and hope”.
+* **Do not break boundaries.**
+
+   * Panel must not talk directly to Node.
+   * Node must not become the source of truth.
+   * Brain remains the control plane.
+* **Do not invent new security/auth flows on the side.** No new token schemes, no new trust chain, no quick secret handling.
+* **Do not treat “Arch” as a license for big refactors.** If it’s not required for the architecture goal, don’t touch it.

@@ -25,37 +25,37 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class NodeHeartbeatMonitorServiceTest {
 
-    @Container
-    private static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4.0");
+  @Container private static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4.0");
 
-    @DynamicPropertySource
-    static void configureDatasource(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-        registry.add("spring.datasource.driver-class-name", mysql::getDriverClassName);
-    }
+  @DynamicPropertySource
+  static void configureDatasource(DynamicPropertyRegistry registry) {
+    registry.add("spring.datasource.url", mysql::getJdbcUrl);
+    registry.add("spring.datasource.username", mysql::getUsername);
+    registry.add("spring.datasource.password", mysql::getPassword);
+    registry.add("spring.datasource.driver-class-name", mysql::getDriverClassName);
+  }
 
-    @Autowired
-    private NodeRepository nodeRepository;
+  @Autowired private NodeRepository nodeRepository;
 
-    private NodeHeartbeatMonitorService monitorService;
+  private NodeHeartbeatMonitorService monitorService;
 
-    @BeforeEach
-    void setUp() {
-        NodeProperties nodeProperties = new NodeProperties();
-        nodeProperties.setHeartbeatTimeoutSeconds(60);
-        monitorService = new NodeHeartbeatMonitorService(nodeRepository, nodeProperties);
-    }
+  @BeforeEach
+  void setUp() {
+    NodeProperties nodeProperties = new NodeProperties();
+    nodeProperties.setHeartbeatTimeoutSeconds(60);
+    monitorService = new NodeHeartbeatMonitorService(nodeRepository, nodeProperties);
+  }
 
-    @Test
-    void markStaleNodesOfflineMarksNodesMissingHeartbeats() {
-        OffsetDateTime now = OffsetDateTime.of(2025, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC);
-        OffsetDateTime staleHeartbeat = now.minusSeconds(61);
-        OffsetDateTime freshHeartbeat = now.minusSeconds(30);
-        OffsetDateTime offlineHeartbeat = now.minusSeconds(120);
+  @Test
+  void markStaleNodesOfflineMarksNodesMissingHeartbeats() {
+    OffsetDateTime now = OffsetDateTime.of(2025, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC);
+    OffsetDateTime staleHeartbeat = now.minusSeconds(61);
+    OffsetDateTime freshHeartbeat = now.minusSeconds(30);
+    OffsetDateTime offlineHeartbeat = now.minusSeconds(120);
 
-        Node staleNode = nodeRepository.save(new Node(
+    Node staleNode =
+        nodeRepository.save(
+            new Node(
                 "node-stale",
                 "eu-west-1",
                 NodeStatus.ONLINE,
@@ -65,9 +65,10 @@ class NodeHeartbeatMonitorServiceTest {
                 staleHeartbeat,
                 "1.0.0",
                 null,
-                "http://node-stale.internal"
-        ));
-        Node freshNode = nodeRepository.save(new Node(
+                "http://node-stale.internal"));
+    Node freshNode =
+        nodeRepository.save(
+            new Node(
                 "node-fresh",
                 "eu-west-1",
                 NodeStatus.ONLINE,
@@ -77,9 +78,10 @@ class NodeHeartbeatMonitorServiceTest {
                 freshHeartbeat,
                 "1.0.0",
                 null,
-                "http://node-fresh.internal"
-        ));
-        Node offlineNode = nodeRepository.save(new Node(
+                "http://node-fresh.internal"));
+    Node offlineNode =
+        nodeRepository.save(
+            new Node(
                 "node-offline",
                 "eu-west-1",
                 NodeStatus.OFFLINE,
@@ -89,20 +91,19 @@ class NodeHeartbeatMonitorServiceTest {
                 offlineHeartbeat,
                 "1.0.0",
                 null,
-                "http://node-offline.internal"
-        ));
+                "http://node-offline.internal"));
 
-        monitorService.markStaleNodesOffline(now);
+    monitorService.markStaleNodesOffline(now);
 
-        Node stalePersisted = nodeRepository.findById(staleNode.getId()).orElseThrow();
-        Node freshPersisted = nodeRepository.findById(freshNode.getId()).orElseThrow();
-        Node offlinePersisted = nodeRepository.findById(offlineNode.getId()).orElseThrow();
+    Node stalePersisted = nodeRepository.findById(staleNode.getId()).orElseThrow();
+    Node freshPersisted = nodeRepository.findById(freshNode.getId()).orElseThrow();
+    Node offlinePersisted = nodeRepository.findById(offlineNode.getId()).orElseThrow();
 
-        assertThat(stalePersisted.getStatus()).isEqualTo(NodeStatus.OFFLINE);
-        assertThat(stalePersisted.getLastHeartbeatAt()).isEqualTo(staleHeartbeat);
-        assertThat(freshPersisted.getStatus()).isEqualTo(NodeStatus.ONLINE);
-        assertThat(freshPersisted.getLastHeartbeatAt()).isEqualTo(freshHeartbeat);
-        assertThat(offlinePersisted.getStatus()).isEqualTo(NodeStatus.OFFLINE);
-        assertThat(offlinePersisted.getLastHeartbeatAt()).isEqualTo(offlineHeartbeat);
-    }
+    assertThat(stalePersisted.getStatus()).isEqualTo(NodeStatus.OFFLINE);
+    assertThat(stalePersisted.getLastHeartbeatAt()).isEqualTo(staleHeartbeat);
+    assertThat(freshPersisted.getStatus()).isEqualTo(NodeStatus.ONLINE);
+    assertThat(freshPersisted.getLastHeartbeatAt()).isEqualTo(freshHeartbeat);
+    assertThat(offlinePersisted.getStatus()).isEqualTo(NodeStatus.OFFLINE);
+    assertThat(offlinePersisted.getLastHeartbeatAt()).isEqualTo(offlineHeartbeat);
+  }
 }

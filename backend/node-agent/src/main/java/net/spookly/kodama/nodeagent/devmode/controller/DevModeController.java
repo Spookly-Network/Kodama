@@ -17,31 +17,31 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/node/dev-mode")
 public class DevModeController {
 
-    private static final Logger logger = LoggerFactory.getLogger(DevModeController.class);
+  private static final Logger logger = LoggerFactory.getLogger(DevModeController.class);
 
-    private final DevModeService devModeService;
+  private final DevModeService devModeService;
 
-    public DevModeController(DevModeService devModeService) {
-        this.devModeService = devModeService;
+  public DevModeController(DevModeService devModeService) {
+    this.devModeService = devModeService;
+  }
+
+  @GetMapping
+  public DevModeStatusResponse getStatus() {
+    return DevModeStatusResponse.fromCurrent(devModeService.isDevModeEnabled());
+  }
+
+  @PostMapping
+  public DevModeStatusResponse update(@RequestBody(required = false) DevModeUpdateRequest request) {
+    if (request == null || request.devMode() == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "devMode is required");
     }
-
-    @GetMapping
-    public DevModeStatusResponse getStatus() {
-        return DevModeStatusResponse.fromCurrent(devModeService.isDevModeEnabled());
+    boolean enabled = request.devMode();
+    boolean previous = devModeService.setDevMode(enabled);
+    if (previous != enabled) {
+      logger.info("Dev-mode updated. previous={}, current={}", previous, enabled);
+    } else {
+      logger.info("Dev-mode unchanged. current={}", enabled);
     }
-
-    @PostMapping
-    public DevModeStatusResponse update(@RequestBody(required = false) DevModeUpdateRequest request) {
-        if (request == null || request.devMode() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "devMode is required");
-        }
-        boolean enabled = request.devMode();
-        boolean previous = devModeService.setDevMode(enabled);
-        if (previous != enabled) {
-            logger.info("Dev-mode updated. previous={}, current={}", previous, enabled);
-        } else {
-            logger.info("Dev-mode unchanged. current={}", enabled);
-        }
-        return DevModeStatusResponse.fromUpdate(previous, enabled);
-    }
+    return DevModeStatusResponse.fromUpdate(previous, enabled);
+  }
 }

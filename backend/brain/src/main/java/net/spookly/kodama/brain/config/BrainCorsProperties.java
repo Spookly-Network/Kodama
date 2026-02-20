@@ -8,63 +8,65 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "brain.web.cors")
 public class BrainCorsProperties {
 
-    private List<String> allowedOrigins = new ArrayList<>();
+  private List<String> allowedOrigins = new ArrayList<>();
 
-    private List<String> allowedMethods = new ArrayList<>(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+  private List<String> allowedMethods =
+      new ArrayList<>(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 
-    private List<String> allowedHeaders = new ArrayList<>(List.of("Authorization", "Content-Type", "X-Node-Token"));
+  private List<String> allowedHeaders =
+      new ArrayList<>(List.of("Authorization", "Content-Type", "X-Node-Token"));
 
-    private List<String> exposedHeaders = new ArrayList<>();
+  private List<String> exposedHeaders = new ArrayList<>();
 
-    private boolean allowCredentials = false;
+  private boolean allowCredentials = false;
 
-    private long maxAgeSeconds = 1800;
+  private long maxAgeSeconds = 1800;
 
-    public List<String> getAllowedOrigins() {
-        return allowedOrigins;
-    }
+  public List<String> getAllowedOrigins() {
+    return allowedOrigins;
+  }
 
-    public void setAllowedOrigins(List<String> allowedOrigins) {
-        this.allowedOrigins = allowedOrigins;
-    }
+  public void setAllowedOrigins(List<String> allowedOrigins) {
+    this.allowedOrigins = allowedOrigins;
+  }
 
-    public List<String> getAllowedMethods() {
-        return allowedMethods;
-    }
+  public List<String> getAllowedMethods() {
+    return allowedMethods;
+  }
 
-    public void setAllowedMethods(List<String> allowedMethods) {
-        this.allowedMethods = allowedMethods;
-    }
+  public void setAllowedMethods(List<String> allowedMethods) {
+    this.allowedMethods = allowedMethods;
+  }
 
-    public List<String> getAllowedHeaders() {
-        return allowedHeaders;
-    }
+  public List<String> getAllowedHeaders() {
+    return allowedHeaders;
+  }
 
-    public void setAllowedHeaders(List<String> allowedHeaders) {
-        this.allowedHeaders = allowedHeaders;
-    }
+  public void setAllowedHeaders(List<String> allowedHeaders) {
+    this.allowedHeaders = allowedHeaders;
+  }
 
-    public List<String> getExposedHeaders() {
-        return exposedHeaders;
-    }
+  public List<String> getExposedHeaders() {
+    return exposedHeaders;
+  }
 
-    public void setExposedHeaders(List<String> exposedHeaders) {
-        this.exposedHeaders = exposedHeaders;
-    }
+  public void setExposedHeaders(List<String> exposedHeaders) {
+    this.exposedHeaders = exposedHeaders;
+  }
 
-    public boolean isAllowCredentials() {
-        return allowCredentials;
-    }
+  public boolean isAllowCredentials() {
+    return allowCredentials;
+  }
 
-    public void setAllowCredentials(boolean allowCredentials) {
-        this.allowCredentials = allowCredentials;
-    }
+  public void setAllowCredentials(boolean allowCredentials) {
+    this.allowCredentials = allowCredentials;
+  }
 
-    public long getMaxAgeSeconds() {
-        return maxAgeSeconds;
-    }
+  public long getMaxAgeSeconds() {
+    return maxAgeSeconds;
+  }
 
-    public void setMaxAgeSeconds(long maxAgeSeconds) {
-        this.maxAgeSeconds = maxAgeSeconds;
-    }
+  public void setMaxAgeSeconds(long maxAgeSeconds) {
+    this.maxAgeSeconds = maxAgeSeconds;
+  }
 }

@@ -219,6 +219,277 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /api/blueprints:
+    get:
+      tags: [Blueprints]
+      summary: List blueprints
+      description: Returns non-deleted blueprints.
+      responses:
+        "200":
+          description: Blueprints ordered by persistence default.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Blueprint"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Blueprints]
+      summary: Create blueprint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBlueprintRequest"
+      responses:
+        "201":
+          description: Blueprint created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Blueprint"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/blueprints/{id}:
+    parameters:
+      - $ref: "#/components/parameters/BlueprintId"
+    get:
+      tags: [Blueprints]
+      summary: Get blueprint
+      responses:
+        "200":
+          description: Blueprint found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Blueprint"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Blueprints]
+      summary: Update blueprint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBlueprintRequest"
+      responses:
+        "200":
+          description: Blueprint updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Blueprint"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      tags: [Blueprints]
+      summary: Delete blueprint
+      description: Soft delete by setting deletedAt; blocks new instance creation.
+      responses:
+        "204":
+          description: Blueprint deleted.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/blueprints/{id}/template-assignments:
+    parameters:
+      - $ref: "#/components/parameters/BlueprintId"
+    get:
+      tags: [Blueprint Template Assignments]
+      summary: List blueprint template assignments
+      responses:
+        "200":
+          description: Assignments ordered by priority.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TemplateAssignment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Blueprint Template Assignments]
+      summary: Add template assignment to blueprint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TemplateAssignmentRequest"
+      responses:
+        "201":
+          description: Assignment created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemplateAssignment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/blueprints/{id}/template-assignments/{assignmentId}:
+    parameters:
+      - $ref: "#/components/parameters/BlueprintId"
+      - $ref: "#/components/parameters/AssignmentId"
+    delete:
+      tags: [Blueprint Template Assignments]
+      summary: Remove template assignment from blueprint
+      responses:
+        "204":
+          description: Assignment removed.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/blueprints/{id}/ports:
+    parameters:
+      - $ref: "#/components/parameters/BlueprintId"
+    get:
+      tags: [Blueprint Ports]
+      summary: List blueprint port definitions
+      responses:
+        "200":
+          description: Port definitions for the blueprint.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PortDefinition"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Blueprint Ports]
+      summary: Add blueprint port definition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PortDefinitionRequest"
+      responses:
+        "201":
+          description: Port definition created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortDefinition"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/blueprints/{id}/ports/{portId}:
+    parameters:
+      - $ref: "#/components/parameters/BlueprintId"
+      - $ref: "#/components/parameters/PortId"
+    delete:
+      tags: [Blueprint Ports]
+      summary: Remove blueprint port definition
+      responses:
+        "204":
+          description: Port definition removed.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/blueprints/{id}/groups:
+    parameters:
+      - $ref: "#/components/parameters/BlueprintId"
+    get:
+      tags: [Blueprint Groups]
+      summary: List groups for a blueprint
+      responses:
+        "200":
+          description: Groups linked to the blueprint.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InstanceGroup"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/blueprints/{id}/groups/{groupId}:
+    parameters:
+      - $ref: "#/components/parameters/BlueprintId"
+      - $ref: "#/components/parameters/GroupId"
+    put:
+      tags: [Blueprint Groups]
+      summary: Link blueprint to group
+      responses:
+        "204":
+          description: Group link added (idempotent).
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Blueprint Groups]
+      summary: Remove blueprint group link
+      responses:
+        "204":
+          description: Group link removed (idempotent).
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/instances/{id}/template-assignments:
     parameters:
       - $ref: "#/components/parameters/InstanceId"
@@ -561,6 +832,12 @@ paths:
       description: Callback from node when an instance finishes preparation.
       security:
         - nodeToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InstancePreparedCallbackRequest"
       responses:
         "200":
           description: Callback accepted.
@@ -825,6 +1102,22 @@ components:
       schema:
         type: string
         format: uuid
+    BlueprintId:
+      name: id
+      in: path
+      required: true
+      description: Blueprint identifier.
+      schema:
+        type: string
+        format: uuid
+    PortId:
+      name: portId
+      in: path
+      required: true
+      description: Port definition identifier.
+      schema:
+        type: string
+        format: uuid
   schemas:
     HealthStatus:
       type: object
@@ -1015,6 +1308,14 @@ components:
           type: integer
           format: int32
           minimum: 0
+    InstancePreparedCallbackRequest:
+      type: object
+      properties:
+        portsJson:
+          type: string
+          nullable: true
+          description: Serialized JSON with allocated ports reported by the node; preferred format is an array of entries with name/protocol/containerPort/hostPort.
+          example: '[{"name":"game","protocol":"udp","containerPort":7777,"hostPort":14000}]'
     NodeRegistrationResponse:
       type: object
       required: [nodeId, heartbeatIntervalSeconds]
@@ -1131,6 +1432,156 @@ components:
         description:
           type: string
           nullable: true
+    Blueprint:
+      type: object
+      required:
+        [id, name, permanent, slotsRequired, containerImage, startCommand, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        permanent:
+          type: boolean
+        slotsRequired:
+          type: integer
+          format: int32
+          minimum: 1
+          description: Defaults to 1 when omitted during creation.
+        containerImage:
+          type: string
+        installScript:
+          type: string
+          nullable: true
+        startCommand:
+          $ref: "#/components/schemas/StartCommand"
+        variablesJson:
+          type: string
+          nullable: true
+          description: Raw JSON object serialized to string.
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CreateBlueprintRequest:
+      type: object
+      required: [name, containerImage, startCommand]
+      properties:
+        name:
+          type: string
+        permanent:
+          type: boolean
+          nullable: true
+        slotsRequired:
+          type: integer
+          format: int32
+          minimum: 1
+          nullable: true
+          description: Defaults to 1 when omitted.
+        containerImage:
+          type: string
+        installScript:
+          type: string
+          nullable: true
+        startCommand:
+          $ref: "#/components/schemas/StartCommand"
+        variablesJson:
+          type: string
+          nullable: true
+          description: Raw JSON object serialized to string.
+    UpdateBlueprintRequest:
+      type: object
+      required: [name, containerImage, startCommand]
+      properties:
+        name:
+          type: string
+        permanent:
+          type: boolean
+          nullable: true
+        slotsRequired:
+          type: integer
+          format: int32
+          minimum: 1
+          nullable: true
+          description: Defaults to 1 when omitted.
+        containerImage:
+          type: string
+        installScript:
+          type: string
+          nullable: true
+        startCommand:
+          $ref: "#/components/schemas/StartCommand"
+        variablesJson:
+          type: string
+          nullable: true
+          description: Raw JSON object serialized to string.
+    StartCommand:
+      type: array
+      description: Exec-form command array for container start.
+      minItems: 1
+      items:
+        type: string
+    PortProtocol:
+      type: string
+      enum: [tcp, udp]
+    PortRange:
+      type: object
+      required: [min, max, step]
+      properties:
+        min:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 65535
+        max:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 65535
+        step:
+          type: integer
+          format: int32
+          minimum: 1
+    PortDefinition:
+      type: object
+      required: [id, name, protocol, containerPort, hostRange]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        protocol:
+          $ref: "#/components/schemas/PortProtocol"
+        containerPort:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 65535
+        hostRange:
+          $ref: "#/components/schemas/PortRange"
+    PortDefinitionRequest:
+      type: object
+      required: [name, protocol, containerPort, hostRange]
+      properties:
+        name:
+          type: string
+        protocol:
+          $ref: "#/components/schemas/PortProtocol"
+        containerPort:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 65535
+        hostRange:
+          $ref: "#/components/schemas/PortRange"
     Instance:
       type: object
       required:
@@ -1146,6 +1597,10 @@ components:
         state:
           $ref: "#/components/schemas/InstanceState"
         nodeId:
+          type: string
+          format: uuid
+          nullable: true
+        blueprintId:
           type: string
           format: uuid
           nullable: true
@@ -1165,9 +1620,17 @@ components:
           type: boolean
           nullable: true
           description: Optional node preference; when false, dev-mode nodes are excluded.
+        slotsRequired:
+          type: integer
+          format: int32
+          minimum: 1
+          nullable: true
+          description: Effective slot reservation for this instance. Defaults to 1 for new instances.
         portsJson:
           type: string
           nullable: true
+          description: Serialized JSON array of allocated ports.
+          example: '[{"name":"game","protocol":"udp","containerPort":7777,"hostPort":14000}]'
         variablesJson:
           type: string
           nullable: true
@@ -1217,12 +1680,17 @@ components:
           $ref: "#/components/schemas/TemplateAssignmentSource"
     CreateInstanceRequest:
       type: object
-      required: [name, displayName, templateLayers]
+      description: When blueprintId is provided, fields in this request override blueprint values.
+      required: [name, displayName]
       properties:
         name:
           type: string
         displayName:
           type: string
+        blueprintId:
+          type: string
+          format: uuid
+          nullable: true
         requestedBy:
           type: string
           format: uuid
@@ -1241,11 +1709,43 @@ components:
         devModeAllowed:
           type: boolean
           nullable: true
+        permanent:
+          type: boolean
+          nullable: true
+          description: Overrides blueprint permanent when provided.
+        slotsRequired:
+          type: integer
+          format: int32
+          minimum: 1
+          nullable: true
+          description: Overrides blueprint slotsRequired; defaults to 1 when both are missing.
+        containerImage:
+          type: string
+          nullable: true
+          description: Overrides blueprint containerImage when provided.
+        installScript:
+          type: string
+          nullable: true
+          description: Overrides blueprint installScript when provided.
+        startCommand:
+          $ref: "#/components/schemas/StartCommand"
+        portDefinitions:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortDefinitionRequest"
+          description: Overrides blueprint port definitions when provided.
+        groupIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Overrides blueprint group links when provided.
         templateLayers:
           type: array
           minItems: 1
           items:
             $ref: "#/components/schemas/TemplateAssignmentRequest"
+          description: Required when blueprintId is absent; overrides blueprint assignments when provided.
         variables:
           type: object
           nullable: true
@@ -1259,6 +1759,29 @@ components:
         portsJson:
           type: string
           nullable: true
+          description: Optional legacy payload forwarded to node prepare when provided.
+      example:
+        name: lobby-eu-1
+        displayName: Lobby EU #1
+        blueprintId: "6c08fc07-cbbd-4585-b79c-3ff771d7f533"
+        region: eu-west-1
+        tags: primary,ssd
+        devModeAllowed: false
+        slotsRequired: 2
+        portDefinitions:
+          - name: game
+            protocol: udp
+            containerPort: 7777
+            hostRange:
+              min: 14000
+              max: 14100
+              step: 1
+        templateLayers:
+          - templateId: "b2cbeb19-5adf-4283-b648-3df0e7f58096"
+            templateVersionId: "527dc44e-c188-4da8-a870-4d3f77f8fc9f"
+            priority: 0
+        variables:
+          SERVER_NAME: Lobby EU #1
       not:
         required: [variables, variablesJson]
     TemplateAssignmentRequest:

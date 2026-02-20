@@ -22,88 +22,88 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 class NodeAuthFilterTest {
 
-    private NodeAuthFilter filter;
+  private NodeAuthFilter filter;
 
-    @BeforeEach
-    void setUp() {
-        BrainSecurityProperties securityProperties = new BrainSecurityProperties();
-        securityProperties.setEnabled(true);
-        BrainSecurityProperties.NodeAuth nodeAuth = new BrainSecurityProperties.NodeAuth();
-        nodeAuth.setToken("test-node-token");
-        nodeAuth.setHeaderName("X-Node-Token");
-        securityProperties.setNode(nodeAuth);
-        filter = new NodeAuthFilter(securityProperties);
-    }
+  @BeforeEach
+  void setUp() {
+    BrainSecurityProperties securityProperties = new BrainSecurityProperties();
+    securityProperties.setEnabled(true);
+    BrainSecurityProperties.NodeAuth nodeAuth = new BrainSecurityProperties.NodeAuth();
+    nodeAuth.setToken("test-node-token");
+    nodeAuth.setHeaderName("X-Node-Token");
+    securityProperties.setNode(nodeAuth);
+    filter = new NodeAuthFilter(securityProperties);
+  }
 
-    @AfterEach
-    void tearDown() {
-        SecurityContextHolder.clearContext();
-    }
+  @AfterEach
+  void tearDown() {
+    SecurityContextHolder.clearContext();
+  }
 
-    @Test
-    void validTokenAuthenticatesNode() throws ServletException, IOException {
-        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/nodes/register");
-        request.addHeader("X-Node-Token", "test-node-token");
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        MockFilterChain chain = new MockFilterChain();
+  @Test
+  void validTokenAuthenticatesNode() throws ServletException, IOException {
+    MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/nodes/register");
+    request.addHeader("X-Node-Token", "test-node-token");
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    MockFilterChain chain = new MockFilterChain();
 
-        filter.doFilter(request, response, chain);
+    filter.doFilter(request, response, chain);
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        assertNotNull(authentication);
-        assertTrue(authentication.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_NODE")));
-        assertEquals(HttpStatus.OK.value(), response.getStatus());
-    }
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    assertNotNull(authentication);
+    assertTrue(authentication.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_NODE")));
+    assertEquals(HttpStatus.OK.value(), response.getStatus());
+  }
 
-    @Test
-    void missingTokenOnNodeEndpointIsUnauthorized() throws ServletException, IOException {
-        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/nodes/register");
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        MockFilterChain chain = new MockFilterChain();
+  @Test
+  void missingTokenOnNodeEndpointIsUnauthorized() throws ServletException, IOException {
+    MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/nodes/register");
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    MockFilterChain chain = new MockFilterChain();
 
-        filter.doFilter(request, response, chain);
+    filter.doFilter(request, response, chain);
 
-        assertNull(SecurityContextHolder.getContext().getAuthentication());
-        assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getStatus());
-    }
+    assertNull(SecurityContextHolder.getContext().getAuthentication());
+    assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getStatus());
+  }
 
-    @Test
-    void invalidTokenOnNodeEndpointIsUnauthorized() throws ServletException, IOException {
-        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/nodes/register");
-        request.addHeader("X-Node-Token", "invalid-token");
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        MockFilterChain chain = new MockFilterChain();
+  @Test
+  void invalidTokenOnNodeEndpointIsUnauthorized() throws ServletException, IOException {
+    MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/nodes/register");
+    request.addHeader("X-Node-Token", "invalid-token");
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    MockFilterChain chain = new MockFilterChain();
 
-        filter.doFilter(request, response, chain);
+    filter.doFilter(request, response, chain);
 
-        assertNull(SecurityContextHolder.getContext().getAuthentication());
-        assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getStatus());
-    }
+    assertNull(SecurityContextHolder.getContext().getAuthentication());
+    assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getStatus());
+  }
 
-    @Test
-    void nonNodeEndpointSkipsTokenCheck() throws ServletException, IOException {
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/instances");
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        MockFilterChain chain = new MockFilterChain();
+  @Test
+  void nonNodeEndpointSkipsTokenCheck() throws ServletException, IOException {
+    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/instances");
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    MockFilterChain chain = new MockFilterChain();
 
-        filter.doFilter(request, response, chain);
+    filter.doFilter(request, response, chain);
 
-        assertNull(SecurityContextHolder.getContext().getAuthentication());
-        assertEquals(HttpStatus.OK.value(), response.getStatus());
-    }
+    assertNull(SecurityContextHolder.getContext().getAuthentication());
+    assertEquals(HttpStatus.OK.value(), response.getStatus());
+  }
 
-    @Test
-    void preflightRequestSkipsTokenCheck() throws ServletException, IOException {
-        MockHttpServletRequest request = new MockHttpServletRequest("OPTIONS", "/api/nodes/register");
-        request.addHeader("Origin", "https://panel.example.test");
-        request.addHeader("Access-Control-Request-Method", "POST");
-        request.addHeader("Access-Control-Request-Headers", "X-Node-Token");
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        MockFilterChain chain = new MockFilterChain();
+  @Test
+  void preflightRequestSkipsTokenCheck() throws ServletException, IOException {
+    MockHttpServletRequest request = new MockHttpServletRequest("OPTIONS", "/api/nodes/register");
+    request.addHeader("Origin", "https://panel.example.test");
+    request.addHeader("Access-Control-Request-Method", "POST");
+    request.addHeader("Access-Control-Request-Headers", "X-Node-Token");
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    MockFilterChain chain = new MockFilterChain();
 
-        filter.doFilter(request, response, chain);
+    filter.doFilter(request, response, chain);
 
-        assertNull(SecurityContextHolder.getContext().getAuthentication());
-        assertEquals(HttpStatus.OK.value(), response.getStatus());
-    }
+    assertNull(SecurityContextHolder.getContext().getAuthentication());
+    assertEquals(HttpStatus.OK.value(), response.getStatus());
+  }
 }

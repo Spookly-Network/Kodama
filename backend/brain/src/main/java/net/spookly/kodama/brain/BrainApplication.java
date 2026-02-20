@@ -12,19 +12,18 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableConfigurationProperties({
-        NodeProperties.class,
-        BrainCorsProperties.class,
-        BrainSecurityProperties.class,
-        InstanceStaleDetectionProperties.class,
-        PluginsProperties.class
+  NodeProperties.class,
+  BrainCorsProperties.class,
+  BrainSecurityProperties.class,
+  InstanceStaleDetectionProperties.class,
+  PluginsProperties.class
 })
 @EnableScheduling
 public class BrainApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(BrainApplication.class, args);
-    }
-
+  public static void main(String[] args) {
+    SpringApplication.run(BrainApplication.class, args);
+  }
 }
 
-//codex resume 019c349a-50ca-7250-adbe-c7801f5b5b77
+// codex resume 019c349a-50ca-7250-adbe-c7801f5b5b77

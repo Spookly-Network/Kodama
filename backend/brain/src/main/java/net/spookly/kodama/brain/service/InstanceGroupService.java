@@ -2,8 +2,12 @@ package net.spookly.kodama.brain.service;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceGroup;
@@ -23,85 +27,125 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional
 public class InstanceGroupService {
 
-    private final InstanceGroupRepository instanceGroupRepository;
-    private final InstanceGroupMembershipRepository membershipRepository;
-    private final InstanceRepository instanceRepository;
+  private final InstanceGroupRepository instanceGroupRepository;
+  private final InstanceGroupMembershipRepository membershipRepository;
+  private final InstanceRepository instanceRepository;
 
-    public InstanceGroupService(
-            InstanceGroupRepository instanceGroupRepository,
-            InstanceGroupMembershipRepository membershipRepository,
-            InstanceRepository instanceRepository
-    ) {
-        this.instanceGroupRepository = instanceGroupRepository;
-        this.membershipRepository = membershipRepository;
-        this.instanceRepository = instanceRepository;
+  public InstanceGroupService(
+      InstanceGroupRepository instanceGroupRepository,
+      InstanceGroupMembershipRepository membershipRepository,
+      InstanceRepository instanceRepository) {
+    this.instanceGroupRepository = instanceGroupRepository;
+    this.membershipRepository = membershipRepository;
+    this.instanceRepository = instanceRepository;
+  }
+
+  @Transactional(readOnly = true)
+  public List<InstanceGroupDto> listGroups() {
+    return instanceGroupRepository.findAll().stream().map(InstanceGroupDto::fromEntity).toList();
+  }
+
+  @Transactional(readOnly = true)
+  public InstanceGroupDto getGroup(UUID id) {
+    InstanceGroup group =
+        instanceGroupRepository
+            .findById(id)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
+    return InstanceGroupDto.fromEntity(group);
+  }
+
+  public InstanceGroupDto createGroup(CreateInstanceGroupRequest request) {
+    instanceGroupRepository
+        .findByName(request.getName())
+        .ifPresent(
+            existing -> {
+              throw new ResponseStatusException(
+                  HttpStatus.CONFLICT, "Group with the same name already exists");
+            });
+    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    InstanceGroup group = new InstanceGroup(request.getName(), request.getDescription(), now, now);
+    InstanceGroup saved = instanceGroupRepository.save(group);
+    return InstanceGroupDto.fromEntity(saved);
+  }
+
+  @Transactional(readOnly = true)
+  public List<InstanceGroupDto> listGroupsForInstance(UUID instanceId) {
+    ensureInstanceExists(instanceId);
+    return membershipRepository.findAllByInstanceId(instanceId).stream()
+        .map(InstanceGroupMembership::getGroup)
+        .map(InstanceGroupDto::fromEntity)
+        .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public List<InstanceGroup> loadGroupsById(List<UUID> groupIds) {
+    if (groupIds == null || groupIds.isEmpty()) {
+      return List.of();
     }
 
-    @Transactional(readOnly = true)
-    public List<InstanceGroupDto> listGroups() {
-        return instanceGroupRepository.findAll().stream()
-                .map(InstanceGroupDto::fromEntity)
-                .toList();
+    LinkedHashSet<UUID> deduplicatedIds = new LinkedHashSet<>();
+    for (UUID groupId : groupIds) {
+      if (groupId == null) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "groupId is required");
+      }
+      deduplicatedIds.add(groupId);
     }
 
-    @Transactional(readOnly = true)
-    public InstanceGroupDto getGroup(UUID id) {
-        InstanceGroup group = instanceGroupRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
-        return InstanceGroupDto.fromEntity(group);
+    Map<UUID, InstanceGroup> groupsById =
+        instanceGroupRepository.findAllById(deduplicatedIds).stream()
+            .collect(Collectors.toMap(InstanceGroup::getId, group -> group));
+
+    List<InstanceGroup> orderedGroups = new ArrayList<>();
+    for (UUID groupId : deduplicatedIds) {
+      InstanceGroup group = groupsById.get(groupId);
+      if (group == null) {
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found: " + groupId);
+      }
+      orderedGroups.add(group);
+    }
+    return orderedGroups;
+  }
+
+  public void addMembership(UUID instanceId, UUID groupId) {
+    Instance instance =
+        instanceRepository
+            .findById(instanceId)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Instance not found"));
+    InstanceGroup group =
+        instanceGroupRepository
+            .findById(groupId)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
+
+    InstanceGroupMembershipId membershipId =
+        new InstanceGroupMembershipId(instance.getId(), group.getId());
+    if (membershipRepository.existsById(membershipId)) {
+      return;
     }
 
-    public InstanceGroupDto createGroup(CreateInstanceGroupRequest request) {
-        instanceGroupRepository.findByName(request.getName()).ifPresent(existing -> {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Group with the same name already exists");
-        });
-        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        InstanceGroup group = new InstanceGroup(request.getName(), request.getDescription(), now, now);
-        InstanceGroup saved = instanceGroupRepository.save(group);
-        return InstanceGroupDto.fromEntity(saved);
+    membershipRepository.save(new InstanceGroupMembership(instance, group));
+  }
+
+  public void removeMembership(UUID instanceId, UUID groupId) {
+    ensureInstanceExists(instanceId);
+    ensureGroupExists(groupId);
+    InstanceGroupMembershipId membershipId = new InstanceGroupMembershipId(instanceId, groupId);
+    if (membershipRepository.existsById(membershipId)) {
+      membershipRepository.deleteById(membershipId);
     }
+  }
 
-    @Transactional(readOnly = true)
-    public List<InstanceGroupDto> listGroupsForInstance(UUID instanceId) {
-        ensureInstanceExists(instanceId);
-        return membershipRepository.findAllByInstanceId(instanceId).stream()
-                .map(InstanceGroupMembership::getGroup)
-                .map(InstanceGroupDto::fromEntity)
-                .toList();
+  private void ensureInstanceExists(UUID instanceId) {
+    if (!instanceRepository.existsById(instanceId)) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Instance not found");
     }
+  }
 
-    public void addMembership(UUID instanceId, UUID groupId) {
-        Instance instance = instanceRepository.findById(instanceId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Instance not found"));
-        InstanceGroup group = instanceGroupRepository.findById(groupId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
-
-        InstanceGroupMembershipId membershipId = new InstanceGroupMembershipId(instance.getId(), group.getId());
-        if (membershipRepository.existsById(membershipId)) {
-            return;
-        }
-
-        membershipRepository.save(new InstanceGroupMembership(instance, group));
+  private void ensureGroupExists(UUID groupId) {
+    if (!instanceGroupRepository.existsById(groupId)) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found");
     }
-
-    public void removeMembership(UUID instanceId, UUID groupId) {
-        ensureInstanceExists(instanceId);
-        ensureGroupExists(groupId);
-        InstanceGroupMembershipId membershipId = new InstanceGroupMembershipId(instanceId, groupId);
-        if (membershipRepository.existsById(membershipId)) {
-            membershipRepository.deleteById(membershipId);
-        }
-    }
-
-    private void ensureInstanceExists(UUID instanceId) {
-        if (!instanceRepository.existsById(instanceId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Instance not found");
-        }
-    }
-
-    private void ensureGroupExists(UUID groupId) {
-        if (!instanceGroupRepository.existsById(groupId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found");
-        }
-    }
+  }
 }

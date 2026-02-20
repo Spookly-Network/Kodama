@@ -7,131 +7,132 @@ import org.junit.jupiter.api.Test;
 
 class NodeConfigTest {
 
-    @Test
-    void validateFailsWhenRequiredConfigMissing() {
-        NodeConfig config = new NodeConfig();
+  @Test
+  void validateFailsWhenRequiredConfigMissing() {
+    NodeConfig config = new NodeConfig();
 
-        assertThatThrownBy(config::validate)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("node-agent.node-name is required")
-                .hasMessageContaining("node-agent.node-version is required")
-                .hasMessageContaining("node-agent.region is required")
-                .hasMessageContaining("node-agent.brain-base-url is required")
-                .hasMessageContaining("node-agent.cache-dir is required")
-                .hasMessageContaining("node-agent.capacity-slots must be at least 1");
-    }
+    assertThatThrownBy(config::validate)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("node-agent.node-name is required")
+        .hasMessageContaining("node-agent.node-version is required")
+        .hasMessageContaining("node-agent.region is required")
+        .hasMessageContaining("node-agent.brain-base-url is required")
+        .hasMessageContaining("node-agent.cache-dir is required")
+        .hasMessageContaining("node-agent.capacity-slots must be at least 1");
+  }
 
-    @Test
-    void validateAcceptsRequiredConfig() {
-        NodeConfig config = new NodeConfig();
-        config.setNodeName("Node 1");
-        config.setNodeVersion("1.0.0");
-        config.setRegion("local");
-        config.setCapacitySlots(4);
-        config.setBrainBaseUrl("http://brain:8080");
-        config.setCacheDir("./cache");
+  @Test
+  void validateAcceptsRequiredConfig() {
+    NodeConfig config = new NodeConfig();
+    config.setNodeName("Node 1");
+    config.setNodeVersion("1.0.0");
+    config.setRegion("local");
+    config.setCapacitySlots(4);
+    config.setBrainBaseUrl("http://brain:8080");
+    config.setCacheDir("./cache");
 
-        assertThatNoException().isThrownBy(config::validate);
-    }
+    assertThatNoException().isThrownBy(config::validate);
+  }
 
-    @Test
-    void validateRejectsNegativeHeartbeatInterval() {
-        NodeConfig config = new NodeConfig();
-        config.setNodeName("Node 1");
-        config.setNodeVersion("1.0.0");
-        config.setRegion("local");
-        config.setCapacitySlots(4);
-        config.setBrainBaseUrl("http://brain:8080");
-        config.setCacheDir("./cache");
-        config.setHeartbeatIntervalSeconds(-1);
+  @Test
+  void validateRejectsNegativeHeartbeatInterval() {
+    NodeConfig config = new NodeConfig();
+    config.setNodeName("Node 1");
+    config.setNodeVersion("1.0.0");
+    config.setRegion("local");
+    config.setCapacitySlots(4);
+    config.setBrainBaseUrl("http://brain:8080");
+    config.setCacheDir("./cache");
+    config.setHeartbeatIntervalSeconds(-1);
 
-        assertThatThrownBy(config::validate)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("node-agent.heartbeat-interval-seconds must be 0 or greater");
-    }
+    assertThatThrownBy(config::validate)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("node-agent.heartbeat-interval-seconds must be 0 or greater");
+  }
 
-    @Test
-    void validateRejectsTemplateCacheCheckWhenMissingFields() {
-        NodeConfig config = new NodeConfig();
-        config.setNodeName("Node 1");
-        config.setNodeVersion("1.0.0");
-        config.setRegion("local");
-        config.setCapacitySlots(4);
-        config.setBrainBaseUrl("http://brain:8080");
-        config.setCacheDir("./cache");
-        config.getTemplateCacheCheck().setEnabled(true);
+  @Test
+  void validateRejectsTemplateCacheCheckWhenMissingFields() {
+    NodeConfig config = new NodeConfig();
+    config.setNodeName("Node 1");
+    config.setNodeVersion("1.0.0");
+    config.setRegion("local");
+    config.setCapacitySlots(4);
+    config.setBrainBaseUrl("http://brain:8080");
+    config.setCacheDir("./cache");
+    config.getTemplateCacheCheck().setEnabled(true);
 
-        assertThatThrownBy(config::validate)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("node-agent.template-cache-check.template-id is required")
-                .hasMessageContaining("node-agent.template-cache-check.version is required")
-                .hasMessageContaining("node-agent.template-cache-check.checksum is required");
-    }
+    assertThatThrownBy(config::validate)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("node-agent.template-cache-check.template-id is required")
+        .hasMessageContaining("node-agent.template-cache-check.version is required")
+        .hasMessageContaining("node-agent.template-cache-check.checksum is required");
+  }
 
-    @Test
-    void validateRejectsNegativeVariableSubstitutionLimit() {
-        NodeConfig config = new NodeConfig();
-        config.setNodeName("Node 1");
-        config.setNodeVersion("1.0.0");
-        config.setRegion("local");
-        config.setCapacitySlots(4);
-        config.setBrainBaseUrl("http://brain:8080");
-        config.setCacheDir("./cache");
-        config.getVariableSubstitution().setMaxFileBytes(-1);
+  @Test
+  void validateRejectsNegativeVariableSubstitutionLimit() {
+    NodeConfig config = new NodeConfig();
+    config.setNodeName("Node 1");
+    config.setNodeVersion("1.0.0");
+    config.setRegion("local");
+    config.setCapacitySlots(4);
+    config.setBrainBaseUrl("http://brain:8080");
+    config.setCacheDir("./cache");
+    config.getVariableSubstitution().setMaxFileBytes(-1);
 
-        assertThatThrownBy(config::validate)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("node-agent.variable-substitution.max-file-bytes must be 0 or greater");
-    }
+    assertThatThrownBy(config::validate)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(
+            "node-agent.variable-substitution.max-file-bytes must be 0 or greater");
+  }
 
-    @Test
-    void validateAcceptsTemplateCacheCheckWhenConfigured() {
-        NodeConfig config = new NodeConfig();
-        config.setNodeName("Node 1");
-        config.setNodeVersion("1.0.0");
-        config.setRegion("local");
-        config.setCapacitySlots(4);
-        config.setBrainBaseUrl("http://brain:8080");
-        config.setCacheDir("./cache");
-        config.getTemplateCacheCheck().setEnabled(true);
-        config.getTemplateCacheCheck().setTemplateId("starter");
-        config.getTemplateCacheCheck().setVersion("1.2.3");
-        config.getTemplateCacheCheck().setChecksum("abc123");
+  @Test
+  void validateAcceptsTemplateCacheCheckWhenConfigured() {
+    NodeConfig config = new NodeConfig();
+    config.setNodeName("Node 1");
+    config.setNodeVersion("1.0.0");
+    config.setRegion("local");
+    config.setCapacitySlots(4);
+    config.setBrainBaseUrl("http://brain:8080");
+    config.setCacheDir("./cache");
+    config.getTemplateCacheCheck().setEnabled(true);
+    config.getTemplateCacheCheck().setTemplateId("starter");
+    config.getTemplateCacheCheck().setVersion("1.2.3");
+    config.getTemplateCacheCheck().setChecksum("abc123");
 
-        assertThatNoException().isThrownBy(config::validate);
-    }
+    assertThatNoException().isThrownBy(config::validate);
+  }
 
-    @Test
-    void validateRejectsDockerTimeoutsWhenNonPositive() {
-        NodeConfig config = new NodeConfig();
-        config.setNodeName("Node 1");
-        config.setNodeVersion("1.0.0");
-        config.setRegion("local");
-        config.setCapacitySlots(4);
-        config.setBrainBaseUrl("http://brain:8080");
-        config.setCacheDir("./cache");
-        config.getDocker().setConnectionTimeoutSeconds(0);
-        config.getDocker().setResponseTimeoutSeconds(0);
+  @Test
+  void validateRejectsDockerTimeoutsWhenNonPositive() {
+    NodeConfig config = new NodeConfig();
+    config.setNodeName("Node 1");
+    config.setNodeVersion("1.0.0");
+    config.setRegion("local");
+    config.setCapacitySlots(4);
+    config.setBrainBaseUrl("http://brain:8080");
+    config.setCacheDir("./cache");
+    config.getDocker().setConnectionTimeoutSeconds(0);
+    config.getDocker().setResponseTimeoutSeconds(0);
 
-        assertThatThrownBy(config::validate)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("node-agent.docker.connection-timeout-seconds must be greater than 0")
-                .hasMessageContaining("node-agent.docker.response-timeout-seconds must be greater than 0");
-    }
+    assertThatThrownBy(config::validate)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("node-agent.docker.connection-timeout-seconds must be greater than 0")
+        .hasMessageContaining("node-agent.docker.response-timeout-seconds must be greater than 0");
+  }
 
-    @Test
-    void validateAcceptsDockerTlsVerifyWhenCertConfigMissing() {
-        NodeConfig config = new NodeConfig();
-        config.setNodeName("Node 1");
-        config.setNodeVersion("1.0.0");
-        config.setRegion("local");
-        config.setCapacitySlots(4);
-        config.setBrainBaseUrl("http://brain:8080");
-        config.setCacheDir("./cache");
-        config.getDocker().setTlsVerify(true);
-        config.getDocker().setCertPath("");
-        config.getDocker().setConfigDir("");
+  @Test
+  void validateAcceptsDockerTlsVerifyWhenCertConfigMissing() {
+    NodeConfig config = new NodeConfig();
+    config.setNodeName("Node 1");
+    config.setNodeVersion("1.0.0");
+    config.setRegion("local");
+    config.setCapacitySlots(4);
+    config.setBrainBaseUrl("http://brain:8080");
+    config.setCacheDir("./cache");
+    config.getDocker().setTlsVerify(true);
+    config.getDocker().setCertPath("");
+    config.getDocker().setConfigDir("");
 
-        assertThatNoException().isThrownBy(config::validate);
-    }
+    assertThatNoException().isThrownBy(config::validate);
+  }
 }

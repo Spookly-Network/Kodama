@@ -4,13 +4,11 @@ import java.util.List;
 import java.util.Map;
 
 public record DockerContainerCreateRequest(
-        String image,
-        String name,
-        List<String> command,
-        List<String> env,
-        Map<String, String> labels,
-        String workingDir,
-        List<DockerPortBinding> portBindings,
-        List<DockerVolumeMount> volumeMounts
-) {
-}
+    String image,
+    String name,
+    List<String> command,
+    List<String> env,
+    Map<String, String> labels,
+    String workingDir,
+    List<DockerPortBinding> portBindings,
+    List<DockerVolumeMount> volumeMounts) {}

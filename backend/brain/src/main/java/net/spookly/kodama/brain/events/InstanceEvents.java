@@ -1,4 +1,3 @@
 package net.spookly.kodama.brain.events;
 
-public class InstanceEvents {
-}
+public class InstanceEvents {}

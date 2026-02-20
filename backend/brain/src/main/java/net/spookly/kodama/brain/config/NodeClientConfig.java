@@ -10,12 +10,13 @@ import org.springframework.web.client.RestTemplate;
 @Configuration
 public class NodeClientConfig {
 
-    @Bean
-    public RestTemplate nodeRestTemplate(NodeProperties nodeProperties) {
-        int timeoutMillis = (int) Duration.ofSeconds(nodeProperties.getCommandTimeoutSeconds()).toMillis();
-        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(timeoutMillis);
-        requestFactory.setReadTimeout(timeoutMillis);
-        return new RestTemplate(requestFactory);
-    }
+  @Bean
+  public RestTemplate nodeRestTemplate(NodeProperties nodeProperties) {
+    int timeoutMillis =
+        (int) Duration.ofSeconds(nodeProperties.getCommandTimeoutSeconds()).toMillis();
+    SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+    requestFactory.setConnectTimeout(timeoutMillis);
+    requestFactory.setReadTimeout(timeoutMillis);
+    return new RestTemplate(requestFactory);
+  }
 }
