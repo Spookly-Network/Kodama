@@ -3,6 +3,11 @@
 The scheduling service selects a node for a requested instance using a simple slot-based algorithm.
 When `POST /api/instances` omits `nodeId`, the Brain uses this service to assign a node before persisting the instance.
 
+Slot input:
+- `slotsRequired` comes from resolved runtime configuration in `InstanceCreationPreparationService`.
+- For blueprint-backed creation, that means `blueprint.slotsRequired` overridden by request `slotsRequired` when provided.
+- When neither blueprint nor request sets it, the effective value defaults to `1`.
+
 Selection rules:
 - Only consider nodes with `status=ONLINE`.
 - If a region is provided, only consider nodes in that region.
@@ -22,3 +27,4 @@ Implementation:
 - If no node matches filters, instance creation fails with `409 Conflict` and `No eligible nodes found`.
 - If nodes match filters but lack capacity for `slotsRequired`, instance creation fails with
   `409 Conflict` and an insufficient capacity message.
+- Node `usedSlots` values are driven by node heartbeats, which include currently reserved slot totals from local node registry state.

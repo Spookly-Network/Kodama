@@ -48,6 +48,19 @@ Persist a local record of instance metadata after the node finishes preparing a 
   so manual restarts are reflected in the registry.
 - Destroy removes the registry entry as part of instance cleanup, which releases the port reservation.
 
+Example `instance.json` fragment:
+
+```json
+{
+  "instanceId": "04a46594-c578-462c-b2ec-fbbec84cd148",
+  "name": "hytale-eu-1",
+  "containerImage": "ghcr.io/spookly-network/hytale:latest",
+  "slotsRequired": 2,
+  "portsJson": "[{\"name\":\"game\",\"protocol\":\"udp\",\"containerPort\":7777,\"hostPort\":14000}]",
+  "containerStatus": "running"
+}
+```
+
 ## Edge cases / risks
 - If the registry write fails, the prepare request fails and a `/failed` callback is attempted.
 - If writing `installCompleted=true` fails after an install script run, start fails before Docker container creation.

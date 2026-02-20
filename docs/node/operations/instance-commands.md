@@ -73,6 +73,51 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - Template cache lookups use `templateId` from the prepare payload as the cache key.
 - Prepare payload includes resolved runtime fields from Brain: `containerImage`, `installScript`, `startCommand`, `slotsRequired`, and `portDefinitions`.
 
+Example prepare payload (`POST /api/instances/{instanceId}/prepare`):
+
+```json
+{
+  "instanceId": "04a46594-c578-462c-b2ec-fbbec84cd148",
+  "name": "hytale-eu-1",
+  "displayName": "Hytale EU #1",
+  "containerImage": "ghcr.io/spookly-network/hytale:latest",
+  "installScript": "./install.sh",
+  "startCommand": ["./run-server.sh", "--port", "${PORT}"],
+  "slotsRequired": 2,
+  "portDefinitions": [
+    {
+      "name": "game",
+      "protocol": "udp",
+      "containerPort": 7777,
+      "hostRange": {
+        "min": 14000,
+        "max": 14100,
+        "step": 1
+      }
+    }
+  ],
+  "layers": [
+    {
+      "templateVersionId": "f46e4888-f9f7-4e10-a7e8-393f3166ac9f",
+      "templateId": "1474e8eb-7391-4231-af03-48e451f6fcd8",
+      "version": "v1.0.2",
+      "checksum": "sha256:8ca2806adff16442984f4f7c35cfaf5f5a10967f65e6b4f3e52f31f39a2f4f16",
+      "s3Key": "templates/hytale/base/v1.0.2.tar.gz",
+      "metadataJson": null,
+      "orderIndex": 0
+    }
+  ]
+}
+```
+
+Example prepared callback body (`POST /api/nodes/{nodeId}/instances/{instanceId}/prepared`):
+
+```json
+{
+  "portsJson": "[{\"name\":\"game\",\"protocol\":\"udp\",\"containerPort\":7777,\"hostPort\":14000}]"
+}
+```
+
 ## Edge cases / risks
 - Invalid payloads (missing instanceId, empty layers, invalid JSON) return HTTP 400 and trigger a `/failed` callback when possible.
 - Cache download/merge failures result in HTTP 500 and a `/failed` callback attempt.

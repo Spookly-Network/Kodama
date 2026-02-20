@@ -66,5 +66,6 @@ Define the canonical blueprint data model and Brain ↔ Node payload shapes for 
 ## Links
 - `contracts/openapi.yml`
 - `contracts/nodeapi.yml`
+- `docs/brain/blueprint-instance-creation.md`
 - `docs/plan/blueprints/plan.md`
 - `docs/issues/149-architecture-blueprint-data-model-and-contracts.md`

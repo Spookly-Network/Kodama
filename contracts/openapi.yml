@@ -1315,6 +1315,7 @@ components:
           type: string
           nullable: true
           description: Serialized JSON with allocated ports reported by the node; preferred format is an array of entries with name/protocol/containerPort/hostPort.
+          example: '[{"name":"game","protocol":"udp","containerPort":7777,"hostPort":14000}]'
     NodeRegistrationResponse:
       type: object
       required: [nodeId, heartbeatIntervalSeconds]
@@ -1581,41 +1582,6 @@ components:
           maximum: 65535
         hostRange:
           $ref: "#/components/schemas/PortRange"
-    InstanceOverrides:
-      type: object
-      properties:
-        permanent:
-          type: boolean
-          nullable: true
-        slotsRequired:
-          type: integer
-          format: int32
-          minimum: 1
-          nullable: true
-        containerImage:
-          type: string
-          nullable: true
-        installScript:
-          type: string
-          nullable: true
-        startCommand:
-          $ref: "#/components/schemas/StartCommand"
-        variablesJson:
-          type: string
-          nullable: true
-        portDefinitions:
-          type: array
-          items:
-            $ref: "#/components/schemas/PortDefinitionRequest"
-        groupIds:
-          type: array
-          items:
-            type: string
-            format: uuid
-        templateLayers:
-          type: array
-          items:
-            $ref: "#/components/schemas/TemplateAssignmentRequest"
     Instance:
       type: object
       required:
@@ -1663,12 +1629,11 @@ components:
         portsJson:
           type: string
           nullable: true
-          description: Serialized JSON array of allocated ports; legacy map form may be accepted.
+          description: Serialized JSON array of allocated ports.
+          example: '[{"name":"game","protocol":"udp","containerPort":7777,"hostPort":14000}]'
         variablesJson:
           type: string
           nullable: true
-        overrides:
-          $ref: "#/components/schemas/InstanceOverrides"
         createdAt:
           type: string
           format: date-time
@@ -1794,6 +1759,29 @@ components:
         portsJson:
           type: string
           nullable: true
+          description: Optional legacy payload forwarded to node prepare when provided.
+      example:
+        name: lobby-eu-1
+        displayName: Lobby EU #1
+        blueprintId: "6c08fc07-cbbd-4585-b79c-3ff771d7f533"
+        region: eu-west-1
+        tags: primary,ssd
+        devModeAllowed: false
+        slotsRequired: 2
+        portDefinitions:
+          - name: game
+            protocol: udp
+            containerPort: 7777
+            hostRange:
+              min: 14000
+              max: 14100
+              step: 1
+        templateLayers:
+          - templateId: "b2cbeb19-5adf-4283-b648-3df0e7f58096"
+            templateVersionId: "527dc44e-c188-4da8-a870-4d3f77f8fc9f"
+            priority: 0
+        variables:
+          SERVER_NAME: Lobby EU #1
       not:
         required: [variables, variablesJson]
     TemplateAssignmentRequest:
