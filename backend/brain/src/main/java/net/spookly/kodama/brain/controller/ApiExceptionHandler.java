@@ -29,7 +29,7 @@ public class ApiExceptionHandler {
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ErrorResponse> handleNotReadable(HttpMessageNotReadableException ex) {
+    public ResponseEntity<ErrorResponse> handleNotReadable() {
         return build(HttpStatus.BAD_REQUEST, "Malformed JSON request body");
     }
 
