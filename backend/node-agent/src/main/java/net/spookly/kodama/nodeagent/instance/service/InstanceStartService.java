@@ -70,13 +70,15 @@ public class InstanceStartService {
         if (!instanceId.equals(registry.instanceId())) {
             throw new InstanceStartException("Instance registry does not match instanceId: " + instanceId);
         }
+        String image = resolveImage(registry);
+        List<String> startCommand = resolveStartCommand(registry);
         Map<String, String> baseEnv = buildEnvMap(instanceId, registry, requestedName);
         boolean installCompleted = runInstallScriptIfRequired(instanceId, workspace, registry, baseEnv);
         if (installCompleted) {
             registry = registryService.loadRegistry(workspace);
+            image = resolveImage(registry);
+            startCommand = resolveStartCommand(registry);
         }
-        String image = resolveImage(registry);
-        List<String> startCommand = resolveStartCommand(registry);
         String mountPath = resolveWorkspaceMountPath();
         String workingDir = resolveWorkingDir(mountPath);
         List<DockerVolumeMount> volumeMounts = List.of(

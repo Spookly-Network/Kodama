@@ -36,6 +36,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - Registry listing requires the same Brain authentication as other instance command endpoints.
 - `NodeInstanceCommandRequest` requires `instanceId` and accepts an optional `name` for logging.
 - Start now:
+  - validates `containerImage` and `startCommand` from `instance.json` before running any install step,
   - when `installCompleted=false` and `installScript` is present, runs the script from the merged workspace with `/bin/sh -c` and marks the registry as installed only after a zero exit code,
   - reads `instance.json` from the workspace,
   - requires `containerImage` and `startCommand` from the instance registry runtime fields,

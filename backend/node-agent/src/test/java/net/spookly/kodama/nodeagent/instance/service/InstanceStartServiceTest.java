@@ -206,6 +206,98 @@ class InstanceStartServiceTest {
     }
 
     @Test
+    void startInstanceFailsFastWhenContainerImageMissingAndInstallScriptConfigured() throws Exception {
+        UUID instanceId = UUID.randomUUID();
+        Path instanceRoot = tempDir.resolve("instances").resolve(instanceId.toString());
+        Path mergedDir = instanceRoot.resolve("merged");
+        Files.createDirectories(mergedDir);
+        InstanceWorkspacePaths workspace = workspace(instanceId, instanceRoot, mergedDir);
+
+        InstanceRegistryEntry registry = registryEntry(
+                instanceId,
+                instanceRoot,
+                false,
+                "echo install",
+                null,
+                List.of("java", "-jar", "server.jar")
+        );
+
+        DockerService dockerService = mock(DockerService.class);
+        InstanceRegistryService registryService = mock(InstanceRegistryService.class);
+        InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
+        InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
+        InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
+
+        when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
+        when(registryService.loadRegistry(workspace)).thenReturn(registry);
+
+        InstanceStartService service = new InstanceStartService(
+                dockerService,
+                registryService,
+                workspaceLayout,
+                portBindingsResolver,
+                nodeConfig(),
+                instanceProperties(),
+                pluginRegistry(),
+                installScriptRunner
+        );
+
+        assertThatThrownBy(() -> service.startInstance(instanceId, "request-name"))
+                .isInstanceOf(InstanceStartException.class)
+                .hasMessageContaining("Container image is required in instance registry");
+
+        verify(installScriptRunner, never()).runScript(any(), any(), any());
+        verify(registryService, never()).recordInstallCompleted(any(), any());
+        verify(dockerService, never()).createContainer(any());
+    }
+
+    @Test
+    void startInstanceFailsFastWhenStartCommandMissingAndInstallScriptConfigured() throws Exception {
+        UUID instanceId = UUID.randomUUID();
+        Path instanceRoot = tempDir.resolve("instances").resolve(instanceId.toString());
+        Path mergedDir = instanceRoot.resolve("merged");
+        Files.createDirectories(mergedDir);
+        InstanceWorkspacePaths workspace = workspace(instanceId, instanceRoot, mergedDir);
+
+        InstanceRegistryEntry registry = registryEntry(
+                instanceId,
+                instanceRoot,
+                false,
+                "echo install",
+                "ghcr.io/spookly/hytale:registry",
+                List.of()
+        );
+
+        DockerService dockerService = mock(DockerService.class);
+        InstanceRegistryService registryService = mock(InstanceRegistryService.class);
+        InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
+        InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
+        InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
+
+        when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
+        when(registryService.loadRegistry(workspace)).thenReturn(registry);
+
+        InstanceStartService service = new InstanceStartService(
+                dockerService,
+                registryService,
+                workspaceLayout,
+                portBindingsResolver,
+                nodeConfig(),
+                instanceProperties(),
+                pluginRegistry(),
+                installScriptRunner
+        );
+
+        assertThatThrownBy(() -> service.startInstance(instanceId, "request-name"))
+                .isInstanceOf(InstanceStartException.class)
+                .hasMessageContaining("Start command is required in instance registry");
+
+        verify(installScriptRunner, never()).runScript(any(), any(), any());
+        verify(registryService, never()).recordInstallCompleted(any(), any());
+        verify(dockerService, never()).createContainer(any());
+    }
+
+    @Test
     void startInstanceFailsWhenContainerImageMissingInRegistry() throws Exception {
         UUID instanceId = UUID.randomUUID();
         Path instanceRoot = tempDir.resolve("instances").resolve(instanceId.toString());
