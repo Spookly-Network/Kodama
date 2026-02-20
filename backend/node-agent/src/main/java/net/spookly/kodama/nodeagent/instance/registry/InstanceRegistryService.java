@@ -124,12 +124,24 @@ public class InstanceRegistryService {
             UUID instanceId,
             String containerId
     ) {
+        recordContainerId(workspace, instanceId, containerId, "running");
+    }
+
+    public void recordContainerId(
+            InstanceWorkspacePaths workspace,
+            UUID instanceId,
+            String containerId,
+            String containerStatus
+    ) {
         if (workspace == null) {
             throw new InstanceRegistryException("instance workspace is required");
         }
         requireInstanceId(instanceId);
         if (containerId == null || containerId.isBlank()) {
             throw new InstanceRegistryException("containerId is required");
+        }
+        if (containerStatus == null || containerStatus.isBlank()) {
+            throw new InstanceRegistryException("containerStatus is required");
         }
         requireMatchingInstanceId(instanceId, workspace.instanceId());
         InstanceRegistryEntry entry = loadRegistry(workspace);
@@ -150,7 +162,7 @@ public class InstanceRegistryService {
                 entry.layers(),
                 entry.preparedAt(),
                 containerId.trim(),
-                "running",
+                containerStatus.trim(),
                 OffsetDateTime.now(),
                 null,
                 null,
@@ -260,6 +272,61 @@ public class InstanceRegistryService {
                 instanceId,
                 entry.containerId(),
                 containerStatus
+        );
+    }
+
+    public void clearContainerState(
+            InstanceWorkspacePaths workspace,
+            UUID instanceId,
+            String containerStatus
+    ) {
+        clearContainerState(workspace, instanceId, containerStatus, null, null);
+    }
+
+    public void clearContainerState(
+            InstanceWorkspacePaths workspace,
+            UUID instanceId,
+            String containerStatus,
+            Integer exitCode,
+            String exitReason
+    ) {
+        if (workspace == null) {
+            throw new InstanceRegistryException("instance workspace is required");
+        }
+        requireInstanceId(instanceId);
+        requireMatchingInstanceId(instanceId, workspace.instanceId());
+        InstanceRegistryEntry entry = loadRegistry(workspace);
+        if (!instanceId.equals(entry.instanceId())) {
+            throw new InstanceRegistryException("instanceId does not match registry: " + instanceId + " vs " + entry.instanceId());
+        }
+        String normalizedStatus = normalizeStatus(containerStatus);
+        String normalizedReason = normalizeExitReason(exitReason);
+        InstanceRegistryEntry updated = new InstanceRegistryEntry(
+                entry.instanceId(),
+                entry.name(),
+                entry.displayName(),
+                entry.containerImage(),
+                entry.installScript(),
+                entry.startCommand(),
+                entry.slotsRequired(),
+                entry.portsJson(),
+                entry.installCompleted(),
+                entry.variables(),
+                entry.layers(),
+                entry.preparedAt(),
+                null,
+                normalizedStatus,
+                normalizedStatus == null ? null : OffsetDateTime.now(),
+                exitCode,
+                normalizedReason,
+                resolveWorkspacePath(entry.workspacePath(), workspace.instanceRoot())
+        );
+        Path registryFile = workspace.instanceRoot().resolve(REGISTRY_FILENAME);
+        writeRegistry(registryFile, updated);
+        logger.info(
+                "Instance registry container state cleared. instanceId={} status={}",
+                instanceId,
+                normalizedStatus
         );
     }
 
@@ -521,5 +588,12 @@ public class InstanceRegistryService {
             return null;
         }
         return reason.trim();
+    }
+
+    private String normalizeStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        return status.trim();
     }
 }

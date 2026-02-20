@@ -5,7 +5,8 @@ Persist a local record of instance metadata after the node finishes preparing a 
 
 ## What changed
 - The prepare flow now writes an `instance.json` registry entry per instance.
-- The start flow updates the registry with the Docker container id.
+- The start flow updates the registry with the Docker container id and status transitions (`starting` -> `running`).
+- The start flow now rolls back container runtime fields to a cleared `stopped` state when start cleanup removes a failed container.
 - The start flow marks `installCompleted=true` after a successful `installScript` run.
 - The stop flow updates the registry with the latest container status.
 - The node agent monitors container state changes and records exit codes and reasons when containers stop.
@@ -37,7 +38,12 @@ Persist a local record of instance metadata after the node finishes preparing a 
   - `slotsRequired: 1`
   - `installCompleted: false`
   - nullable runtime strings remain `null`
-- Container status updates are recorded when start marks the instance as `running` and stop marks it as `stopped`.
+- Container status updates are recorded as lifecycle transitions:
+  - start marks `starting` before container startup, then `running` after startup succeeds
+  - start cleanup after failure clears `containerId`, records `stopped`, and sets `containerExitReason=start-failed`
+  - stop marks `stopping` before Docker stop, then `stopped` after stop completes
+- Heartbeat `usedSlots` is computed from local registry entries with status `starting`, `running`, or `stopping`,
+  summing `slotsRequired` (defaulting to `1` when missing) and clamping to configured node capacity.
 - The instance monitor polls tracked containers (including stopped ones) and reconciles status changes,
   so manual restarts are reflected in the registry.
 - Destroy removes the registry entry as part of instance cleanup, which releases the port reservation.
@@ -45,6 +51,7 @@ Persist a local record of instance metadata after the node finishes preparing a 
 ## Edge cases / risks
 - If the registry write fails, the prepare request fails and a `/failed` callback is attempted.
 - If writing `installCompleted=true` fails after an install script run, start fails before Docker container creation.
+- If start fails after writing `starting`, cleanup attempts to remove the container and clear container runtime fields in the registry.
 - Missing or invalid workspace paths are treated as preparation failures.
 - Corrupt `portsJson` values in existing registries can block new allocations because reservations can no longer be read safely.
 - When containers disappear outside of the node agent, the monitor records a stopped state with an exit reason of

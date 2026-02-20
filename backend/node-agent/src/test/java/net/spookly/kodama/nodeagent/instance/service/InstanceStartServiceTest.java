@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -109,8 +110,9 @@ class InstanceStartServiceTest {
         assertThat(request.portBindings()).hasSize(1);
 
         var order = inOrder(dockerService, registryService);
+        order.verify(registryService).recordContainerId(workspace, instanceId, "container-1", "starting");
         order.verify(dockerService).startContainer("container-1");
-        order.verify(registryService).recordContainerId(workspace, instanceId, "container-1");
+        order.verify(registryService).recordContainerStatus(workspace, instanceId, "running", null, null);
     }
 
     @Test
@@ -157,6 +159,162 @@ class InstanceStartServiceTest {
 
         verify(installScriptRunner, never()).runScript(any(), any(), any());
         verify(registryService, never()).recordInstallCompleted(any(), any());
+    }
+
+    @Test
+    void startInstanceRollsBackRegistryWhenDockerStartFails() throws Exception {
+        UUID instanceId = UUID.randomUUID();
+        Path instanceRoot = tempDir.resolve("instances").resolve(instanceId.toString());
+        Path mergedDir = instanceRoot.resolve("merged");
+        Files.createDirectories(mergedDir);
+        InstanceWorkspacePaths workspace = workspace(instanceId, instanceRoot, mergedDir);
+
+        InstanceRegistryEntry registry = registryEntry(
+                instanceId,
+                instanceRoot,
+                true,
+                null,
+                "ghcr.io/spookly/hytale:registry",
+                List.of("java", "-jar", "server.jar")
+        );
+
+        DockerService dockerService = mock(DockerService.class);
+        InstanceRegistryService registryService = mock(InstanceRegistryService.class);
+        InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
+        InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
+        InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
+
+        when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
+        when(registryService.loadRegistry(workspace)).thenReturn(registry);
+        when(portBindingsResolver.resolveBindings(registry)).thenReturn(List.of());
+        when(dockerService.createContainer(any()))
+                .thenReturn(new DockerContainerCreateResult("container-1", List.of()));
+        doThrow(new RuntimeException("start failed")).when(dockerService).startContainer("container-1");
+
+        InstanceStartService service = new InstanceStartService(
+                dockerService,
+                registryService,
+                workspaceLayout,
+                portBindingsResolver,
+                nodeConfig(),
+                instanceProperties(),
+                pluginRegistry(),
+                installScriptRunner
+        );
+
+        assertThatThrownBy(() -> service.startInstance(instanceId, "request-name"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("start failed");
+
+        var order = inOrder(registryService, dockerService);
+        order.verify(registryService).recordContainerId(workspace, instanceId, "container-1", "starting");
+        order.verify(dockerService).startContainer("container-1");
+        order.verify(dockerService).removeContainer("container-1", true, false);
+        order.verify(registryService).clearContainerState(workspace, instanceId, "stopped", null, "start-failed");
+        verify(registryService, never()).recordContainerStatus(workspace, instanceId, "running", null, null);
+    }
+
+    @Test
+    void startInstanceRollsBackRegistryWhenRunningStatusUpdateFails() throws Exception {
+        UUID instanceId = UUID.randomUUID();
+        Path instanceRoot = tempDir.resolve("instances").resolve(instanceId.toString());
+        Path mergedDir = instanceRoot.resolve("merged");
+        Files.createDirectories(mergedDir);
+        InstanceWorkspacePaths workspace = workspace(instanceId, instanceRoot, mergedDir);
+
+        InstanceRegistryEntry registry = registryEntry(
+                instanceId,
+                instanceRoot,
+                true,
+                null,
+                "ghcr.io/spookly/hytale:registry",
+                List.of("java", "-jar", "server.jar")
+        );
+
+        DockerService dockerService = mock(DockerService.class);
+        InstanceRegistryService registryService = mock(InstanceRegistryService.class);
+        InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
+        InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
+        InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
+
+        when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
+        when(registryService.loadRegistry(workspace)).thenReturn(registry);
+        when(portBindingsResolver.resolveBindings(registry)).thenReturn(List.of());
+        when(dockerService.createContainer(any()))
+                .thenReturn(new DockerContainerCreateResult("container-1", List.of()));
+        doThrow(new RuntimeException("registry status failed"))
+                .when(registryService).recordContainerStatus(workspace, instanceId, "running", null, null);
+
+        InstanceStartService service = new InstanceStartService(
+                dockerService,
+                registryService,
+                workspaceLayout,
+                portBindingsResolver,
+                nodeConfig(),
+                instanceProperties(),
+                pluginRegistry(),
+                installScriptRunner
+        );
+
+        assertThatThrownBy(() -> service.startInstance(instanceId, "request-name"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("registry status failed");
+
+        var order = inOrder(registryService, dockerService);
+        order.verify(registryService).recordContainerId(workspace, instanceId, "container-1", "starting");
+        order.verify(dockerService).startContainer("container-1");
+        order.verify(registryService).recordContainerStatus(workspace, instanceId, "running", null, null);
+        order.verify(dockerService).removeContainer("container-1", true, false);
+        order.verify(registryService).clearContainerState(workspace, instanceId, "stopped", null, "start-failed");
+    }
+
+    @Test
+    void startInstanceDoesNotClearRegistryWhenCleanupCannotRemoveContainer() throws Exception {
+        UUID instanceId = UUID.randomUUID();
+        Path instanceRoot = tempDir.resolve("instances").resolve(instanceId.toString());
+        Path mergedDir = instanceRoot.resolve("merged");
+        Files.createDirectories(mergedDir);
+        InstanceWorkspacePaths workspace = workspace(instanceId, instanceRoot, mergedDir);
+
+        InstanceRegistryEntry registry = registryEntry(
+                instanceId,
+                instanceRoot,
+                true,
+                null,
+                "ghcr.io/spookly/hytale:registry",
+                List.of("java", "-jar", "server.jar")
+        );
+
+        DockerService dockerService = mock(DockerService.class);
+        InstanceRegistryService registryService = mock(InstanceRegistryService.class);
+        InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
+        InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
+        InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
+
+        when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
+        when(registryService.loadRegistry(workspace)).thenReturn(registry);
+        when(portBindingsResolver.resolveBindings(registry)).thenReturn(List.of());
+        when(dockerService.createContainer(any()))
+                .thenReturn(new DockerContainerCreateResult("container-1", List.of()));
+        doThrow(new RuntimeException("start failed")).when(dockerService).startContainer("container-1");
+        doThrow(new RuntimeException("remove failed")).when(dockerService).removeContainer("container-1", true, false);
+
+        InstanceStartService service = new InstanceStartService(
+                dockerService,
+                registryService,
+                workspaceLayout,
+                portBindingsResolver,
+                nodeConfig(),
+                instanceProperties(),
+                pluginRegistry(),
+                installScriptRunner
+        );
+
+        assertThatThrownBy(() -> service.startInstance(instanceId, "request-name"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("start failed");
+
+        verify(registryService, never()).clearContainerState(any(), any(), any(), any(), any());
     }
 
     @Test

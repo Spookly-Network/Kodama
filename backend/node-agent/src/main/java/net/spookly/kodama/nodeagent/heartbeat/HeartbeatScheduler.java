@@ -1,6 +1,8 @@
 package net.spookly.kodama.nodeagent.heartbeat;
 
 import java.net.URI;
+import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -9,6 +11,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import jakarta.annotation.PreDestroy;
 import net.spookly.kodama.nodeagent.config.NodeConfig;
+import net.spookly.kodama.nodeagent.instance.registry.InstanceRegistryEntry;
+import net.spookly.kodama.nodeagent.instance.registry.InstanceRegistryService;
 import net.spookly.kodama.nodeagent.registration.NodeAuthTokenReader;
 import net.spookly.kodama.nodeagent.registration.NodeRegistrationState;
 import org.slf4j.Logger;
@@ -29,6 +33,7 @@ public class HeartbeatScheduler implements ApplicationListener<ApplicationReadyE
     private final NodeAuthTokenReader tokenReader;
     private final NodeHeartbeatClient heartbeatClient;
     private final NodeHeartbeatState heartbeatState;
+    private final InstanceRegistryService registryService;
     private final ScheduledExecutorService scheduler;
     private final AtomicBoolean started = new AtomicBoolean(false);
 
@@ -37,13 +42,15 @@ public class HeartbeatScheduler implements ApplicationListener<ApplicationReadyE
             NodeRegistrationState registrationState,
             NodeAuthTokenReader tokenReader,
             NodeHeartbeatClient heartbeatClient,
-            NodeHeartbeatState heartbeatState
+            NodeHeartbeatState heartbeatState,
+            InstanceRegistryService registryService
     ) {
         this.config = config;
         this.registrationState = registrationState;
         this.tokenReader = tokenReader;
         this.heartbeatClient = heartbeatClient;
         this.heartbeatState = heartbeatState;
+        this.registryService = registryService;
         this.scheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
             Thread thread = new Thread(runnable, "node-heartbeat-scheduler");
             return thread;
@@ -125,11 +132,48 @@ public class HeartbeatScheduler implements ApplicationListener<ApplicationReadyE
         }
     }
 
-    private NodeHeartbeatRequest buildRequest() {
+    NodeHeartbeatRequest buildRequest() {
+        int usedSlots = resolveUsedSlots();
+        heartbeatState.setUsedSlots(usedSlots);
         NodeHeartbeatRequest request = new NodeHeartbeatRequest();
         request.setStatus(heartbeatState.getStatus());
-        request.setUsedSlots(heartbeatState.getUsedSlots());
+        request.setUsedSlots(usedSlots);
         return request;
+    }
+
+    int resolveUsedSlots() {
+        List<InstanceRegistryEntry> entries = registryService.listRegistries();
+        long usedSlots = 0;
+        for (InstanceRegistryEntry entry : entries) {
+            if (entry == null || !isSlotConsumingStatus(entry.containerStatus())) {
+                continue;
+            }
+            usedSlots += resolveSlotsRequired(entry.slotsRequired());
+        }
+        return clampUsedSlots(usedSlots, config.getCapacitySlots());
+    }
+
+    private boolean isSlotConsumingStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return false;
+        }
+        String normalized = status.trim().toLowerCase(Locale.ROOT);
+        return "starting".equals(normalized) || "running".equals(normalized) || "stopping".equals(normalized);
+    }
+
+    private int resolveSlotsRequired(Integer slotsRequired) {
+        if (slotsRequired == null || slotsRequired < 1) {
+            return 1;
+        }
+        return slotsRequired;
+    }
+
+    private int clampUsedSlots(long usedSlots, int capacitySlots) {
+        long nonNegative = Math.max(0L, usedSlots);
+        if (capacitySlots > 0) {
+            nonNegative = Math.min(nonNegative, capacitySlots);
+        }
+        return (int) Math.min(nonNegative, Integer.MAX_VALUE);
     }
 
     private UUID resolveNodeId() {
