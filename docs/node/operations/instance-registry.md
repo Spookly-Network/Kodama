@@ -27,9 +27,9 @@ Persist a local record of instance metadata after the node finishes preparing a 
   - container status and status timestamp (updated on start/stop/monitor)
   - container exit code and exit reason (recorded when containers stop)
 - Port reservations are derived from `portsJson` host ports and tracked per protocol (`tcp`/`udp`) while the registry entry exists.
-- Only `portsJson` array entries are considered for reservation; variable values are not used as reservation sources.
-- Entries missing `portsJson` do not participate in host-port reservation.
-- Entries with non-array `portsJson` are treated as invalid and cause prepare allocation to fail until corrected.
+- `portsJson` array entries are preferred for reservation, and legacy object entries are also accepted when each entry includes `hostPort` (and optional `protocol`).
+- Variable values are not used as reservation sources.
+- Entries missing `portsJson`, array entries without `hostPort`, or legacy object values without `hostPort` do not participate in host-port reservation.
 - Prepare serializes `hostPort` allocation and `instance.json` writes through a local reservation lock to avoid duplicate reservations under concurrent requests.
 - The registry is overwritten on each successful prepare and updated again when the container id is recorded.
 - Install completion is persisted in `installCompleted` and is used to skip repeated install script runs.
@@ -66,7 +66,7 @@ Example `instance.json` fragment:
 - If writing `installCompleted=true` fails after an install script run, start fails before Docker container creation.
 - If start fails after writing `starting`, cleanup attempts to remove the container and clear container runtime fields in the registry.
 - Missing or invalid workspace paths are treated as preparation failures.
-- Corrupt `portsJson` values in existing registries can block new allocations because reservations can no longer be read safely.
+- Corrupt JSON, invalid `hostPort` values, or invalid `protocol` values can block new allocations because reservations can no longer be read safely.
 - When containers disappear outside of the node agent, the monitor records a stopped state with an exit reason of
   `missing` only when no exit metadata is already present in the registry.
 

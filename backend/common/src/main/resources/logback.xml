@@ -22,14 +22,13 @@
         </encoder>
 
         <rollingPolicy
-                class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <!-- rollover daily and when the file reaches 10 MegaBytes -->
-            <fileNamePattern>${LOGS}/%d{yyyy-MM-dd}.%i.log
+                class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+            <fileNamePattern>
+                ${LOGS}/%d{yyyy-MM-dd}.%i.log
             </fileNamePattern>
-            <timeBasedFileNamingAndTriggeringPolicy
-                    class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-                <maxFileSize>10MB</maxFileSize>
-            </timeBasedFileNamingAndTriggeringPolicy>
+            <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+                <maxFileSize>5MB</maxFileSize>
+            </triggeringPolicy>
         </rollingPolicy>
     </appender>
 

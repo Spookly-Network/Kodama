@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -89,29 +90,64 @@ public class InstancePortAllocationService {
     }
     try {
       JsonNode root = objectMapper.readTree(portsJson);
-      if (!root.isArray()) {
-        throw new InstancePrepareException(
-            "portsJson must be a JSON array when loading reservations");
+      if (root == null || root.isNull()) {
+        return Set.of();
       }
-      Set<HostPortReservation> ports = new LinkedHashSet<>();
-      int index = 0;
-      for (JsonNode item : root) {
-        JsonNode hostPortNode = item.get("hostPort");
-        if (hostPortNode == null || hostPortNode.isNull()) {
-          throw new InstancePrepareException(
-              "portsJson array entry is missing hostPort at index " + index);
-        }
-        int hostPort = parsePort(hostPortNode, "portsJson[" + index + "].hostPort");
-        String protocol =
-            parseProtocolForReservation(item.get("protocol"), "portsJson[" + index + "].protocol");
-        ports.add(new HostPortReservation(protocol, hostPort));
-        index++;
+      if (root.isArray()) {
+        return parseHostPortsFromArray(root);
       }
-      return ports;
+      if (root.isObject()) {
+        return parseHostPortsFromLegacyObject(root);
+      }
+      return Set.of();
     } catch (IOException ex) {
       throw new InstancePrepareException(
           "Failed to parse portsJson from registry for instance " + entry.instanceId(), ex);
     }
+  }
+
+  private Set<HostPortReservation> parseHostPortsFromArray(JsonNode root) {
+    Set<HostPortReservation> ports = new LinkedHashSet<>();
+    int index = 0;
+    for (JsonNode item : root) {
+      if (item == null || !item.isObject()) {
+        index++;
+        continue;
+      }
+      JsonNode hostPortNode = item.get("hostPort");
+      if (hostPortNode == null || hostPortNode.isNull()) {
+        index++;
+        continue;
+      }
+      int hostPort = parsePort(hostPortNode, "portsJson[" + index + "].hostPort");
+      String protocol =
+          parseProtocolForReservation(item.get("protocol"), "portsJson[" + index + "].protocol");
+      ports.add(new HostPortReservation(protocol, hostPort));
+      index++;
+    }
+    return ports;
+  }
+
+  private Set<HostPortReservation> parseHostPortsFromLegacyObject(JsonNode root) {
+    Set<HostPortReservation> ports = new LinkedHashSet<>();
+    Iterator<Map.Entry<String, JsonNode>> fields = root.fields();
+    while (fields.hasNext()) {
+      Map.Entry<String, JsonNode> field = fields.next();
+      JsonNode value = field.getValue();
+      if (value == null || value.isNull() || !value.isObject()) {
+        continue;
+      }
+      JsonNode hostPortNode = value.get("hostPort");
+      if (hostPortNode == null || hostPortNode.isNull()) {
+        continue;
+      }
+      String sourcePrefix = "portsJson." + field.getKey();
+      int hostPort = parsePort(hostPortNode, sourcePrefix + ".hostPort");
+      String protocol =
+          parseProtocolForReservation(value.get("protocol"), sourcePrefix + ".protocol");
+      ports.add(new HostPortReservation(protocol, hostPort));
+    }
+    return ports;
   }
 
   private int allocateHostPort(

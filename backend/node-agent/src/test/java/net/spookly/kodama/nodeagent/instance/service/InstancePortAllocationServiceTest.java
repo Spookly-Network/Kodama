@@ -345,7 +345,7 @@ class InstancePortAllocationServiceTest {
   }
 
   @Test
-  void allocateRejectsLegacyObjectPortsJsonDuringReservationLoad() {
+  void allocateReservesHostPortFromLegacyObjectPortsJson() {
     ObjectMapper objectMapper = objectMapper();
     InstanceWorkspaceLayout layout = workspaceLayout();
     InstanceRegistryService registryService = new InstanceRegistryService(objectMapper, layout);
@@ -381,9 +381,102 @@ class InstancePortAllocationServiceTest {
         new NodePreparePortDefinition(
             "game", "tcp", 25565, new NodePreparePortDefinition.HostRange(30000, 30001, 1));
 
-    assertThatThrownBy(() -> service.allocate(UUID.randomUUID(), List.of(definition)))
-        .isInstanceOf(InstancePrepareException.class)
-        .hasMessageContaining("portsJson must be a JSON array when loading reservations");
+    InstancePortAllocationService.PortAllocationResult result =
+        service.allocate(UUID.randomUUID(), List.of(definition));
+
+    assertThat(result.injectedVariables())
+        .containsEntry("PORT", "30001")
+        .containsEntry("PORT_GAME", "30001");
+  }
+
+  @Test
+  void allocateIgnoresContainerOnlyLegacyObjectPortsJson() {
+    ObjectMapper objectMapper = objectMapper();
+    InstanceWorkspaceLayout layout = workspaceLayout();
+    InstanceRegistryService registryService = new InstanceRegistryService(objectMapper, layout);
+    InstanceWorkspaceManager workspaceManager = new InstanceWorkspaceManager(layout);
+
+    UUID existingInstanceId = UUID.randomUUID();
+    InstanceWorkspacePaths existingWorkspace =
+        workspaceManager.prepareWorkspace(existingInstanceId.toString());
+    NodePrepareInstanceRequest existingRequest =
+        new NodePrepareInstanceRequest(
+            existingInstanceId,
+            "existing",
+            "existing",
+            "image",
+            null,
+            List.of("run"),
+            1,
+            null,
+            "{\"game\":25565}",
+            Map.of(),
+            null,
+            List.of(sampleLayer()));
+    registryService.recordPrepared(
+        existingWorkspace,
+        existingRequest,
+        existingRequest.layers(),
+        existingRequest.variables(),
+        existingRequest.portsJson());
+
+    InstancePortAllocationService service =
+        new InstancePortAllocationService(registryService, objectMapper);
+    NodePreparePortDefinition definition =
+        new NodePreparePortDefinition(
+            "game", "tcp", 25565, new NodePreparePortDefinition.HostRange(30000, 30001, 1));
+
+    InstancePortAllocationService.PortAllocationResult result =
+        service.allocate(UUID.randomUUID(), List.of(definition));
+
+    assertThat(result.injectedVariables())
+        .containsEntry("PORT", "30000")
+        .containsEntry("PORT_GAME", "30000");
+  }
+
+  @Test
+  void allocateIgnoresPortDefinitionArrayWithoutHostPort() {
+    ObjectMapper objectMapper = objectMapper();
+    InstanceWorkspaceLayout layout = workspaceLayout();
+    InstanceRegistryService registryService = new InstanceRegistryService(objectMapper, layout);
+    InstanceWorkspaceManager workspaceManager = new InstanceWorkspaceManager(layout);
+
+    UUID existingInstanceId = UUID.randomUUID();
+    InstanceWorkspacePaths existingWorkspace =
+        workspaceManager.prepareWorkspace(existingInstanceId.toString());
+    NodePrepareInstanceRequest existingRequest =
+        new NodePrepareInstanceRequest(
+            existingInstanceId,
+            "existing",
+            "existing",
+            "image",
+            null,
+            List.of("run"),
+            1,
+            null,
+            "[{\"name\":\"hytale\",\"protocol\":\"udp\",\"containerPort\":5520,\"hostRange\":{\"min\":6000,\"max\":8000,\"step\":10}}]",
+            Map.of(),
+            null,
+            List.of(sampleLayer()));
+    registryService.recordPrepared(
+        existingWorkspace,
+        existingRequest,
+        existingRequest.layers(),
+        existingRequest.variables(),
+        existingRequest.portsJson());
+
+    InstancePortAllocationService service =
+        new InstancePortAllocationService(registryService, objectMapper);
+    NodePreparePortDefinition definition =
+        new NodePreparePortDefinition(
+            "game", "udp", 25565, new NodePreparePortDefinition.HostRange(6000, 6020, 10));
+
+    InstancePortAllocationService.PortAllocationResult result =
+        service.allocate(UUID.randomUUID(), List.of(definition));
+
+    assertThat(result.injectedVariables())
+        .containsEntry("PORT", "6000")
+        .containsEntry("PORT_GAME", "6000");
   }
 
   private InstanceWorkspaceLayout workspaceLayout() {

@@ -14,6 +14,7 @@ import net.spookly.kodama.nodeagent.docker.dto.DockerContainerCreateResult;
 import net.spookly.kodama.nodeagent.docker.dto.DockerPortBinding;
 import net.spookly.kodama.nodeagent.docker.dto.DockerVolumeMount;
 import net.spookly.kodama.nodeagent.docker.service.DockerService;
+import net.spookly.kodama.nodeagent.instance.callback.InstanceCallbackService;
 import net.spookly.kodama.nodeagent.instance.registry.InstanceRegistryEntry;
 import net.spookly.kodama.nodeagent.instance.registry.InstanceRegistryService;
 import net.spookly.kodama.nodeagent.instance.workspace.InstanceWorkspaceLayout;
@@ -38,6 +39,7 @@ public class InstanceStartService {
   private final InstanceProperties instanceProperties;
   private final NodePluginRegistry pluginRegistry;
   private final InstanceInstallScriptRunner installScriptRunner;
+  private final InstanceCallbackService callbackService;
 
   public InstanceStartService(
       DockerService dockerService,
@@ -47,7 +49,8 @@ public class InstanceStartService {
       NodeConfig config,
       InstanceProperties instanceProperties,
       NodePluginRegistry pluginRegistry,
-      InstanceInstallScriptRunner installScriptRunner) {
+      InstanceInstallScriptRunner installScriptRunner,
+      InstanceCallbackService callbackService) {
     this.dockerService = Objects.requireNonNull(dockerService, "dockerService");
     this.registryService = Objects.requireNonNull(registryService, "registryService");
     this.workspaceLayout = Objects.requireNonNull(workspaceLayout, "workspaceLayout");
@@ -57,6 +60,7 @@ public class InstanceStartService {
     this.instanceProperties = Objects.requireNonNull(instanceProperties, "instanceProperties");
     this.pluginRegistry = Objects.requireNonNull(pluginRegistry, "pluginRegistry");
     this.installScriptRunner = Objects.requireNonNull(installScriptRunner, "installScriptRunner");
+    this.callbackService = Objects.requireNonNull(callbackService, "callbackService");
   }
 
   public String startInstance(UUID instanceId, String requestedName) {
@@ -119,9 +123,18 @@ public class InstanceStartService {
       cleanupAfterStartFailure(workspace, instanceId, containerId, "registry update failure");
       throw ex;
     }
+    sendRunningCallback(instanceId, containerId);
     logger.info(
         "Instance container started. instanceId={} containerId={}", instanceId, containerId);
     return containerId;
+  }
+
+  private void sendRunningCallback(UUID instanceId, String portsJson) {
+    try {
+      callbackService.sendRunning(instanceId);
+    } catch (RuntimeException ex) {
+      logger.warn("Running callback failed. instanceId={}", instanceId, ex);
+    }
   }
 
   private void requirePreparedWorkspace(InstanceWorkspacePaths workspace) {
