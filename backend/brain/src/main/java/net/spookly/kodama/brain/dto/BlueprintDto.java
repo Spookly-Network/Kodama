@@ -3,7 +3,6 @@ package net.spookly.kodama.brain.dto;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
-
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

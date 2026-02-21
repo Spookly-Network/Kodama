@@ -6,7 +6,6 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.node.Node;
 import net.spookly.kodama.brain.domain.node.NodeStatus;

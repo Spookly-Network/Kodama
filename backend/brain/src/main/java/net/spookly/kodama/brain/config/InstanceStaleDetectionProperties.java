@@ -10,11 +10,14 @@ public class InstanceStaleDetectionProperties {
 
   private boolean enabled = true;
 
-  @Min(1) private int monitorIntervalSeconds = 60;
+  @Min(1)
+  private int monitorIntervalSeconds = 60;
 
-  @Min(1) private int preparingTimeoutSeconds = 300;
+  @Min(1)
+  private int preparingTimeoutSeconds = 300;
 
-  @Min(1) private int startingTimeoutSeconds = 300;
+  @Min(1)
+  private int startingTimeoutSeconds = 300;
 
   public boolean isEnabled() {
     return enabled;

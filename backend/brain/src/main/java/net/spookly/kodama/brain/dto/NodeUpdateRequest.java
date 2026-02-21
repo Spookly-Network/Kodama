@@ -16,7 +16,8 @@ public class NodeUpdateRequest {
 
   @NotBlank private String region;
 
-  @Min(1) private int capacitySlots;
+  @Min(1)
+  private int capacitySlots;
 
   @NotBlank private String nodeVersion;
 
@@ -24,5 +25,6 @@ public class NodeUpdateRequest {
 
   private String tags;
 
-  @Size(max = 512) private String baseUrl;
+  @Size(max = 512)
+  private String baseUrl;
 }

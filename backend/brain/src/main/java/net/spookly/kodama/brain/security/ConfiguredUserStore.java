@@ -1,11 +1,10 @@
 package net.spookly.kodama.brain.security;
 
+import jakarta.annotation.PostConstruct;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-
-import jakarta.annotation.PostConstruct;
 import net.spookly.kodama.brain.config.BrainSecurityProperties;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;

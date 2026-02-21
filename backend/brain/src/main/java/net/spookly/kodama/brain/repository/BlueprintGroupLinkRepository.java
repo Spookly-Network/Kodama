@@ -2,7 +2,6 @@ package net.spookly.kodama.brain.repository;
 
 import java.util.List;
 import java.util.UUID;
-
 import lombok.NonNull;
 import net.spookly.kodama.brain.domain.blueprint.BlueprintGroupLink;
 import net.spookly.kodama.brain.domain.blueprint.BlueprintGroupLinkId;

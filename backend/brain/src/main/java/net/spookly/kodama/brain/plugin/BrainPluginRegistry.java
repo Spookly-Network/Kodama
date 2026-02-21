@@ -1,5 +1,8 @@
 package net.spookly.kodama.brain.plugin;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -15,10 +18,6 @@ import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.stream.Stream;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import net.spookly.kodama.brain.config.PluginsProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

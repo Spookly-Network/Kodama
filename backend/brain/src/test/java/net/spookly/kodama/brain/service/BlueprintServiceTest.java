@@ -3,9 +3,8 @@ package net.spookly.kodama.brain.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.List;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import net.spookly.kodama.brain.domain.blueprint.Blueprint;
 import net.spookly.kodama.brain.dto.BlueprintDto;
 import net.spookly.kodama.brain.dto.CreateBlueprintRequest;

@@ -1,9 +1,8 @@
 package net.spookly.kodama.brain.controller;
 
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
-
-import jakarta.validation.Valid;
 import net.spookly.kodama.brain.dto.BlueprintDto;
 import net.spookly.kodama.brain.dto.CreateBlueprintRequest;
 import net.spookly.kodama.brain.dto.UpdateBlueprintRequest;

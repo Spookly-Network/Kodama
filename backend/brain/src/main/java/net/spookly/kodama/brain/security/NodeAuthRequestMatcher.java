@@ -1,8 +1,7 @@
 package net.spookly.kodama.brain.security;
 
-import java.util.List;
-
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
 import org.springframework.util.AntPathMatcher;
 
 public final class NodeAuthRequestMatcher {

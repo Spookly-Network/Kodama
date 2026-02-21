@@ -20,7 +20,10 @@ public class BlueprintPortDefinitionRequest {
 
   @NotBlank private String protocol;
 
-  @NotNull @Min(1) @Max(65535) private Integer containerPort;
+  @NotNull
+  @Min(1)
+  @Max(65535)
+  private Integer containerPort;
 
   @NotNull @Valid private HostRangeRequest hostRange;
 
@@ -30,10 +33,18 @@ public class BlueprintPortDefinitionRequest {
   @AllArgsConstructor
   public static class HostRangeRequest {
 
-    @NotNull @Min(1) @Max(65535) private Integer min;
+    @NotNull
+    @Min(1)
+    @Max(65535)
+    private Integer min;
 
-    @NotNull @Min(1) @Max(65535) private Integer max;
+    @NotNull
+    @Min(1)
+    @Max(65535)
+    private Integer max;
 
-    @NotNull @Min(1) private Integer step;
+    @NotNull
+    @Min(1)
+    private Integer step;
   }
 }

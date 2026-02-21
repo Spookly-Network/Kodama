@@ -8,7 +8,6 @@ import static org.mockito.Mockito.when;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.Optional;
 import java.util.UUID;
-
 import net.spookly.kodama.brain.domain.blueprint.Blueprint;
 import net.spookly.kodama.brain.domain.blueprint.BlueprintGroupLink;
 import net.spookly.kodama.brain.domain.blueprint.BlueprintGroupLinkId;

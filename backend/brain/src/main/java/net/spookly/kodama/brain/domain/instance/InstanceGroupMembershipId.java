@@ -1,11 +1,10 @@
 package net.spookly.kodama.brain.domain.instance;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.UUID;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Embeddable;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 

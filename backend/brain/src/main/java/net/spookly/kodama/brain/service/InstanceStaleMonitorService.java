@@ -3,7 +3,6 @@ package net.spookly.kodama.brain.service;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
-
 import lombok.NonNull;
 import net.spookly.kodama.brain.config.InstanceStaleDetectionProperties;
 import net.spookly.kodama.brain.domain.instance.Instance;

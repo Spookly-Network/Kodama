@@ -1,7 +1,6 @@
 package net.spookly.kodama.brain.service;
 
 import java.util.UUID;
-
 import net.spookly.kodama.brain.domain.instance.TemplateAssignmentSource;
 import net.spookly.kodama.brain.domain.template.TemplateVersion;
 

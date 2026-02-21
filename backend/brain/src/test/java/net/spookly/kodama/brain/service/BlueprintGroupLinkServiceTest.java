@@ -7,7 +7,6 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
-
 import net.spookly.kodama.brain.domain.blueprint.Blueprint;
 import net.spookly.kodama.brain.domain.instance.InstanceGroup;
 import net.spookly.kodama.brain.dto.InstanceGroupDto;

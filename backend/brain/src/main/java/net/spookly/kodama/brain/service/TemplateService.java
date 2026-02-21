@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
 import lombok.NonNull;
 import net.spookly.kodama.brain.domain.template.Template;
 import net.spookly.kodama.brain.domain.template.TemplateVersion;

@@ -19,10 +19,14 @@ public class PortDefinitionRequest {
 
   @NotBlank private String name;
 
-  @NotBlank @Pattern(regexp = "(?i)tcp|udp")
+  @NotBlank
+  @Pattern(regexp = "(?i)tcp|udp")
   private String protocol;
 
-  @NotNull @Min(1) @Max(65535) private Integer containerPort;
+  @NotNull
+  @Min(1)
+  @Max(65535)
+  private Integer containerPort;
 
   @NotNull @Valid private HostRangeRequest hostRange;
 
@@ -32,10 +36,18 @@ public class PortDefinitionRequest {
   @AllArgsConstructor
   public static class HostRangeRequest {
 
-    @NotNull @Min(1) @Max(65535) private Integer min;
+    @NotNull
+    @Min(1)
+    @Max(65535)
+    private Integer min;
 
-    @NotNull @Min(1) @Max(65535) private Integer max;
+    @NotNull
+    @Min(1)
+    @Max(65535)
+    private Integer max;
 
-    @NotNull @Min(1) private Integer step;
+    @NotNull
+    @Min(1)
+    private Integer step;
   }
 }

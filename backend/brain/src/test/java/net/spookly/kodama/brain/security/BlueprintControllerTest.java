@@ -16,7 +16,6 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
-
 import net.spookly.kodama.brain.config.BrainSecurityProperties;
 import net.spookly.kodama.brain.config.MethodSecurityConfig;
 import net.spookly.kodama.brain.config.SecurityConfig;

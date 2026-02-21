@@ -5,7 +5,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
-
 import net.spookly.kodama.brain.config.BrainSecurityProperties;
 import net.spookly.kodama.brain.config.MethodSecurityConfig;
 import net.spookly.kodama.brain.config.SecurityConfig;

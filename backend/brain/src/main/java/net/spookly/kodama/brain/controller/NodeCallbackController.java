@@ -1,7 +1,6 @@
 package net.spookly.kodama.brain.controller;
 
 import java.util.UUID;
-
 import net.spookly.kodama.brain.dto.node.InstancePreparedCallbackRequest;
 import net.spookly.kodama.brain.service.InstanceService;
 import org.springframework.http.HttpStatus;

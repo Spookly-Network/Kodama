@@ -8,17 +8,23 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "node")
 public class NodeProperties {
 
-  @Min(1) private int heartbeatIntervalSeconds = 30;
+  @Min(1)
+  private int heartbeatIntervalSeconds = 30;
 
-  @Min(1) private int heartbeatTimeoutSeconds = 90;
+  @Min(1)
+  private int heartbeatTimeoutSeconds = 90;
 
-  @Min(1) private int heartbeatMonitorIntervalSeconds = 60;
+  @Min(1)
+  private int heartbeatMonitorIntervalSeconds = 60;
 
-  @Min(1) private int commandTimeoutSeconds = 10;
+  @Min(1)
+  private int commandTimeoutSeconds = 10;
 
-  @Min(1) private int commandMaxAttempts = 2;
+  @Min(1)
+  private int commandMaxAttempts = 2;
 
-  @Min(0) private long commandRetryBackoffMillis = 500;
+  @Min(0)
+  private long commandRetryBackoffMillis = 500;
 
   public int getHeartbeatIntervalSeconds() {
     return heartbeatIntervalSeconds;

@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
-
 import net.spookly.kodama.brain.config.InstanceStaleDetectionProperties;
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceEvent;

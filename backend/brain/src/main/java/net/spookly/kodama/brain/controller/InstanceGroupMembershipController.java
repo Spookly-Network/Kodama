@@ -2,7 +2,6 @@ package net.spookly.kodama.brain.controller;
 
 import java.util.List;
 import java.util.UUID;
-
 import net.spookly.kodama.brain.dto.InstanceGroupDto;
 import net.spookly.kodama.brain.service.InstanceGroupService;
 import org.springframework.http.HttpStatus;

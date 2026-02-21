@@ -9,7 +9,6 @@ import java.util.EnumSet;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
-
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceEvent;
 import net.spookly.kodama.brain.domain.instance.InstanceEventType;

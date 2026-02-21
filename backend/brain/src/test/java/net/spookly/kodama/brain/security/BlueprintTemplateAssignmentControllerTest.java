@@ -14,7 +14,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.List;
 import java.util.UUID;
-
 import net.spookly.kodama.brain.config.BrainSecurityProperties;
 import net.spookly.kodama.brain.config.MethodSecurityConfig;
 import net.spookly.kodama.brain.config.SecurityConfig;

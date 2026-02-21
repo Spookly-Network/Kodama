@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
-
 import net.spookly.kodama.brain.domain.blueprint.Blueprint;
 import net.spookly.kodama.brain.dto.BlueprintPortDefinitionDto;
 import net.spookly.kodama.brain.dto.BlueprintPortDefinitionRequest;

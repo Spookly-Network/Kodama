@@ -2,7 +2,6 @@ package net.spookly.kodama.brain.dto;
 
 import java.util.Locale;
 import java.util.UUID;
-
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

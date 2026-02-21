@@ -1,13 +1,12 @@
 package net.spookly.kodama.brain.service;
 
+import jakarta.persistence.EntityManager;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-
-import jakarta.persistence.EntityManager;
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceEvent;
 import net.spookly.kodama.brain.domain.instance.InstanceEventType;
@@ -199,24 +198,14 @@ public class InstanceService {
     if (state == InstanceState.REQUESTED) {
       List<ResolvedTemplateLayer> layers = templateAssignmentResolver.resolveForInstance(id);
       logger.info("Instance {} has been requested on node {}", id, node.getId());
+      transitionOrConflict(
+          instance, InstanceState.PREPARING, InstanceEventType.PREPARE_DISPATCHED, now);
       dispatchNodeCommand(
           "prepare",
           () -> commandDispatcherService.sendPrepareInstance(node, instance, layers, null));
-      // Node callbacks can arrive before the prepare dispatch completes; reload to avoid
-      // overwriting.
-      refreshInstanceState(instance);
-      if (instance.getState() == InstanceState.REQUESTED) {
-        transitionOrConflict(
-            instance, InstanceState.PREPARING, InstanceEventType.PREPARE_DISPATCHED, now);
-      } else {
-        logger.info(
-            "Instance {} advanced to state {} before prepare dispatch transition",
-            id,
-            instance.getState());
-      }
     } else if (state == InstanceState.STOPPED) {
       transitionOrConflict(
-              instance, InstanceState.STARTING, InstanceEventType.START_DISPATCHED, now);
+          instance, InstanceState.STARTING, InstanceEventType.START_DISPATCHED, now);
       dispatchNodeCommand(
           "start", () -> commandDispatcherService.sendStartInstance(node, instance));
     } else {
@@ -252,8 +241,7 @@ public class InstanceService {
           HttpStatus.CONFLICT, "Instance cannot be destroyed from state " + state);
     }
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-    dispatchNodeCommand(
-        "destroy", () -> commandDispatcherService.sendDestroyInstance(node, instance));
+
     if (state == InstanceState.STOPPED) {
       transitionOrConflict(
           instance, InstanceState.STOPPING, InstanceEventType.DESTROY_DISPATCHED, now);
@@ -261,6 +249,9 @@ public class InstanceService {
       instanceEventRepository.save(
           new InstanceEvent(instance, now, InstanceEventType.DESTROY_DISPATCHED, null));
     }
+
+    dispatchNodeCommand(
+        "destroy", () -> commandDispatcherService.sendDestroyInstance(node, instance));
     return InstanceDto.fromEntity(instance, templateAssignmentResolver.resolveForInstance(id));
   }
 

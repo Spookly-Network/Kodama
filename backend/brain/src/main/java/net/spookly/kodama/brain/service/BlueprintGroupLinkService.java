@@ -3,7 +3,6 @@ package net.spookly.kodama.brain.service;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
-
 import net.spookly.kodama.brain.domain.blueprint.Blueprint;
 import net.spookly.kodama.brain.domain.blueprint.BlueprintGroupLink;
 import net.spookly.kodama.brain.domain.blueprint.BlueprintGroupLinkId;

@@ -14,5 +14,6 @@ public class NodeHeartbeatRequest {
 
   @NotNull private NodeStatus status;
 
-  @Min(0) private int usedSlots;
+  @Min(0)
+  private int usedSlots;
 }

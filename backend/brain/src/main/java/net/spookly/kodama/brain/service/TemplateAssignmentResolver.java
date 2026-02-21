@@ -11,7 +11,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
 import net.spookly.kodama.brain.domain.instance.GroupTemplateAssignment;
 import net.spookly.kodama.brain.domain.instance.InstanceGroupMembership;
 import net.spookly.kodama.brain.domain.instance.InstanceTemplateAssignment;

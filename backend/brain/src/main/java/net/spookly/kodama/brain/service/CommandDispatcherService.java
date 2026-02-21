@@ -1,14 +1,13 @@
 package net.spookly.kodama.brain.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import net.spookly.kodama.brain.config.BrainSecurityProperties;
 import net.spookly.kodama.brain.config.NodeProperties;
 import net.spookly.kodama.brain.domain.instance.Instance;

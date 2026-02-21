@@ -2,7 +2,6 @@ package net.spookly.kodama.brain.service;
 
 import java.util.List;
 import java.util.UUID;
-
 import net.spookly.kodama.brain.domain.blueprint.Blueprint;
 import net.spookly.kodama.brain.domain.blueprint.BlueprintTemplateAssignment;
 import net.spookly.kodama.brain.domain.instance.GroupTemplateAssignment;

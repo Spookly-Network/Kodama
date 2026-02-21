@@ -2,7 +2,6 @@ package net.spookly.kodama.brain.config;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "plugins")

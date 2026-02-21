@@ -2,12 +2,11 @@ package net.spookly.kodama.brain.metrics;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceState;
 import net.spookly.kodama.brain.domain.node.Node;

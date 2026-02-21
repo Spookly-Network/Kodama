@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
-
 import net.spookly.kodama.brain.config.NodeProperties;
 import net.spookly.kodama.brain.domain.node.Node;
 import net.spookly.kodama.brain.domain.node.NodeStatus;

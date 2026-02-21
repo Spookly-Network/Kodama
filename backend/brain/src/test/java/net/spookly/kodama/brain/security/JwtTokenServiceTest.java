@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.Clock;
 import java.util.List;
 import java.util.Set;
-
 import net.spookly.kodama.brain.config.BrainSecurityProperties;
 import org.junit.jupiter.api.Test;
 

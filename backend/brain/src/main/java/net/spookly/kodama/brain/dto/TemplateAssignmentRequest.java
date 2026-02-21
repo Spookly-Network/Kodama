@@ -1,10 +1,9 @@
 package net.spookly.kodama.brain.dto;
 
-import java.util.UUID;
-
 import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,6 +19,7 @@ public class TemplateAssignmentRequest {
 
   private UUID templateVersionId;
 
-  @Min(0) @JsonAlias("orderIndex")
+  @Min(0)
+  @JsonAlias("orderIndex")
   private Integer priority;
 }

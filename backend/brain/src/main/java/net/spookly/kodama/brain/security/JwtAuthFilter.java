@@ -1,11 +1,10 @@
 package net.spookly.kodama.brain.security;
 
-import java.io.IOException;
-
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import net.spookly.kodama.brain.config.BrainSecurityProperties;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
