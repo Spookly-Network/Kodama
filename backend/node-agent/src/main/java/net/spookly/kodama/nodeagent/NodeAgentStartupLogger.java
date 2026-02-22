@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -18,10 +19,13 @@ public class NodeAgentStartupLogger implements ApplicationRunner {
 
   private final NodeConfig config;
   private final InstanceProperties instanceProperties;
+  private final String version;
 
-  public NodeAgentStartupLogger(NodeConfig config, InstanceProperties instanceProperties) {
+  public NodeAgentStartupLogger(
+      NodeConfig config, InstanceProperties instanceProperties, BuildProperties buildProperties) {
     this.config = config;
     this.instanceProperties = instanceProperties;
+    this.version = buildProperties.getVersion();
   }
 
   @Override
@@ -32,7 +36,7 @@ public class NodeAgentStartupLogger implements ApplicationRunner {
             + "instanceMonitorEnabled={}, instanceMonitorIntervalSeconds={}, dockerHost={}, dockerTlsVerify={}",
         valueOrDash(config.getNodeId()),
         config.getNodeName(),
-        config.getNodeVersion(),
+        version,
         config.getRegion(),
         config.getCapacitySlots(),
         config.getBrainBaseUrl(),

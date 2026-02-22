@@ -26,6 +26,7 @@ import net.spookly.kodama.nodeagent.docker.dto.DockerContainerCreateResult;
 import net.spookly.kodama.nodeagent.docker.dto.DockerPortBinding;
 import net.spookly.kodama.nodeagent.docker.dto.DockerVolumeMount;
 import net.spookly.kodama.nodeagent.docker.service.DockerService;
+import net.spookly.kodama.nodeagent.instance.callback.InstanceCallbackService;
 import net.spookly.kodama.nodeagent.instance.registry.InstanceRegistryEntry;
 import net.spookly.kodama.nodeagent.instance.registry.InstanceRegistryService;
 import net.spookly.kodama.nodeagent.instance.workspace.InstanceWorkspaceLayout;
@@ -69,6 +70,7 @@ class InstanceStartServiceTest {
     InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
     InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
     InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
+    InstanceCallbackService callbackService = mock(InstanceCallbackService.class);
 
     when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
     when(registryService.loadRegistry(workspace)).thenReturn(pendingInstall, installComplete);
@@ -87,7 +89,8 @@ class InstanceStartServiceTest {
             nodeConfig(),
             instanceProperties(),
             pluginRegistry(),
-            installScriptRunner);
+            installScriptRunner,
+            callbackService);
 
     service.startInstance(instanceId, "request-name");
 
@@ -142,6 +145,7 @@ class InstanceStartServiceTest {
     InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
     InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
     InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
+    InstanceCallbackService callbackService = mock(InstanceCallbackService.class);
 
     when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
     when(registryService.loadRegistry(workspace)).thenReturn(registry);
@@ -158,7 +162,8 @@ class InstanceStartServiceTest {
             nodeConfig(),
             instanceProperties(),
             pluginRegistry(),
-            installScriptRunner);
+            installScriptRunner,
+            callbackService);
 
     service.startInstance(instanceId, "request-name");
 
@@ -196,6 +201,7 @@ class InstanceStartServiceTest {
     InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
     InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
     InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
+    InstanceCallbackService callbackService = mock(InstanceCallbackService.class);
 
     when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
     when(registryService.loadRegistry(workspace))
@@ -216,7 +222,8 @@ class InstanceStartServiceTest {
             nodeConfig(),
             instanceProperties(),
             pluginRegistry(),
-            installScriptRunner);
+            installScriptRunner,
+            callbackService);
 
     service.startInstance(instanceId, "first-start");
     service.startInstance(instanceId, "second-start");
@@ -251,6 +258,7 @@ class InstanceStartServiceTest {
     InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
     InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
     InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
+    InstanceCallbackService callbackService = mock(InstanceCallbackService.class);
 
     when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
     when(registryService.loadRegistry(workspace)).thenReturn(registry);
@@ -268,7 +276,8 @@ class InstanceStartServiceTest {
             nodeConfig(),
             instanceProperties(),
             pluginRegistry(),
-            installScriptRunner);
+            installScriptRunner,
+            callbackService);
 
     assertThatThrownBy(() -> service.startInstance(instanceId, "request-name"))
         .isInstanceOf(RuntimeException.class)
@@ -309,6 +318,7 @@ class InstanceStartServiceTest {
     InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
     InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
     InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
+    InstanceCallbackService callbackService = mock(InstanceCallbackService.class);
 
     when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
     when(registryService.loadRegistry(workspace)).thenReturn(registry);
@@ -328,7 +338,8 @@ class InstanceStartServiceTest {
             nodeConfig(),
             instanceProperties(),
             pluginRegistry(),
-            installScriptRunner);
+            installScriptRunner,
+            callbackService);
 
     assertThatThrownBy(() -> service.startInstance(instanceId, "request-name"))
         .isInstanceOf(RuntimeException.class)
@@ -370,6 +381,7 @@ class InstanceStartServiceTest {
     InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
     InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
     InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
+    InstanceCallbackService callbackService = mock(InstanceCallbackService.class);
 
     when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
     when(registryService.loadRegistry(workspace)).thenReturn(registry);
@@ -390,7 +402,8 @@ class InstanceStartServiceTest {
             nodeConfig(),
             instanceProperties(),
             pluginRegistry(),
-            installScriptRunner);
+            installScriptRunner,
+            callbackService);
 
     assertThatThrownBy(() -> service.startInstance(instanceId, "request-name"))
         .isInstanceOf(RuntimeException.class)
@@ -421,6 +434,7 @@ class InstanceStartServiceTest {
     InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
     InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
     InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
+    InstanceCallbackService callbackService = mock(InstanceCallbackService.class);
 
     when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
     when(registryService.loadRegistry(workspace)).thenReturn(registry);
@@ -435,7 +449,8 @@ class InstanceStartServiceTest {
             nodeConfig(),
             instanceProperties(),
             pluginRegistry(),
-            installScriptRunner);
+            installScriptRunner,
+            callbackService);
 
     assertThatThrownBy(() -> service.startInstance(instanceId, "request-name"))
         .isInstanceOf(InstanceStartException.class)
@@ -468,6 +483,7 @@ class InstanceStartServiceTest {
     InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
     InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
     InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
+    InstanceCallbackService callbackService = mock(InstanceCallbackService.class);
 
     when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
     when(registryService.loadRegistry(workspace)).thenReturn(registry);
@@ -481,7 +497,8 @@ class InstanceStartServiceTest {
             nodeConfig(),
             instanceProperties(),
             pluginRegistry(),
-            installScriptRunner);
+            installScriptRunner,
+            callbackService);
 
     assertThatThrownBy(() -> service.startInstance(instanceId, "request-name"))
         .isInstanceOf(InstanceStartException.class)
@@ -514,6 +531,7 @@ class InstanceStartServiceTest {
     InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
     InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
     InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
+    InstanceCallbackService callbackService = mock(InstanceCallbackService.class);
 
     when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
     when(registryService.loadRegistry(workspace)).thenReturn(registry);
@@ -527,7 +545,8 @@ class InstanceStartServiceTest {
             nodeConfig(),
             instanceProperties(),
             pluginRegistry(),
-            installScriptRunner);
+            installScriptRunner,
+            callbackService);
 
     assertThatThrownBy(() -> service.startInstance(instanceId, "request-name"))
         .isInstanceOf(InstanceStartException.class)
@@ -555,6 +574,7 @@ class InstanceStartServiceTest {
     InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
     InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
     InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
+    InstanceCallbackService callbackService = mock(InstanceCallbackService.class);
 
     when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
     when(registryService.loadRegistry(workspace)).thenReturn(registry);
@@ -568,7 +588,8 @@ class InstanceStartServiceTest {
             nodeConfig(),
             instanceProperties(),
             pluginRegistry(),
-            installScriptRunner);
+            installScriptRunner,
+            callbackService);
 
     assertThatThrownBy(() -> service.startInstance(instanceId, "request-name"))
         .isInstanceOf(InstanceStartException.class)
@@ -595,6 +616,7 @@ class InstanceStartServiceTest {
     InstanceWorkspaceLayout workspaceLayout = mock(InstanceWorkspaceLayout.class);
     InstancePortBindingsResolver portBindingsResolver = mock(InstancePortBindingsResolver.class);
     InstanceInstallScriptRunner installScriptRunner = mock(InstanceInstallScriptRunner.class);
+    InstanceCallbackService callbackService = mock(InstanceCallbackService.class);
 
     when(workspaceLayout.resolveWorkspace(instanceId.toString())).thenReturn(workspace);
     when(registryService.loadRegistry(workspace)).thenReturn(registry);
@@ -608,7 +630,8 @@ class InstanceStartServiceTest {
             nodeConfig(),
             instanceProperties(),
             pluginRegistry(),
-            installScriptRunner);
+            installScriptRunner,
+            callbackService);
 
     assertThatThrownBy(() -> service.startInstance(instanceId, "request-name"))
         .isInstanceOf(InstanceStartException.class)

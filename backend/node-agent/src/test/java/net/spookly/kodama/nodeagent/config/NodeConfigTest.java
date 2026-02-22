@@ -14,7 +14,6 @@ class NodeConfigTest {
     assertThatThrownBy(config::validate)
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("node-agent.node-name is required")
-        .hasMessageContaining("node-agent.node-version is required")
         .hasMessageContaining("node-agent.region is required")
         .hasMessageContaining("node-agent.brain-base-url is required")
         .hasMessageContaining("node-agent.cache-dir is required")
@@ -25,7 +24,6 @@ class NodeConfigTest {
   void validateAcceptsRequiredConfig() {
     NodeConfig config = new NodeConfig();
     config.setNodeName("Node 1");
-    config.setNodeVersion("1.0.0");
     config.setRegion("local");
     config.setCapacitySlots(4);
     config.setBrainBaseUrl("http://brain:8080");
@@ -38,7 +36,6 @@ class NodeConfigTest {
   void validateRejectsNegativeHeartbeatInterval() {
     NodeConfig config = new NodeConfig();
     config.setNodeName("Node 1");
-    config.setNodeVersion("1.0.0");
     config.setRegion("local");
     config.setCapacitySlots(4);
     config.setBrainBaseUrl("http://brain:8080");
@@ -54,7 +51,6 @@ class NodeConfigTest {
   void validateRejectsTemplateCacheCheckWhenMissingFields() {
     NodeConfig config = new NodeConfig();
     config.setNodeName("Node 1");
-    config.setNodeVersion("1.0.0");
     config.setRegion("local");
     config.setCapacitySlots(4);
     config.setBrainBaseUrl("http://brain:8080");
@@ -72,7 +68,6 @@ class NodeConfigTest {
   void validateRejectsNegativeVariableSubstitutionLimit() {
     NodeConfig config = new NodeConfig();
     config.setNodeName("Node 1");
-    config.setNodeVersion("1.0.0");
     config.setRegion("local");
     config.setCapacitySlots(4);
     config.setBrainBaseUrl("http://brain:8080");
@@ -89,7 +84,6 @@ class NodeConfigTest {
   void validateAcceptsTemplateCacheCheckWhenConfigured() {
     NodeConfig config = new NodeConfig();
     config.setNodeName("Node 1");
-    config.setNodeVersion("1.0.0");
     config.setRegion("local");
     config.setCapacitySlots(4);
     config.setBrainBaseUrl("http://brain:8080");
@@ -106,7 +100,6 @@ class NodeConfigTest {
   void validateRejectsDockerTimeoutsWhenNonPositive() {
     NodeConfig config = new NodeConfig();
     config.setNodeName("Node 1");
-    config.setNodeVersion("1.0.0");
     config.setRegion("local");
     config.setCapacitySlots(4);
     config.setBrainBaseUrl("http://brain:8080");
@@ -124,7 +117,6 @@ class NodeConfigTest {
   void validateAcceptsDockerTlsVerifyWhenCertConfigMissing() {
     NodeConfig config = new NodeConfig();
     config.setNodeName("Node 1");
-    config.setNodeVersion("1.0.0");
     config.setRegion("local");
     config.setCapacitySlots(4);
     config.setBrainBaseUrl("http://brain:8080");

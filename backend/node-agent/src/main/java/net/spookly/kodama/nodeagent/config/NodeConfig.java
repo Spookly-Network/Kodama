@@ -12,7 +12,6 @@ public class NodeConfig {
 
   @Setter private String nodeId;
   @Setter private String nodeName;
-  @Setter private String nodeVersion;
   @Setter private String region;
   @Setter private int capacitySlots;
   @Setter private boolean devMode;
@@ -34,7 +33,6 @@ public class NodeConfig {
   public void validate() {
     List<String> errors = new ArrayList<>();
     addIfBlank(errors, nodeName, "node-agent.node-name is required");
-    addIfBlank(errors, nodeVersion, "node-agent.node-version is required");
     addIfBlank(errors, region, "node-agent.region is required");
     addIfBlank(errors, brainBaseUrl, "node-agent.brain-base-url is required");
     addIfBlank(errors, cacheDir, "node-agent.cache-dir is required");

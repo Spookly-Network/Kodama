@@ -21,7 +21,6 @@ public class NodeRegistrationRequest {
     request.setName(config.getNodeName());
     request.setRegion(config.getRegion());
     request.setCapacitySlots(config.getCapacitySlots());
-    request.setNodeVersion(config.getNodeVersion());
     request.setDevMode(config.isDevMode());
     request.setTags(config.getTags());
     request.setBaseUrl(config.getBaseUrl());

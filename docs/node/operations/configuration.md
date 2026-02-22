@@ -71,8 +71,8 @@ Describe the configuration inputs for the node agent and how they map to environ
   - `node-agent.auth.token-path` (`NODE_AGENT_AUTH_TOKEN_PATH`)
   - `node-agent.auth.cert-path` (`NODE_AGENT_AUTH_CERT_PATH`)
   - `node-agent.s3.region` (`NODE_AGENT_S3_REGION`)
-- `node-agent.node-version` is sourced from the node-agent build metadata and used for registration and diagnostics.
-  It should not be set through environment variables.
+- Node version is sourced from node-agent build metadata and used for registration and diagnostics.
+  It is not configurable through `node-agent.*` properties or environment variables.
 - When registration is enabled, the node agent reads the token from `node-agent.auth.token-path`
   and sends it to the Brain using `node-agent.auth.header-name`.
 - Command endpoints require Brain authentication:
