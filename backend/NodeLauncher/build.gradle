@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'net.spookly.kodoma'
-version = rootProject.launcher.version
+version = rootProject.launcher_version
 
 repositories {
     mavenCentral()

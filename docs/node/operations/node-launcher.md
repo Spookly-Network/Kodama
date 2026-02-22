@@ -6,16 +6,20 @@ Describe how the `NodeLauncher` module updates and starts the Node Agent on Linu
 ## What changed
 - Added `backend/NodeLauncher` implementation for a self-updating node launcher.
 - Added startup config loading from `KODAMA_LAUNCHER_CONFIG` with fallback `./config.yml`.
+- Added automatic default config creation when the resolved config file is missing.
 - Added GitHub Releases lookup with support for `stable` and `beta` channels.
 - Added asset selection via regex and SHA256 verification support.
 - Added atomic symlink switching for `agent/current` and `agent/previous`.
 - Added process startup logic for the node-agent jar with configurable Java binary and args.
+- Agent process now starts with `/opt/kodama-node/agent` as working directory so local Spring
+  config files (for example `application.yaml`) are loaded from the agent folder.
 - Added crash monitoring with rollback after repeated startup failures.
 
 ## How to use / impact
 - Build launcher: `./gradlew :NodeLauncher:jar` (from `backend/`).
 - Install artifact as `/opt/kodama-node/launcher/launcher.jar`.
-- Provide config file (`/opt/kodama-node/launcher/config.yml` by default).
+- Provide config file (`/opt/kodama-node/launcher/config.yml` by default), or let launcher create one on first start.
+- After auto-creation, set `github.owner` and `github.repo` for your repository.
 - Manage launcher with `systemd`:
   - `ExecStart=/usr/bin/java -jar /opt/kodama-node/launcher/launcher.jar`
   - `WorkingDirectory=/opt/kodama-node/launcher`

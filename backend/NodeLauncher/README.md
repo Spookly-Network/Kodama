@@ -10,8 +10,10 @@ Self-updating launcher for the Kodama Node Agent. The launcher is intended to ru
    - `sudo mkdir -p /opt/kodama-node/launcher /opt/kodama-node/agent /opt/kodama-node/data/logs`
 3. Copy launcher artifact:
    - `sudo cp NodeLauncher/build/libs/launcher.jar /opt/kodama-node/launcher/launcher.jar`
-4. Place launcher config:
-   - `sudo cp NodeLauncher/config.example.yml /opt/kodama-node/launcher/config.yml`
+4. Configure launcher:
+   - Optional: copy `NodeLauncher/config.example.yml` to `/opt/kodama-node/launcher/config.yml`.
+   - If the file is missing at startup, launcher creates a default config automatically.
+   - Update `github.owner` and `github.repo` in the created file before relying on updates.
 5. Ensure at least one agent jar is installed and linked:
    - `/opt/kodama-node/agent/agent-<version>.jar`
    - `/opt/kodama-node/agent/current -> agent-<version>.jar`
@@ -53,6 +55,8 @@ The launcher reads config path from:
 - `KODAMA_LAUNCHER_CONFIG`
 - Fallback: `./config.yml` (working directory of the launcher process)
 
+If the resolved config file does not exist, launcher creates it with default values.
+
 ## systemd Unit Example
 
 ```ini
@@ -89,6 +93,8 @@ WantedBy=multi-user.target
     - `current -> new version`
 - Starts node-agent with:
   - `<javaBin> -jar /opt/kodama-node/agent/current <agentArgs...>`
+  - Working directory is `/opt/kodama-node/agent`, so Spring config files like `application.yaml`
+    are discovered there.
 - Crash rollback policy:
   - if agent exits within 30 seconds, 3 times in a row:
     - rollback `current -> previous`

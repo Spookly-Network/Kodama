@@ -8,6 +8,10 @@ import java.util.List;
 public final class AgentProcessManager {
 
   public Process start(LauncherConfig config, Path agentJar) throws IOException {
+    return prepareProcessBuilder(config, agentJar).start();
+  }
+
+  ProcessBuilder prepareProcessBuilder(LauncherConfig config, Path agentJar) {
     List<String> command = new ArrayList<>();
     command.add(config.javaBin());
     command.add("-jar");
@@ -15,8 +19,18 @@ public final class AgentProcessManager {
     command.addAll(config.agentArgs());
 
     ProcessBuilder processBuilder = new ProcessBuilder(command);
-    processBuilder.directory(config.installDirPath().toFile());
+    Path agentWorkingDirectory = resolveAgentWorkingDirectory(config, agentJar);
+    processBuilder.directory(agentWorkingDirectory.toFile());
     processBuilder.inheritIO();
-    return processBuilder.start();
+    return processBuilder;
+  }
+
+  private Path resolveAgentWorkingDirectory(LauncherConfig config, Path agentJar) {
+    Path normalizedAgentPath = agentJar.toAbsolutePath().normalize();
+    Path agentDirectory = normalizedAgentPath.getParent();
+    if (agentDirectory != null) {
+      return agentDirectory;
+    }
+    return config.installDirPath().toAbsolutePath().normalize();
   }
 }

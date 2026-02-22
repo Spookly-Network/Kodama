@@ -20,7 +20,7 @@ public final class SymlinkManager {
     this.installDir = installDir.toAbsolutePath().normalize();
     this.launcherDir = this.installDir.resolve("launcher");
     this.agentDir = this.installDir.resolve("agent");
-    this.logsDir = this.installDir.resolve("data").resolve("logs");
+    this.logsDir = this.installDir.resolve("logs");
     this.currentLink = this.agentDir.resolve("current");
     this.previousLink = this.agentDir.resolve("previous");
   }
