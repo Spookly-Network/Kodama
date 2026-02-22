@@ -22,7 +22,7 @@ class ConfigLoaderTest {
     LauncherConfig config = loader.load();
 
     assertTrue(Files.isRegularFile(configPath));
-    //TODO: Get from elsewhere
+    // TODO: Get from elsewhere
     assertEquals("Spookly-Network", config.github().owner());
     assertEquals("Kodama", config.github().repo());
     assertEquals(LauncherConfig.Channel.STABLE, config.github().channel());
