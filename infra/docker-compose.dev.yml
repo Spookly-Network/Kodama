@@ -47,6 +47,7 @@ services:
       SPRING_DATASOURCE_USERNAME: kodama
       SPRING_DATASOURCE_PASSWORD: kodama
       BRAIN_SECURITY_ENABLED: "false"
+      NODE_TLS_ENABLED: "false"
     ports:
       - "8080:8080"
     healthcheck:
@@ -70,6 +71,7 @@ services:
       NODE_AGENT_CAPACITY_SLOTS: 10
       NODE_AGENT_BASE_URL: http://node-agent:8080
       NODE_AGENT_BRAIN_BASE_URL: http://brain:8080
+      NODE_AGENT_BRAIN_TLS_ENABLED: "false"
       NODE_AGENT_WORKSPACE_DIR: /var/lib/kodama/workspace
       NODE_AGENT_CACHE_DIR: /var/lib/kodama/cache
       NODE_AGENT_S3_ENDPOINT: http://minio:9000

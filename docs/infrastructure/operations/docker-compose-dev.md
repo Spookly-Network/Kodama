@@ -7,6 +7,7 @@ Document the dev compose settings that must align with Brain and Node Agent conf
 - Updated Node Agent environment variables to match `node-agent.*` settings.
 - Added required Node Agent S3 settings and cache/workspace directories.
 - Disabled Brain security in dev to allow local node registration without tokens.
+- Kept Brain <-> Node transport TLS disabled by default for local HTTP compose flows.
 
 ## How to use / impact
 - Start local services with `infra/docker-compose.dev.yml`.
@@ -21,6 +22,12 @@ Document the dev compose settings that must align with Brain and Node Agent conf
   - `NODE_AGENT_S3_ACCESS_KEY`
   - `NODE_AGENT_S3_SECRET_KEY`
 - `NODE_AGENT_BASE_URL` is set so the Brain can issue commands back to the Node Agent.
+- Transport TLS is optional and disabled in the dev compose defaults:
+  - Brain -> Node TLS: `NODE_TLS_ENABLED=false`
+  - Node -> Brain TLS: `NODE_AGENT_BRAIN_TLS_ENABLED=false`
+- To test local TLS, set HTTPS base URLs and mount trust/key stores for:
+  - Brain: `NODE_TLS_*`
+  - Node Agent: `NODE_AGENT_BRAIN_TLS_*`
 - Node version is not configured in compose; the node-agent uses its build version automatically.
 - Cache and workspace directories are mounted as named volumes.
 - `BRAIN_SECURITY_ENABLED=false` disables auth filters for local development.

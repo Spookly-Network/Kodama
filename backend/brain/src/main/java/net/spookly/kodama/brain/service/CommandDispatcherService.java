@@ -194,6 +194,7 @@ public class CommandDispatcherService {
     if (baseUrl == null || baseUrl.isBlank()) {
       throw new IllegalStateException("Node baseUrl is not configured for node " + node.getId());
     }
+    nodeProperties.requireHttpsBaseUrl(baseUrl, "Node baseUrl");
     return UriComponentsBuilder.fromUriString(baseUrl)
         .path("/api/instances/")
         .path(instanceId.toString())

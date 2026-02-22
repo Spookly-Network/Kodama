@@ -76,7 +76,11 @@ public class NodeRegistrationRunner implements ApplicationRunner {
             ? brainBaseUrl.substring(0, brainBaseUrl.length() - 1)
             : brainBaseUrl;
     try {
-      return URI.create(trimmed + "/api/nodes/register");
+      URI endpoint = URI.create(trimmed + "/api/nodes/register");
+      config.requireHttpsBrainUri(endpoint);
+      return endpoint;
+    } catch (IllegalStateException ex) {
+      throw new NodeRegistrationException(ex.getMessage());
     } catch (IllegalArgumentException ex) {
       throw new NodeRegistrationException("Invalid Brain base URL: " + brainBaseUrl, ex);
     }

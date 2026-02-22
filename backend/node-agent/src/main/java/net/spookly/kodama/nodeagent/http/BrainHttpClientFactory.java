@@ -1,4 +1,4 @@
-package net.spookly.kodama.brain.config;
+package net.spookly.kodama.nodeagent.http;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,40 +11,25 @@ import java.time.Duration;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
-import org.springframework.web.client.RestTemplate;
+import net.spookly.kodama.nodeagent.config.NodeConfig;
 
-@Configuration
-public class NodeClientConfig {
+public final class BrainHttpClientFactory {
 
   private static final String DEFAULT_STORE_TYPE = "PKCS12";
   private static final String TLS_PROTOCOL = "TLS";
 
-  @Bean
-  public RestTemplate nodeRestTemplate(NodeProperties nodeProperties) {
-    Duration timeout = Duration.ofSeconds(nodeProperties.getCommandTimeoutSeconds());
-    int timeoutMillis = (int) timeout.toMillis();
-    nodeProperties.validateTlsConfiguration();
+  private BrainHttpClientFactory() {}
 
-    if (nodeProperties.getTls().isEnabled()) {
-      SSLContext sslContext = createSslContext(nodeProperties.getTls());
-      HttpClient httpClient =
-          HttpClient.newBuilder().connectTimeout(timeout).sslContext(sslContext).build();
-      JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
-      requestFactory.setReadTimeout(timeout);
-      return new RestTemplate(requestFactory);
+  public static HttpClient create(NodeConfig config, Duration connectTimeout) {
+    HttpClient.Builder builder = HttpClient.newBuilder().connectTimeout(connectTimeout);
+    NodeConfig.BrainTls brainTls = config.getBrainTls();
+    if (brainTls != null && brainTls.isEnabled()) {
+      builder.sslContext(createSslContext(brainTls));
     }
-
-    SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-    requestFactory.setConnectTimeout(timeoutMillis);
-    requestFactory.setReadTimeout(timeoutMillis);
-    return new RestTemplate(requestFactory);
+    return builder.build();
   }
 
-  private SSLContext createSslContext(NodeProperties.Tls tls) {
+  private static SSLContext createSslContext(NodeConfig.BrainTls tls) {
     try {
       KeyStore trustStore =
           loadKeyStore(
@@ -73,27 +58,28 @@ public class NodeClientConfig {
           null);
       return sslContext;
     } catch (GeneralSecurityException | IOException ex) {
-      throw new IllegalStateException("Failed to initialize node TLS client configuration", ex);
+      throw new IllegalStateException(
+          "Failed to initialize node-agent.brain-tls SSL context for Brain outbound calls", ex);
     }
   }
 
-  private KeyStore loadKeyStore(String path, String password, String type)
+  private static KeyStore loadKeyStore(String path, String password, String type)
       throws GeneralSecurityException, IOException {
-    KeyStore keyStore = KeyStore.getInstance(type);
     try (InputStream inputStream = Files.newInputStream(Path.of(path))) {
+      KeyStore keyStore = KeyStore.getInstance(type);
       keyStore.load(inputStream, password.toCharArray());
       return keyStore;
     }
   }
 
-  private String resolveStoreType(String configuredType) {
-    if (configuredType == null || configuredType.isBlank()) {
+  private static String resolveStoreType(String configuredType) {
+    if (!hasText(configuredType)) {
       return DEFAULT_STORE_TYPE;
     }
     return configuredType;
   }
 
-  private boolean hasText(String value) {
+  private static boolean hasText(String value) {
     return value != null && !value.isBlank();
   }
 }

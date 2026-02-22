@@ -3,9 +3,16 @@ package net.spookly.kodama.nodeagent.config;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.KeyStore;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class NodeConfigTest {
+
+  @TempDir Path tempDir;
 
   @Test
   void validateFailsWhenRequiredConfigMissing() {
@@ -126,5 +133,91 @@ class NodeConfigTest {
     config.getDocker().setConfigDir("");
 
     assertThatNoException().isThrownBy(config::validate);
+  }
+
+  @Test
+  void validateAcceptsBrainTlsWithHttpsBaseUrlAndTrustStore() throws Exception {
+    NodeConfig config = validConfig();
+    Path trustStore = createPkcs12Store("truststore.p12", "secret");
+    config.setBrainBaseUrl("https://brain:8443");
+    config.getBrainTls().setEnabled(true);
+    config.getBrainTls().setTrustStorePath(trustStore.toString());
+    config.getBrainTls().setTrustStorePassword("secret");
+
+    assertThatNoException().isThrownBy(config::validate);
+  }
+
+  @Test
+  void validateRejectsBrainTlsWhenBaseUrlIsNotHttps() throws Exception {
+    NodeConfig config = validConfig();
+    Path trustStore = createPkcs12Store("truststore-http.p12", "secret");
+    config.setBrainBaseUrl("http://brain:8080");
+    config.getBrainTls().setEnabled(true);
+    config.getBrainTls().setTrustStorePath(trustStore.toString());
+    config.getBrainTls().setTrustStorePassword("secret");
+
+    assertThatThrownBy(config::validate)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(
+            "node-agent.brain-base-url must use https:// when node-agent.brain-tls.enabled=true");
+  }
+
+  @Test
+  void validateRejectsBrainTlsWhenTrustStorePathMissing() {
+    NodeConfig config = validConfig();
+    config.setBrainBaseUrl("https://brain:8443");
+    config.getBrainTls().setEnabled(true);
+    config.getBrainTls().setTrustStorePassword("secret");
+
+    assertThatThrownBy(config::validate)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("node-agent.brain-tls.trust-store-path is required");
+  }
+
+  @Test
+  void validateRejectsBrainTlsWhenTrustStorePasswordMissing() throws Exception {
+    NodeConfig config = validConfig();
+    Path trustStore = createPkcs12Store("truststore-missing-password.p12", "secret");
+    config.setBrainBaseUrl("https://brain:8443");
+    config.getBrainTls().setEnabled(true);
+    config.getBrainTls().setTrustStorePath(trustStore.toString());
+
+    assertThatThrownBy(config::validate)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("node-agent.brain-tls.trust-store-password is required");
+  }
+
+  @Test
+  void validateRejectsBrainTlsWhenTrustStorePathInvalid() {
+    NodeConfig config = validConfig();
+    config.setBrainBaseUrl("https://brain:8443");
+    config.getBrainTls().setEnabled(true);
+    config.getBrainTls().setTrustStorePath(tempDir.resolve("missing-truststore.p12").toString());
+    config.getBrainTls().setTrustStorePassword("secret");
+
+    assertThatThrownBy(config::validate)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(
+            "node-agent.brain-tls.trust-store-path must point to a readable file");
+  }
+
+  private NodeConfig validConfig() {
+    NodeConfig config = new NodeConfig();
+    config.setNodeName("Node 1");
+    config.setRegion("local");
+    config.setCapacitySlots(4);
+    config.setBrainBaseUrl("http://brain:8080");
+    config.setCacheDir("./cache");
+    return config;
+  }
+
+  private Path createPkcs12Store(String fileName, String password) throws Exception {
+    KeyStore keyStore = KeyStore.getInstance("PKCS12");
+    keyStore.load(null, password.toCharArray());
+    Path path = tempDir.resolve(fileName);
+    try (OutputStream outputStream = Files.newOutputStream(path)) {
+      keyStore.store(outputStream, password.toCharArray());
+    }
+    return path;
   }
 }

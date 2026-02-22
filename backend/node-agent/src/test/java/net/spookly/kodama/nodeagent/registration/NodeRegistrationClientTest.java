@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import net.spookly.kodama.nodeagent.config.NodeConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.info.BuildProperties;
@@ -49,7 +50,9 @@ class NodeRegistrationClientTest {
 
     ObjectMapper objectMapper = new ObjectMapper();
     BuildProperties buildProperties = createBuildProperties("9.9.9");
-    NodeRegistrationClient client = new NodeRegistrationClient(objectMapper, buildProperties);
+    NodeConfig config = new NodeConfig();
+    NodeRegistrationClient client =
+        new NodeRegistrationClient(objectMapper, buildProperties, config);
     NodeRegistrationRequest request = new NodeRegistrationRequest();
     request.setName("node-a");
     request.setRegion("local");
@@ -59,7 +62,6 @@ class NodeRegistrationClientTest {
     URI endpoint =
         URI.create("http://localhost:" + server.getAddress().getPort() + "/api/nodes/register");
     client.register(endpoint, "X-Node-Token", "", request);
-    client.close();
 
     assertThat(requestBody.get()).isNotBlank();
     assertThat(objectMapper.readTree(requestBody.get()).get("nodeVersion").asText())

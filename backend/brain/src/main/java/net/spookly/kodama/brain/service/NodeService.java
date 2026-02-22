@@ -111,6 +111,7 @@ public class NodeService {
     if (request.getCapacitySlots() < 1) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "capacitySlots must be at least 1");
     }
+    validateTlsBaseUrl(request.getBaseUrl(), "baseUrl");
   }
 
   private void validateHeartbeat(Node node, NodeHeartbeatRequest request) {
@@ -130,6 +131,15 @@ public class NodeService {
     if (request.getCapacitySlots() < node.getUsedSlots()) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "capacitySlots cannot be less than usedSlots");
+    }
+    validateTlsBaseUrl(request.getBaseUrl(), "baseUrl");
+  }
+
+  private void validateTlsBaseUrl(String baseUrl, String fieldName) {
+    try {
+      nodeProperties.requireHttpsBaseUrl(baseUrl, fieldName);
+    } catch (IllegalStateException ex) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
     }
   }
 }

@@ -121,6 +121,34 @@ class InstanceCallbackServiceTest {
         .containsEntry("portsJson", portsJson);
   }
 
+  @Test
+  void sendRunningRejectsHttpBaseUrlWhenBrainTlsEnabled() {
+    NodeConfig config = buildConfig();
+    config.getBrainTls().setEnabled(true);
+    config.getBrainTls().setTrustStorePath("/tmp/truststore.p12");
+    config.getBrainTls().setTrustStorePassword("secret");
+    InstanceProperties instanceProperties = buildInstanceProperties(1, 0);
+    NodeRegistrationState registrationState = buildRegistrationState();
+    NodeAuthTokenReader tokenReader = mock(NodeAuthTokenReader.class);
+    when(tokenReader.readToken()).thenReturn(null);
+    BrainCallbackClient callbackClient = mock(BrainCallbackClient.class);
+
+    InstanceCallbackService service =
+        new InstanceCallbackService(
+            config,
+            instanceProperties,
+            registrationState,
+            tokenReader,
+            callbackClient,
+            new ObjectMapper());
+    UUID instanceId = UUID.randomUUID();
+
+    assertThatThrownBy(() -> service.sendRunning(instanceId))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageContaining(
+            "node-agent.brain-base-url must use https:// when node-agent.brain-tls.enabled=true");
+  }
+
   private NodeConfig buildConfig() {
     NodeConfig config = new NodeConfig();
     config.setBrainBaseUrl("http://brain");

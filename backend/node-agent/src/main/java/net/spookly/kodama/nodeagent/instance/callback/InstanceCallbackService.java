@@ -206,8 +206,12 @@ public class InstanceCallbackService {
             ? brainBaseUrl.substring(0, brainBaseUrl.length() - 1)
             : brainBaseUrl;
     try {
-      return URI.create(
-          trimmed + "/api/nodes/" + nodeId + "/instances/" + instanceId + "/" + action);
+      URI endpoint =
+          URI.create(trimmed + "/api/nodes/" + nodeId + "/instances/" + instanceId + "/" + action);
+      config.requireHttpsBrainUri(endpoint);
+      return endpoint;
+    } catch (IllegalStateException ex) {
+      throw new InstancePrepareException(ex.getMessage());
     } catch (IllegalArgumentException ex) {
       throw new InstancePrepareException("Invalid Brain base URL: " + brainBaseUrl, ex);
     }

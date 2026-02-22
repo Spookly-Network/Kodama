@@ -5,6 +5,7 @@ This document captures the HTTP contract used by the Brain command dispatcher to
 ## Base URL
 
 `Node.baseUrl` is used as the root for node command endpoints.
+When `node.tls.enabled=true`, `Node.baseUrl` must use `https://` or dispatch fails before the HTTP request is sent.
 
 ## Brain -> Node Commands
 
@@ -129,3 +130,15 @@ The Brain uses:
 - `node.command-timeout-seconds` (`NODE_COMMAND_TIMEOUT_SECONDS`)
 - `node.command-max-attempts` (`NODE_COMMAND_MAX_ATTEMPTS`)
 - `node.command-retry-backoff-millis` (`NODE_COMMAND_RETRY_BACKOFF_MILLIS`)
+- `node.tls.enabled` (`NODE_TLS_ENABLED`, default `false`)
+- `node.tls.trust-store-path` (`NODE_TLS_TRUST_STORE_PATH`, required when TLS enabled)
+- `node.tls.trust-store-password` (`NODE_TLS_TRUST_STORE_PASSWORD`, required when TLS enabled)
+- `node.tls.trust-store-type` (`NODE_TLS_TRUST_STORE_TYPE`, default `PKCS12`)
+- `node.tls.key-store-path` (`NODE_TLS_KEY_STORE_PATH`, optional)
+- `node.tls.key-store-password` (`NODE_TLS_KEY_STORE_PASSWORD`, required when key-store-path is set)
+- `node.tls.key-store-type` (`NODE_TLS_KEY_STORE_TYPE`, default `PKCS12`)
+
+Failure behavior when `node.tls.enabled=true`:
+- Missing TLS files/passwords fail Brain startup.
+- Invalid TLS file paths or unreadable key/trust store contents fail Brain startup.
+- Any `http://` node base URL is rejected with a validation error.

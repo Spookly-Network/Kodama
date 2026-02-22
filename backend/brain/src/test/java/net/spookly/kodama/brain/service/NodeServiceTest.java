@@ -51,6 +51,8 @@ class NodeServiceTest {
 
   @Autowired private NodeRepository nodeRepository;
 
+  @Autowired private NodeProperties nodeProperties;
+
   @Test
   void registerNodeCreatesNewEntity() {
     NodeRegistrationRequest request = new NodeRegistrationRequest();
@@ -246,5 +248,30 @@ class NodeServiceTest {
             ex ->
                 assertThat(((ResponseStatusException) ex).getStatusCode())
                     .isEqualTo(HttpStatus.BAD_REQUEST));
+  }
+
+  @Test
+  void registerNodeRejectsHttpBaseUrlWhenTlsEnabled() {
+    nodeProperties.getTls().setEnabled(true);
+    try {
+      NodeRegistrationRequest request = new NodeRegistrationRequest();
+      request.setName("node-7");
+      request.setRegion("eu-central-1");
+      request.setCapacitySlots(10);
+      request.setNodeVersion("1.0.0");
+      request.setBaseUrl("http://node-7.internal");
+
+      assertThatThrownBy(() -> nodeService.registerNode(request))
+          .isInstanceOf(ResponseStatusException.class)
+          .satisfies(
+              ex -> {
+                ResponseStatusException statusException = (ResponseStatusException) ex;
+                assertThat(statusException.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                assertThat(statusException.getReason())
+                    .contains("baseUrl must use https:// when node.tls.enabled=true");
+              });
+    } finally {
+      nodeProperties.getTls().setEnabled(false);
+    }
   }
 }

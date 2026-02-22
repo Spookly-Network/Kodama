@@ -2,44 +2,32 @@ package net.spookly.kodama.nodeagent.registration;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import org.apache.hc.client5.http.classic.methods.HttpPost;
-import org.apache.hc.client5.http.config.RequestConfig;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.HttpHeaders;
-import org.apache.hc.core5.http.ParseException;
-import org.apache.hc.core5.http.io.entity.EntityUtils;
-import org.apache.hc.core5.http.io.entity.StringEntity;
-import org.apache.hc.core5.util.Timeout;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import net.spookly.kodama.nodeagent.config.NodeConfig;
+import net.spookly.kodama.nodeagent.http.BrainHttpClientFactory;
+import net.spookly.kodama.nodeagent.http.JsonHttpRequestSupport;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.stereotype.Component;
 
 @Component
 public class NodeRegistrationClient {
 
-  private static final Timeout CONNECT_TIMEOUT = Timeout.ofSeconds(5);
-  private static final Timeout RESPONSE_TIMEOUT = Timeout.ofSeconds(10);
+  private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
+  private static final Duration RESPONSE_TIMEOUT = Duration.ofSeconds(10);
 
   private final ObjectMapper objectMapper;
-  private final CloseableHttpClient httpClient;
+  private final HttpClient httpClient;
   private final String nodeVersion;
 
-  public NodeRegistrationClient(ObjectMapper objectMapper, BuildProperties buildProperties) {
+  public NodeRegistrationClient(
+      ObjectMapper objectMapper, BuildProperties buildProperties, NodeConfig config) {
     this.objectMapper = objectMapper;
-    this.httpClient =
-        HttpClients.custom()
-            .setDefaultRequestConfig(
-                RequestConfig.custom()
-                    .setConnectTimeout(CONNECT_TIMEOUT)
-                    .setResponseTimeout(RESPONSE_TIMEOUT)
-                    .build())
-            .build();
+    this.httpClient = BrainHttpClientFactory.create(config, CONNECT_TIMEOUT);
     this.nodeVersion = buildProperties.getVersion();
   }
 
@@ -47,21 +35,20 @@ public class NodeRegistrationClient {
       URI endpoint, String authHeaderName, String authToken, NodeRegistrationRequest request) {
     request.setNodeVersion(nodeVersion);
     String payload = writePayload(request);
-    HttpPost post = new HttpPost(endpoint);
-    post.setEntity(new StringEntity(payload, ContentType.APPLICATION_JSON));
-    post.setHeader(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType());
-    post.setHeader(HttpHeaders.ACCEPT, ContentType.APPLICATION_JSON.getMimeType());
-    if (authToken != null && !authToken.isBlank()) {
-      post.setHeader(authHeaderName, authToken);
-    }
-    try (CloseableHttpResponse response = httpClient.execute(post)) {
-      int status = response.getCode();
-      String body = readBody(response);
+    HttpRequest.Builder requestBuilder =
+        JsonHttpRequestSupport.newJsonPostRequestBuilder(
+                endpoint, RESPONSE_TIMEOUT, authHeaderName, authToken)
+            .POST(JsonHttpRequestSupport.jsonBody(payload));
+    try {
+      HttpResponse<String> response =
+          JsonHttpRequestSupport.sendUtf8(httpClient, requestBuilder.build());
+      int status = response.statusCode();
+      String body = JsonHttpRequestSupport.normalizeBody(response);
       if (status < 200 || status >= 300) {
         throw new NodeRegistrationException(
             "Registration failed with status " + status + ": " + body);
       }
-      if (body == null || body.isBlank()) {
+      if (body.isBlank()) {
         throw new NodeRegistrationException("Registration response body is empty");
       }
       NodeRegistrationResponse registrationResponse =
@@ -72,6 +59,9 @@ public class NodeRegistrationClient {
       return registrationResponse;
     } catch (IOException ex) {
       throw new NodeRegistrationException("Failed to register node at " + endpoint, ex);
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+      throw new NodeRegistrationException("Interrupted while registering node at " + endpoint, ex);
     }
   }
 
@@ -80,27 +70,6 @@ public class NodeRegistrationClient {
       return objectMapper.writeValueAsString(request);
     } catch (JsonProcessingException ex) {
       throw new NodeRegistrationException("Failed to serialize node registration request", ex);
-    }
-  }
-
-  private String readBody(CloseableHttpResponse response) throws IOException {
-    if (response.getEntity() == null) {
-      return "";
-    }
-    try {
-      String body = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-      return body == null ? "" : body.trim();
-    } catch (ParseException ex) {
-      throw new IOException("Failed to parse response body", ex);
-    }
-  }
-
-  @PreDestroy
-  public void close() {
-    try {
-      httpClient.close();
-    } catch (IOException ex) {
-      throw new NodeRegistrationException("Failed to close registration HTTP client", ex);
     }
   }
 }

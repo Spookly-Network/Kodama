@@ -1,5 +1,8 @@
 package net.spookly.kodama.nodeagent.config;
 
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
@@ -9,6 +12,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Getter
 @ConfigurationProperties(prefix = "node-agent")
 public class NodeConfig {
+
+  private static final String HTTPS_SCHEME = "https";
+  private static final String BRAIN_TLS_HTTPS_REQUIRED_MESSAGE =
+      "node-agent.brain-base-url must use https:// when node-agent.brain-tls.enabled=true";
+  private static final String DEFAULT_STORE_TYPE = "PKCS12";
 
   @Setter private String nodeId;
   @Setter private String nodeName;
@@ -25,6 +33,7 @@ public class NodeConfig {
   @Setter private boolean registrationEnabled = true;
   @Setter private int heartbeatIntervalSeconds;
   private Auth auth = new Auth();
+  private BrainTls brainTls = new BrainTls();
   private S3 s3 = new S3();
   private TemplateCacheCheck templateCacheCheck = new TemplateCacheCheck();
   private TemplateCacheLimits templateCacheLimits = new TemplateCacheLimits();
@@ -42,6 +51,7 @@ public class NodeConfig {
     if (heartbeatIntervalSeconds < 0) {
       errors.add("node-agent.heartbeat-interval-seconds must be 0 or greater");
     }
+    validateBrainTls(errors);
     if (templateCacheCheck != null && templateCacheCheck.isEnabled()) {
       addIfBlank(
           errors,
@@ -96,8 +106,90 @@ public class NodeConfig {
   }
 
   private void addIfBlank(List<String> errors, String value, String message) {
-    if (value == null || value.isBlank()) {
+    if (isBlank(value)) {
       errors.add(message);
+    }
+  }
+
+  private void validateBrainTls(List<String> errors) {
+    if (!isBrainTlsEnabled()) {
+      return;
+    }
+    BrainTls configuredBrainTls = brainTls;
+    addIfBlank(
+        errors,
+        configuredBrainTls.getTrustStorePath(),
+        "node-agent.brain-tls.trust-store-path is required when node-agent.brain-tls.enabled=true");
+    addIfBlank(
+        errors,
+        configuredBrainTls.getTrustStorePassword(),
+        "node-agent.brain-tls.trust-store-password is required when node-agent.brain-tls.enabled=true");
+    validateStorePath(
+        errors,
+        configuredBrainTls.getTrustStorePath(),
+        "node-agent.brain-tls.trust-store-path must point to a readable file");
+
+    validatePairedValues(
+        errors,
+        configuredBrainTls.getKeyStorePath(),
+        configuredBrainTls.getKeyStorePassword(),
+        "node-agent.brain-tls.key-store-path is required when node-agent.brain-tls.key-store-password is set",
+        "node-agent.brain-tls.key-store-password is required when node-agent.brain-tls.key-store-path is set");
+    validateStorePath(
+        errors,
+        configuredBrainTls.getKeyStorePath(),
+        "node-agent.brain-tls.key-store-path must point to a readable file");
+
+    if (!isBlank(brainBaseUrl)) {
+      try {
+        requireHttpsBrainUri(URI.create(brainBaseUrl));
+      } catch (IllegalArgumentException ex) {
+        errors.add("node-agent.brain-base-url is invalid: " + brainBaseUrl);
+      } catch (IllegalStateException ex) {
+        errors.add(ex.getMessage());
+      }
+    }
+  }
+
+  private void validateStorePath(List<String> errors, String value, String message) {
+    if (isBlank(value)) {
+      return;
+    }
+    try {
+      Path path = Path.of(value);
+      if (!Files.isRegularFile(path) || !Files.isReadable(path)) {
+        errors.add(message + ": " + value);
+      }
+    } catch (RuntimeException ex) {
+      errors.add(message + ": " + value);
+    }
+  }
+
+  private void validatePairedValues(
+      List<String> errors,
+      String firstValue,
+      String secondValue,
+      String firstMissingMessage,
+      String secondMissingMessage) {
+    boolean hasFirstValue = !isBlank(firstValue);
+    boolean hasSecondValue = !isBlank(secondValue);
+    if (hasFirstValue == hasSecondValue) {
+      return;
+    }
+    errors.add(hasFirstValue ? secondMissingMessage : firstMissingMessage);
+  }
+
+  public boolean isBrainTlsEnabled() {
+    return brainTls != null && brainTls.isEnabled();
+  }
+
+  public void requireHttpsBrainUri(URI uri) {
+    if (!isBrainTlsEnabled()) {
+      return;
+    }
+    String scheme = uri.getScheme();
+    if (isBlank(scheme) || !HTTPS_SCHEME.equalsIgnoreCase(scheme)) {
+      throw new IllegalStateException(BRAIN_TLS_HTTPS_REQUIRED_MESSAGE);
     }
   }
 
@@ -114,6 +206,10 @@ public class NodeConfig {
 
   public void setAuth(Auth auth) {
     this.auth = auth == null ? new Auth() : auth;
+  }
+
+  public void setBrainTls(BrainTls brainTls) {
+    this.brainTls = brainTls == null ? new BrainTls() : brainTls;
   }
 
   public void setS3(S3 s3) {
@@ -142,6 +238,19 @@ public class NodeConfig {
     private String tokenPath;
     private String certPath;
     private String headerName = "X-Node-Token";
+  }
+
+  @Setter
+  @Getter
+  public static class BrainTls {
+
+    private boolean enabled;
+    private String trustStorePath;
+    private String trustStorePassword;
+    private String trustStoreType = DEFAULT_STORE_TYPE;
+    private String keyStorePath;
+    private String keyStorePassword;
+    private String keyStoreType = DEFAULT_STORE_TYPE;
   }
 
   @Setter

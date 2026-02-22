@@ -1,40 +1,27 @@
 package net.spookly.kodama.nodeagent.instance.callback;
 
-import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import net.spookly.kodama.nodeagent.config.NodeConfig;
+import net.spookly.kodama.nodeagent.http.BrainHttpClientFactory;
+import net.spookly.kodama.nodeagent.http.JsonHttpRequestSupport;
 import net.spookly.kodama.nodeagent.instance.service.InstancePrepareException;
-import org.apache.hc.client5.http.classic.methods.HttpPost;
-import org.apache.hc.client5.http.config.RequestConfig;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.HttpHeaders;
-import org.apache.hc.core5.http.ParseException;
-import org.apache.hc.core5.http.io.entity.EntityUtils;
-import org.apache.hc.core5.http.io.entity.StringEntity;
-import org.apache.hc.core5.util.Timeout;
 import org.springframework.stereotype.Component;
 
 @Component
 public class BrainCallbackClient {
 
-  private static final Timeout CONNECT_TIMEOUT = Timeout.ofSeconds(5);
-  private static final Timeout RESPONSE_TIMEOUT = Timeout.ofSeconds(10);
+  private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
+  private static final Duration RESPONSE_TIMEOUT = Duration.ofSeconds(10);
 
-  private final CloseableHttpClient httpClient;
+  private final HttpClient httpClient;
 
-  public BrainCallbackClient() {
-    this.httpClient =
-        HttpClients.custom()
-            .setDefaultRequestConfig(
-                RequestConfig.custom()
-                    .setConnectTimeout(CONNECT_TIMEOUT)
-                    .setResponseTimeout(RESPONSE_TIMEOUT)
-                    .build())
-            .build();
+  public BrainCallbackClient(NodeConfig config) {
+    this.httpClient = BrainHttpClientFactory.create(config, CONNECT_TIMEOUT);
   }
 
   public void sendCallback(URI endpoint, String authHeaderName, String authToken) {
@@ -43,44 +30,27 @@ public class BrainCallbackClient {
 
   public void sendCallback(
       URI endpoint, String authHeaderName, String authToken, String requestBody) {
-    HttpPost post = new HttpPost(endpoint);
-    post.setHeader(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_JSON.getMimeType());
-    post.setHeader(HttpHeaders.ACCEPT, ContentType.APPLICATION_JSON.getMimeType());
-    if (authToken != null && !authToken.isBlank()) {
-      post.setHeader(authHeaderName, authToken);
+    HttpRequest.Builder requestBuilder =
+        JsonHttpRequestSupport.newJsonPostRequestBuilder(
+            endpoint, RESPONSE_TIMEOUT, authHeaderName, authToken);
+    if (JsonHttpRequestSupport.hasText(requestBody)) {
+      requestBuilder.POST(JsonHttpRequestSupport.jsonBody(requestBody));
+    } else {
+      requestBuilder.POST(HttpRequest.BodyPublishers.noBody());
     }
-    if (requestBody != null && !requestBody.isBlank()) {
-      post.setEntity(new StringEntity(requestBody, ContentType.APPLICATION_JSON));
-    }
-    try (CloseableHttpResponse response = httpClient.execute(post)) {
-      int status = response.getCode();
+    try {
+      HttpResponse<String> response =
+          JsonHttpRequestSupport.sendUtf8(httpClient, requestBuilder.build());
+      int status = response.statusCode();
       if (status < 200 || status >= 300) {
-        String body = readBody(response);
+        String body = JsonHttpRequestSupport.normalizeBody(response);
         throw new InstancePrepareException("Callback failed with status " + status + ": " + body);
       }
     } catch (IOException ex) {
       throw new InstancePrepareException("Failed to send callback to " + endpoint, ex);
-    }
-  }
-
-  private String readBody(CloseableHttpResponse response) throws IOException {
-    if (response.getEntity() == null) {
-      return "";
-    }
-    try {
-      String body = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-      return body == null ? "" : body.trim();
-    } catch (ParseException ex) {
-      throw new IOException("Failed to parse response body", ex);
-    }
-  }
-
-  @PreDestroy
-  public void close() {
-    try {
-      httpClient.close();
-    } catch (IOException ex) {
-      throw new InstancePrepareException("Failed to close callback HTTP client", ex);
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+      throw new InstancePrepareException("Interrupted while sending callback to " + endpoint, ex);
     }
   }
 }

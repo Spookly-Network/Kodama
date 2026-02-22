@@ -215,7 +215,11 @@ public class HeartbeatScheduler implements ApplicationListener<ApplicationReadyE
             ? brainBaseUrl.substring(0, brainBaseUrl.length() - 1)
             : brainBaseUrl;
     try {
-      return URI.create(trimmed + "/api/nodes/" + nodeId + "/heartbeat");
+      URI endpoint = URI.create(trimmed + "/api/nodes/" + nodeId + "/heartbeat");
+      config.requireHttpsBrainUri(endpoint);
+      return endpoint;
+    } catch (IllegalStateException ex) {
+      throw new NodeHeartbeatException(ex.getMessage());
     } catch (IllegalArgumentException ex) {
       throw new NodeHeartbeatException("Invalid Brain base URL: " + brainBaseUrl, ex);
     }

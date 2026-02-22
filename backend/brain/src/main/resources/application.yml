@@ -24,6 +24,14 @@ node:
   command-timeout-seconds: ${NODE_COMMAND_TIMEOUT_SECONDS:10}
   command-max-attempts: ${NODE_COMMAND_MAX_ATTEMPTS:2}
   command-retry-backoff-millis: ${NODE_COMMAND_RETRY_BACKOFF_MILLIS:500}
+  tls:
+    enabled: ${NODE_TLS_ENABLED:false}
+    trust-store-path: ${NODE_TLS_TRUST_STORE_PATH:}
+    trust-store-password: ${NODE_TLS_TRUST_STORE_PASSWORD:}
+    trust-store-type: ${NODE_TLS_TRUST_STORE_TYPE:PKCS12}
+    key-store-path: ${NODE_TLS_KEY_STORE_PATH:}
+    key-store-password: ${NODE_TLS_KEY_STORE_PASSWORD:}
+    key-store-type: ${NODE_TLS_KEY_STORE_TYPE:PKCS12}
 
 instance:
   stale-detection:

@@ -18,6 +18,7 @@ Describe the configuration inputs for the node agent and how they map to environ
 - Added an install script timeout to bound hung install scripts during start.
 - Added instance callback retry settings for Brain lifecycle callbacks.
 - Added instance monitor settings for container status polling and exit-code capture.
+- Added optional outbound TLS settings for Node -> Brain registration, heartbeat, and callback calls.
 
 ## How to use / impact
 - Configure with environment variables or CLI args (`--node-agent.<key>=...`).
@@ -36,6 +37,13 @@ Describe the configuration inputs for the node agent and how they map to environ
   - `node-agent.dev-mode` (`NODE_AGENT_DEV_MODE`, default `false`)
   - `node-agent.tags` (`NODE_AGENT_TAGS`)
   - `node-agent.base-url` (`NODE_AGENT_BASE_URL`)
+  - `node-agent.brain-tls.enabled` (`NODE_AGENT_BRAIN_TLS_ENABLED`, default `false`)
+  - `node-agent.brain-tls.trust-store-path` (`NODE_AGENT_BRAIN_TLS_TRUST_STORE_PATH`)
+  - `node-agent.brain-tls.trust-store-password` (`NODE_AGENT_BRAIN_TLS_TRUST_STORE_PASSWORD`)
+  - `node-agent.brain-tls.trust-store-type` (`NODE_AGENT_BRAIN_TLS_TRUST_STORE_TYPE`, default `PKCS12`)
+  - `node-agent.brain-tls.key-store-path` (`NODE_AGENT_BRAIN_TLS_KEY_STORE_PATH`)
+  - `node-agent.brain-tls.key-store-password` (`NODE_AGENT_BRAIN_TLS_KEY_STORE_PASSWORD`)
+  - `node-agent.brain-tls.key-store-type` (`NODE_AGENT_BRAIN_TLS_KEY_STORE_TYPE`, default `PKCS12`)
   - `node-agent.registration-enabled` (`NODE_AGENT_REGISTRATION_ENABLED`, default `true`)
   - `node-agent.heartbeat-interval-seconds` (`NODE_AGENT_HEARTBEAT_INTERVAL_SECONDS`, default `0`)
   - `server.port` (`NODE_AGENT_HTTP_PORT`, default `8080`)
@@ -82,6 +90,10 @@ Describe the configuration inputs for the node agent and how they map to environ
 - `server.port` and `server.address` control the embedded HTTP listener used by the Brain to issue commands.
 - When `node-agent.heartbeat-interval-seconds` is `0`, the node agent uses the heartbeat interval
   provided by the Brain during registration.
+- When `node-agent.brain-tls.enabled=true`, Node -> Brain URLs must use `https://`.
+- `node-agent.brain-tls.trust-store-path` and `node-agent.brain-tls.trust-store-password` are required
+  when `node-agent.brain-tls.enabled=true`.
+- `node-agent.brain-tls.key-store-*` values are optional and only needed for client-certificate TLS.
 - `node-agent.docker.host` configures the Docker Engine socket or TCP endpoint. If unset, the Docker
   client uses the docker-java defaults (including `DOCKER_HOST` or the local Unix socket).
 - `node-agent.docker-host` remains supported for backwards compatibility, but prefer `node-agent.docker.host`.
@@ -128,10 +140,13 @@ Describe the configuration inputs for the node agent and how they map to environ
 - Missing or invalid S3 settings stop the node agent when template storage is initialized.
 - Invalid Docker timeout values stop the node agent at startup.
 - Non-positive install script timeout values stop the node agent at startup.
+- With `node-agent.brain-tls.enabled=true`, missing trust-store settings, invalid TLS file paths,
+  invalid TLS file contents/passwords, or non-HTTPS Brain URLs stop startup.
 
 ## Links
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/config/NodeConfig.java`
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/devmode/controller/DevModeController.java`
 - `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/devmode/service/DevModeService.java`
+- `backend/node-agent/src/main/java/net/spookly/kodama/nodeagent/http/BrainHttpClientFactory.java`
 - `backend/node-agent/src/main/resources/application.yml`
 - `docs/node/operations/instance-workspaces.md`

@@ -1,5 +1,6 @@
 package net.spookly.kodama.brain.service;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -199,6 +200,41 @@ class CommandDispatcherServiceTest {
     dispatcher.sendStartInstance(node, instance);
 
     server.verify();
+  }
+
+  @Test
+  void sendStartInstanceAllowsHttpsBaseUrlWhenTlsEnabled() throws Exception {
+    nodeProperties.getTls().setEnabled(true);
+    UUID nodeId = UUID.randomUUID();
+    UUID instanceId = UUID.randomUUID();
+    Node node = buildNode(nodeId, "https://node-1.internal");
+    Instance instance = buildInstance(instanceId, node);
+
+    NodeInstanceCommandRequest expected =
+        new NodeInstanceCommandRequest(instanceId, instance.getName());
+
+    server
+        .expect(requestTo("https://node-1.internal/api/instances/" + instanceId + "/start"))
+        .andExpect(method(HttpMethod.POST))
+        .andExpect(content().json(objectMapper.writeValueAsString(expected)))
+        .andRespond(withSuccess());
+
+    dispatcher.sendStartInstance(node, instance);
+
+    server.verify();
+  }
+
+  @Test
+  void sendStartInstanceRejectsHttpBaseUrlWhenTlsEnabled() {
+    nodeProperties.getTls().setEnabled(true);
+    UUID nodeId = UUID.randomUUID();
+    UUID instanceId = UUID.randomUUID();
+    Node node = buildNode(nodeId, "http://node-1.internal");
+    Instance instance = buildInstance(instanceId, node);
+
+    assertThatThrownBy(() -> dispatcher.sendStartInstance(node, instance))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Node baseUrl must use https:// when node.tls.enabled=true");
   }
 
   private Node buildNode(UUID nodeId, String baseUrl) {

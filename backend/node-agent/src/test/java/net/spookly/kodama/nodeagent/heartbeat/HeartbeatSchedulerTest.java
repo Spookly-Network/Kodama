@@ -1,6 +1,7 @@
 package net.spookly.kodama.nodeagent.heartbeat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -14,6 +15,7 @@ import net.spookly.kodama.nodeagent.instance.registry.InstanceRegistryService;
 import net.spookly.kodama.nodeagent.registration.NodeAuthTokenReader;
 import net.spookly.kodama.nodeagent.registration.NodeRegistrationState;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class HeartbeatSchedulerTest {
 
@@ -66,6 +68,32 @@ class HeartbeatSchedulerTest {
 
     assertThat(request.getUsedSlots()).isEqualTo(4);
     assertThat(heartbeatState.getUsedSlots()).isEqualTo(4);
+  }
+
+  @Test
+  void heartbeatEndpointRejectsHttpBaseUrlWhenBrainTlsEnabled() {
+    NodeConfig config = new NodeConfig();
+    config.setBrainBaseUrl("http://brain:8080");
+    config.getBrainTls().setEnabled(true);
+    NodeHeartbeatState heartbeatState = new NodeHeartbeatState();
+    InstanceRegistryService registryService = mock(InstanceRegistryService.class);
+
+    HeartbeatScheduler scheduler =
+        new HeartbeatScheduler(
+            config,
+            new NodeRegistrationState(),
+            mock(NodeAuthTokenReader.class),
+            mock(NodeHeartbeatClient.class),
+            heartbeatState,
+            registryService);
+
+    assertThatThrownBy(
+            () ->
+                ReflectionTestUtils.invokeMethod(
+                    scheduler, "buildHeartbeatEndpoint", "http://brain:8080", UUID.randomUUID()))
+        .isInstanceOf(NodeHeartbeatException.class)
+        .hasMessageContaining(
+            "node-agent.brain-base-url must use https:// when node-agent.brain-tls.enabled=true");
   }
 
   private InstanceRegistryEntry entry(String status, Integer slotsRequired) {
