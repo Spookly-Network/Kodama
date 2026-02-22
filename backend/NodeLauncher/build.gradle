@@ -1,35 +1,35 @@
 plugins {
-    id 'java'
+	id 'java'
 }
 
 group = 'net.spookly.kodoma'
 version = rootProject.launcher_version
 
 repositories {
-    mavenCentral()
+	mavenCentral()
 }
 
 dependencies {
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.0'
-    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.18.0'
+	implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.0'
+	implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.18.0'
 
-    testImplementation platform('org.junit:junit-bom:5.10.0')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	testImplementation platform('org.junit:junit-bom:5.10.0')
+	testImplementation 'org.junit.jupiter:junit-jupiter'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 test {
-    useJUnitPlatform()
+	useJUnitPlatform()
 }
 
 jar {
-    archiveBaseName = 'kodama-node-launcher'
-    archiveFileName = 'launcher.jar'
-    manifest {
-        attributes('Main-Class': 'net.spookly.kodama.nodelauncher.LauncherApplication')
-    }
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    from {
-        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
-    }
+	archiveBaseName = 'kodama-node-launcher'
+	archiveFileName = 'launcher.jar'
+	manifest {
+		attributes('Main-Class': 'net.spookly.kodama.nodelauncher.LauncherApplication')
+	}
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+	from {
+		configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+	}
 }
