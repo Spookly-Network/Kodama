@@ -82,4 +82,5 @@ The Node Agent is a lightweight Java service that runs on each node and executes
 - `docs/node/operations/instance-workspaces.md`
 - `docs/node/operations/template-merge.md`
 - `docs/node/operations/instance-commands.md`
+- `docs/node/operations/node-launcher.md`
 - `docs/node/plugins.md`

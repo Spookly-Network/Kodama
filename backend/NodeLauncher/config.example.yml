@@ -1,0 +1,13 @@
+github:
+  owner: Spookly-Network
+  repo: Kodama
+  channel: stable
+  assetRegex: "kodama-node-agent-(.*)\\.jar"
+verify:
+  sha256Required: true
+  sha256Suffix: ".sha256"
+installDir: "/opt/kodama-node"
+javaBin: "java"
+agentArgs:
+  - "--brainUrl=http://localhost:8080"
+updateMode: "NEXT_START"
