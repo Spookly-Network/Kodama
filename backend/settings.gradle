@@ -9,3 +9,5 @@ rootProject.name = 'kodoma-backend'
 include 'brain'
 include 'node-agent'
 include 'common'
+
+include 'NodeLauncher'

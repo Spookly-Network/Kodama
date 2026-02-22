@@ -24,8 +24,7 @@ public class HealthController {
 
   @GetMapping("/health")
   public NodeHealthResponse health() {
-    return new NodeHealthResponse(
-        "ok", resolveNodeId(), config.getNodeName(), version);
+    return new NodeHealthResponse("ok", resolveNodeId(), config.getNodeName(), version);
   }
 
   private String resolveNodeId() {

@@ -1,44 +1,44 @@
 plugins {
-    id 'java'
-    id 'org.springframework.boot'
-    id 'io.spring.dependency-management'
+	id 'java'
+	id 'org.springframework.boot'
+	id 'io.spring.dependency-management'
 }
 
 dependencies {
-    implementation project(':common')
+	implementation project(':common')
 
-    implementation 'org.springframework.boot:spring-boot-starter'
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.0'
-    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.0'
-    implementation 'org.apache.httpcomponents.client5:httpclient5:5.3.1'
-    implementation 'org.apache.commons:commons-compress:1.26.1'
-    implementation 'com.github.docker-java:docker-java-api:3.3.6'
-    implementation 'com.github.docker-java:docker-java-core:3.3.6'
-    implementation 'com.github.docker-java:docker-java-transport-httpclient5:3.3.6'
-    implementation 'io.minio:minio:8.6.0'
+	implementation 'org.springframework.boot:spring-boot-starter'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.0'
+	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.0'
+	implementation 'org.apache.httpcomponents.client5:httpclient5:5.3.1'
+	implementation 'org.apache.commons:commons-compress:1.26.1'
+	implementation 'com.github.docker-java:docker-java-api:3.3.6'
+	implementation 'com.github.docker-java:docker-java-core:3.3.6'
+	implementation 'com.github.docker-java:docker-java-transport-httpclient5:3.3.6'
+	implementation 'io.minio:minio:8.6.0'
 
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.mockito:mockito-inline:5.2.0'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.mockito:mockito-inline:5.2.0'
 }
 
 bootJar {
-    archiveBaseName = 'kodama-node-agent'
-    archiveFileName = "kodama-node-agent-${version}.jar"
-    mainClass = 'net.spookly.kodama.nodeagent.NodeAgentApplication'
+	archiveBaseName = 'kodama-node-agent'
+	archiveFileName = "kodama-node-agent-${version}.jar"
+	mainClass = 'net.spookly.kodama.nodeagent.NodeAgentApplication'
 }
 
 springBoot {
-    mainClass = 'net.spookly.kodama.nodeagent.NodeAgentApplication'
-    buildInfo()
+	mainClass = 'net.spookly.kodama.nodeagent.NodeAgentApplication'
+	buildInfo()
 }
 
 jar {
-    enabled = false
+	enabled = false
 }
 
 java {
-    build {
-        dependsOn spotlessApply
-    }
+	build {
+		dependsOn spotlessApply
+	}
 }

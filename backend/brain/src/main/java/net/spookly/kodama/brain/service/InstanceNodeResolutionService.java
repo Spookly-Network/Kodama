@@ -73,7 +73,8 @@ public class InstanceNodeResolutionService {
     return nodeRepository
         .findById(nodeId)
         .orElseThrow(
-            () -> new ResponseStatusException(HttpStatus.CONFLICT, "Assigned node no longer exists"));
+            () ->
+                new ResponseStatusException(HttpStatus.CONFLICT, "Assigned node no longer exists"));
   }
 
   private Node loadNodeOrNotFound(UUID nodeId) {
