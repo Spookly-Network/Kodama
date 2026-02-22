@@ -23,7 +23,6 @@ instances:
 node-agent:
   node-id: ${NODE_AGENT_ID:}
   node-name: ${NODE_AGENT_NAME:}
-  node-version: ${NODE_AGENT_NODE_VERSION:}
   region: ${NODE_AGENT_REGION:}
   capacity-slots: ${NODE_AGENT_CAPACITY_SLOTS:}
   dev-mode: ${NODE_AGENT_DEV_MODE:false}

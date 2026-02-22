@@ -10,7 +10,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 @SpringBootTest(
     properties = {
       "node-agent.node-name=test-node",
-      "node-agent.node-version=1.0.0",
       "node-agent.region=local",
       "node-agent.capacity-slots=4",
       "node-agent.brain-base-url=http://localhost:8080",
@@ -34,7 +33,6 @@ class NodeAgentApplicationTest {
   @Test
   void loadsConfiguration() {
     assertThat(config.getNodeName()).isEqualTo("test-node");
-    assertThat(config.getNodeVersion()).isEqualTo("1.0.0");
     assertThat(config.getRegion()).isEqualTo("local");
     assertThat(config.getCapacitySlots()).isEqualTo(4);
     assertThat(config.getBrainBaseUrl()).isEqualTo("http://localhost:8080");

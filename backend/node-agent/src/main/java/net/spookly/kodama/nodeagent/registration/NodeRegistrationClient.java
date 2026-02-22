@@ -28,7 +28,7 @@ public class NodeRegistrationClient {
 
   private final ObjectMapper objectMapper;
   private final CloseableHttpClient httpClient;
-  private final String buildVersion;
+  private final String nodeVersion;
 
   public NodeRegistrationClient(ObjectMapper objectMapper, BuildProperties buildProperties) {
     this.objectMapper = objectMapper;
@@ -40,12 +40,12 @@ public class NodeRegistrationClient {
                     .setResponseTimeout(RESPONSE_TIMEOUT)
                     .build())
             .build();
-    this.buildVersion = requireBuildVersion(buildProperties);
+    this.nodeVersion = buildProperties.getVersion();
   }
 
   public NodeRegistrationResponse register(
       URI endpoint, String authHeaderName, String authToken, NodeRegistrationRequest request) {
-    request.setNodeVersion(buildVersion);
+    request.setNodeVersion(nodeVersion);
     String payload = writePayload(request);
     HttpPost post = new HttpPost(endpoint);
     post.setEntity(new StringEntity(payload, ContentType.APPLICATION_JSON));
@@ -73,14 +73,6 @@ public class NodeRegistrationClient {
     } catch (IOException ex) {
       throw new NodeRegistrationException("Failed to register node at " + endpoint, ex);
     }
-  }
-
-  private String requireBuildVersion(BuildProperties buildProperties) {
-    String version = buildProperties.getVersion();
-    if (version == null || version.isBlank()) {
-      throw new NodeRegistrationException("Build version is required for node registration");
-    }
-    return version;
   }
 
   private String writePayload(NodeRegistrationRequest request) {
