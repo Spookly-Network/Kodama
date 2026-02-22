@@ -49,7 +49,8 @@ class InstanceStaleMonitorServiceTest {
     InstanceStaleDetectionProperties properties = new InstanceStaleDetectionProperties();
     properties.setPreparingTimeoutSeconds(60);
     properties.setStartingTimeoutSeconds(120);
-    InstanceStateMachine instanceStateMachine = new InstanceStateMachine(instanceEventRepository);
+    InstanceStateMachine instanceStateMachine =
+        new InstanceStateMachine(instanceEventRepository, instanceRepository);
     monitorService =
         new InstanceStaleMonitorService(instanceRepository, instanceStateMachine, properties);
   }

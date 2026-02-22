@@ -49,6 +49,7 @@ import net.spookly.kodama.brain.repository.NodeRepository;
 import net.spookly.kodama.brain.repository.TemplateRepository;
 import net.spookly.kodama.brain.repository.TemplateVersionRepository;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
@@ -58,6 +59,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.containers.MySQLContainer;
@@ -78,6 +81,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
   InstanceGroupService.class,
   InstanceStateMachine.class,
   SchedulingService.class,
+  InstanceNodeResolutionService.class,
   TemplateAssignmentResolver.class,
   InstanceServiceTest.ObjectMapperTestConfig.class
 })
@@ -124,6 +128,8 @@ class InstanceServiceTest {
 
   @Autowired private InstanceGroupMembershipRepository instanceGroupMembershipRepository;
 
+  @Autowired private TestCommandDispatcherService commandDispatcherService;
+
   @TestConfiguration
   static class ObjectMapperTestConfig {
     @Bean
@@ -132,13 +138,15 @@ class InstanceServiceTest {
     }
 
     @Bean
-    CommandDispatcherService commandDispatcherService(ObjectMapper objectMapper) {
-      return new CommandDispatcherService(
+    TestCommandDispatcherService commandDispatcherService(
+        ObjectMapper objectMapper, ObjectProvider<InstanceService> instanceServiceProvider) {
+      return new TestCommandDispatcherService(
           new RestTemplate(),
           new NodeProperties(),
           new BrainPluginRegistry(new PluginsProperties(), objectMapper),
           new BrainSecurityProperties(),
-          objectMapper);
+          objectMapper,
+          instanceServiceProvider);
     }
   }
 
@@ -851,6 +859,71 @@ class InstanceServiceTest {
   }
 
   @Test
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
+  void startInstanceKeepsStartingStateWhenPreparedCallbackArrivesDuringDispatch() {
+    commandDispatcherService.setSimulatePreparedCallback(true);
+    UUID instanceId = null;
+    UUID nodeId = null;
+    try {
+      OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+      Node node =
+          nodeRepository.save(
+              new Node(
+                  "node-start-callback-race",
+                  "eu-west-1",
+                  NodeStatus.ONLINE,
+                  false,
+                  4,
+                  1,
+                  now,
+                  "1.0.0",
+                  null,
+                  "http://node.start-race.local"));
+      nodeId = node.getId();
+      Instance instance =
+          instanceRepository.save(
+              new Instance(
+                  "instance-start-callback-race",
+                  "Start Callback Race",
+                  InstanceState.REQUESTED,
+                  REQUESTER_ID,
+                  node,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  now,
+                  now));
+      instanceId = instance.getId();
+
+      instanceService.startInstance(instanceId);
+
+      Instance persisted = instanceRepository.findById(instanceId).orElseThrow();
+      assertThat(persisted.getState()).isEqualTo(InstanceState.STARTING);
+      List<InstanceEvent> events =
+          instanceEventRepository.findAllByInstanceIdOrderByTimestampAsc(instanceId);
+      assertThat(events)
+          .extracting(InstanceEvent::getType)
+          .containsExactly(
+              InstanceEventType.PREPARE_DISPATCHED, InstanceEventType.PREPARE_COMPLETED);
+    } finally {
+      commandDispatcherService.setSimulatePreparedCallback(false);
+      if (instanceId != null) {
+        List<InstanceEvent> cleanupEvents =
+            instanceEventRepository.findAllByInstanceIdOrderByTimestampAsc(instanceId);
+        if (!cleanupEvents.isEmpty()) {
+          instanceEventRepository.deleteAll(cleanupEvents);
+        }
+        instanceRepository.findById(instanceId).ifPresent(instanceRepository::delete);
+      }
+      if (nodeId != null) {
+        nodeRepository.findById(nodeId).ifPresent(nodeRepository::delete);
+      }
+    }
+  }
+
+  @Test
   void reportPreparedRejectsMismatchedNode() {
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
     Node node =
@@ -1047,5 +1120,57 @@ class InstanceServiceTest {
     TemplateVersion templateVersion =
         new TemplateVersion(savedTemplate, version, "checksum", "s3/key", null, now);
     return templateVersionRepository.save(templateVersion);
+  }
+
+  static class TestCommandDispatcherService extends CommandDispatcherService {
+    private final ObjectProvider<InstanceService> instanceServiceProvider;
+    private volatile boolean simulatePreparedCallback;
+
+    TestCommandDispatcherService(
+        RestTemplate restTemplate,
+        NodeProperties nodeProperties,
+        BrainPluginRegistry pluginRegistry,
+        BrainSecurityProperties securityProperties,
+        ObjectMapper objectMapper,
+        ObjectProvider<InstanceService> instanceServiceProvider) {
+      super(restTemplate, nodeProperties, pluginRegistry, securityProperties, objectMapper);
+      this.instanceServiceProvider = instanceServiceProvider;
+    }
+
+    void setSimulatePreparedCallback(boolean simulatePreparedCallback) {
+      this.simulatePreparedCallback = simulatePreparedCallback;
+    }
+
+    @Override
+    public void sendPrepareInstance(
+        Node node,
+        Instance instance,
+        List<ResolvedTemplateLayer> layers,
+        Map<String, String> variables) {
+      if (!simulatePreparedCallback) {
+        return;
+      }
+      InstanceService instanceService = instanceServiceProvider.getObject();
+      Thread callbackThread =
+          new Thread(
+              () -> instanceService.reportInstancePrepared(node.getId(), instance.getId()),
+              "prepared-callback-test-thread");
+      callbackThread.start();
+      try {
+        callbackThread.join();
+      } catch (InterruptedException ex) {
+        Thread.currentThread().interrupt();
+        throw new IllegalStateException("Interrupted while waiting for prepared callback", ex);
+      }
+    }
+
+    @Override
+    public void sendStartInstance(Node node, Instance instance) {}
+
+    @Override
+    public void sendStopInstance(Node node, Instance instance) {}
+
+    @Override
+    public void sendDestroyInstance(Node node, Instance instance) {}
   }
 }

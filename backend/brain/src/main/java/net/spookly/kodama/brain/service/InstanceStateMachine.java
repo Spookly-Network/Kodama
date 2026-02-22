@@ -6,11 +6,15 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceEvent;
 import net.spookly.kodama.brain.domain.instance.InstanceEventType;
 import net.spookly.kodama.brain.domain.instance.InstanceState;
 import net.spookly.kodama.brain.repository.InstanceEventRepository;
+import net.spookly.kodama.brain.repository.InstanceRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,10 +27,12 @@ public class InstanceStateMachine {
 
   private final InstanceEventRepository instanceEventRepository;
   private final Map<InstanceState, Set<InstanceState>> allowedTransitions;
+  private final InstanceRepository instanceRepository;
 
-  public InstanceStateMachine(InstanceEventRepository instanceEventRepository) {
+  public InstanceStateMachine(InstanceEventRepository instanceEventRepository, InstanceRepository instanceRepository) {
     this.instanceEventRepository = instanceEventRepository;
     this.allowedTransitions = buildAllowedTransitions();
+    this.instanceRepository = instanceRepository;
   }
 
   public void transition(
@@ -55,6 +61,7 @@ public class InstanceStateMachine {
     }
 
     applyTransition(instance, targetState, timestamp, failureReason);
+    instanceRepository.save(instance);
     instanceEventRepository.save(new InstanceEvent(instance, timestamp, eventType, null));
   }
 

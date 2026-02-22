@@ -1,11 +1,8 @@
 package net.spookly.kodama.brain.service;
 
-import jakarta.persistence.EntityManager;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 import net.spookly.kodama.brain.domain.instance.Instance;
 import net.spookly.kodama.brain.domain.instance.InstanceEvent;
@@ -20,11 +17,12 @@ import net.spookly.kodama.brain.repository.InstanceEventRepository;
 import net.spookly.kodama.brain.repository.InstanceGroupMembershipRepository;
 import net.spookly.kodama.brain.repository.InstanceRepository;
 import net.spookly.kodama.brain.repository.InstanceTemplateAssignmentRepository;
-import net.spookly.kodama.brain.repository.NodeRepository;
+import net.spookly.kodama.brain.util.TimeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
@@ -34,19 +32,17 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional
 public class InstanceService {
 
-  private final Logger logger = LoggerFactory.getLogger(InstanceService.class.getName());
+  private static final Logger LOGGER = LoggerFactory.getLogger(InstanceService.class);
 
   private final InstanceRepository instanceRepository;
   private final InstanceTemplateAssignmentRepository instanceTemplateAssignmentRepository;
   private final InstanceEventRepository instanceEventRepository;
   private final InstanceStateMachine instanceStateMachine;
   private final CommandDispatcherService commandDispatcherService;
-  private final EntityManager entityManager;
-  private final NodeRepository nodeRepository;
   private final InstanceGroupMembershipRepository instanceGroupMembershipRepository;
   private final TemplateAssignmentResolver templateAssignmentResolver;
-  private final SchedulingService schedulingService;
   private final InstanceCreationPreparationService instanceCreationPreparationService;
+  private final InstanceNodeResolutionService instanceNodeResolutionService;
 
   public InstanceService(
       InstanceRepository instanceRepository,
@@ -54,23 +50,19 @@ public class InstanceService {
       InstanceEventRepository instanceEventRepository,
       InstanceStateMachine instanceStateMachine,
       CommandDispatcherService commandDispatcherService,
-      EntityManager entityManager,
-      NodeRepository nodeRepository,
       InstanceGroupMembershipRepository instanceGroupMembershipRepository,
       TemplateAssignmentResolver templateAssignmentResolver,
-      SchedulingService schedulingService,
-      InstanceCreationPreparationService instanceCreationPreparationService) {
+      InstanceCreationPreparationService instanceCreationPreparationService,
+      InstanceNodeResolutionService instanceNodeResolutionService) {
     this.instanceRepository = instanceRepository;
     this.instanceTemplateAssignmentRepository = instanceTemplateAssignmentRepository;
     this.instanceEventRepository = instanceEventRepository;
     this.instanceStateMachine = instanceStateMachine;
     this.commandDispatcherService = commandDispatcherService;
-    this.entityManager = Objects.requireNonNull(entityManager, "entityManager");
-    this.nodeRepository = nodeRepository;
     this.instanceGroupMembershipRepository = instanceGroupMembershipRepository;
     this.templateAssignmentResolver = templateAssignmentResolver;
-    this.schedulingService = schedulingService;
     this.instanceCreationPreparationService = instanceCreationPreparationService;
+    this.instanceNodeResolutionService = instanceNodeResolutionService;
   }
 
   @Transactional(readOnly = true)
@@ -113,34 +105,11 @@ public class InstanceService {
     InstanceCreationPreparationService.RuntimeConfiguration runtimeConfiguration =
         preparedCreateRequest.runtimeConfiguration();
 
-    Node node;
-    if (request.getNodeId() != null) {
-      node =
-          nodeRepository
-              .findById(request.getNodeId())
-              .orElseThrow(
-                  () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Node not found"));
-      validateNodeCapacity(node, runtimeConfiguration.slotsRequired());
-    } else {
-      node =
-          schedulingService.selectNode(
-              request.getRegion(),
-              request.getTags(),
-              request.getDevModeAllowed(),
-              runtimeConfiguration.slotsRequired());
-      if (node == null) {
-        if (schedulingService.hasEligibleNodes(
-            request.getRegion(), request.getTags(), request.getDevModeAllowed())) {
-          throw new ResponseStatusException(
-              HttpStatus.CONFLICT,
-              "Insufficient node capacity for slotsRequired="
-                  + runtimeConfiguration.slotsRequired());
-        }
-        throw new ResponseStatusException(HttpStatus.CONFLICT, "No eligible nodes found");
-      }
-    }
+    Node node =
+        instanceNodeResolutionService.resolveNodeForCreate(
+            request, runtimeConfiguration.slotsRequired());
 
-    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    OffsetDateTime now = TimeUtils.utcNow();
     Instance instance =
         new Instance(
             request.getName(),
@@ -182,22 +151,22 @@ public class InstanceService {
     return InstanceDto.fromEntity(savedInstance, resolvedLayers);
   }
 
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public InstanceDto startInstance(UUID id) {
     Instance instance = loadInstance(id);
-    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    OffsetDateTime now = TimeUtils.utcNow();
     InstanceState state = instance.getState();
-    Node assignedNode = instance.getNode();
-    logger.info(
+    Node node = instanceNodeResolutionService.requireAssignedNode(instance);
+    LOGGER.info(
         "Start instance requested. instanceId={} state={} nodeId={} nodeBaseUrl={}",
         id,
         state,
-        assignedNode == null ? null : assignedNode.getId(),
-        assignedNode == null ? null : assignedNode.getBaseUrl());
-    Node node = requireAssignedNode(instance);
+        node.getId(),
+        node.getBaseUrl());
 
     if (state == InstanceState.REQUESTED) {
       List<ResolvedTemplateLayer> layers = templateAssignmentResolver.resolveForInstance(id);
-      logger.info("Instance {} has been requested on node {}", id, node.getId());
+      LOGGER.info("Instance {} has been requested on node {}", id, node.getId());
       transitionOrConflict(
           instance, InstanceState.PREPARING, InstanceEventType.PREPARE_DISPATCHED, now);
       dispatchNodeCommand(
@@ -213,18 +182,19 @@ public class InstanceService {
           HttpStatus.CONFLICT, "Instance cannot be started from state " + state);
     }
 
-    return InstanceDto.fromEntity(instance, templateAssignmentResolver.resolveForInstance(id));
+    Instance persisted = loadInstance(id);
+    return InstanceDto.fromEntity(persisted, templateAssignmentResolver.resolveForInstance(id));
   }
 
   public InstanceDto stopInstance(UUID id) {
     Instance instance = loadInstance(id);
-    Node node = requireAssignedNode(instance);
+    Node node = instanceNodeResolutionService.requireAssignedNode(instance);
     InstanceState state = instance.getState();
     if (state != InstanceState.RUNNING) {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT, "Instance cannot be stopped from state " + state);
     }
-    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    OffsetDateTime now = TimeUtils.utcNow();
     transitionOrConflict(instance, InstanceState.STOPPING, InstanceEventType.STOP_DISPATCHED, now);
     dispatchNodeCommand("stop", () -> commandDispatcherService.sendStopInstance(node, instance));
     return InstanceDto.fromEntity(instance, templateAssignmentResolver.resolveForInstance(id));
@@ -232,7 +202,7 @@ public class InstanceService {
 
   public InstanceDto destroyInstance(UUID id) {
     Instance instance = loadInstance(id);
-    Node node = requireAssignedNode(instance);
+    Node node = instanceNodeResolutionService.requireAssignedNode(instance);
     InstanceState state = instance.getState();
     if (state != InstanceState.STOPPED
         && state != InstanceState.STOPPING
@@ -240,7 +210,7 @@ public class InstanceService {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT, "Instance cannot be destroyed from state " + state);
     }
-    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    OffsetDateTime now = TimeUtils.utcNow();
 
     if (state == InstanceState.STOPPED) {
       transitionOrConflict(
@@ -260,80 +230,47 @@ public class InstanceService {
   }
 
   public void reportInstancePrepared(UUID nodeId, UUID instanceId, String portsJson) {
-    Instance instance = loadInstanceForNode(nodeId, instanceId);
+    Instance instance = instanceNodeResolutionService.loadInstanceForNode(nodeId, instanceId);
     if (portsJson != null) {
       instance.updatePortsJson(portsJson);
     }
-    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    OffsetDateTime now = TimeUtils.utcNow();
     if (instance.getState() == InstanceState.REQUESTED) {
       OffsetDateTime dispatchedAt = now.minusNanos(1_000);
       instanceStateMachine.transition(
           instance, InstanceState.PREPARING, InstanceEventType.PREPARE_DISPATCHED, dispatchedAt);
-      logger.warn("Instance {} had state Requested when sending prepared", instanceId);
+      LOGGER.warn("Instance {} had state Requested when sending prepared", instanceId);
     }
     instanceStateMachine.transition(
         instance, InstanceState.STARTING, InstanceEventType.PREPARE_COMPLETED, now);
   }
 
   public void reportInstanceRunning(UUID nodeId, UUID instanceId) {
-    Instance instance = loadInstanceForNode(nodeId, instanceId);
-    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    Instance instance = instanceNodeResolutionService.loadInstanceForNode(nodeId, instanceId);
+    OffsetDateTime now = TimeUtils.utcNow();
     instanceStateMachine.transition(
         instance, InstanceState.RUNNING, InstanceEventType.START_COMPLETED, now);
   }
 
   public void reportInstanceStopped(UUID nodeId, UUID instanceId) {
-    Instance instance = loadInstanceForNode(nodeId, instanceId);
-    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    Instance instance = instanceNodeResolutionService.loadInstanceForNode(nodeId, instanceId);
+    OffsetDateTime now = TimeUtils.utcNow();
     instanceStateMachine.transition(
         instance, InstanceState.STOPPED, InstanceEventType.STOP_COMPLETED, now);
   }
 
   public void reportInstanceDestroyed(UUID nodeId, UUID instanceId) {
-    Instance instance = loadInstanceForNode(nodeId, instanceId);
-    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    Instance instance = instanceNodeResolutionService.loadInstanceForNode(nodeId, instanceId);
+    OffsetDateTime now = TimeUtils.utcNow();
     instanceStateMachine.transition(
         instance, InstanceState.DESTROYED, InstanceEventType.DESTROY_COMPLETED, now);
   }
 
   public void reportInstanceFailed(UUID nodeId, UUID instanceId) {
-    Instance instance = loadInstanceForNode(nodeId, instanceId);
-    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    Instance instance = instanceNodeResolutionService.loadInstanceForNode(nodeId, instanceId);
+    OffsetDateTime now = TimeUtils.utcNow();
     instanceStateMachine.transition(
         instance, InstanceState.FAILED, InstanceEventType.FAILURE_REPORTED, now, null);
-  }
-
-  private void validateNodeCapacity(Node node, int slotsRequired) {
-    if (((long) node.getUsedSlots() + slotsRequired) > node.getCapacitySlots()) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT,
-          "Insufficient node capacity for slotsRequired="
-              + slotsRequired
-              + " (usedSlots="
-              + node.getUsedSlots()
-              + ", capacitySlots="
-              + node.getCapacitySlots()
-              + ")");
-    }
-  }
-
-  private Instance loadInstanceForNode(UUID nodeId, UUID instanceId) {
-    nodeRepository
-        .findById(nodeId)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Node not found"));
-    Instance instance =
-        instanceRepository
-            .findById(instanceId)
-            .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Instance not found"));
-    if (instance.getNode() == null || instance.getNode().getId() == null) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "Instance is not assigned to a node");
-    }
-    if (!instance.getNode().getId().equals(nodeId)) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT, "Instance is not assigned to the requested node");
-    }
-    return instance;
   }
 
   private Instance loadInstance(UUID instanceId) {
@@ -342,30 +279,22 @@ public class InstanceService {
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Instance not found"));
   }
 
-  private Node requireAssignedNode(Instance instance) {
-    Node node = instance.getNode();
-    if (node == null || node.getId() == null) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "Instance is not assigned to a node");
-    }
-    return node;
-  }
-
   private void dispatchNodeCommand(String action, Runnable command) {
     try {
       command.run();
     } catch (ResourceAccessException ex) {
-      logger.warn("Node command failed to reach node. action={}", action, ex);
+      LOGGER.warn("Node command failed to reach node. action={}", action, ex);
       throw new ResponseStatusException(
           HttpStatus.BAD_GATEWAY, "Unable to reach node for " + action + " command", ex);
     } catch (HttpStatusCodeException ex) {
-      logger.warn(
+      LOGGER.warn(
           "Node command rejected by node. action={} status={}", action, ex.getStatusCode(), ex);
       throw new ResponseStatusException(
           HttpStatus.BAD_GATEWAY,
           "Node rejected " + action + " command: " + ex.getStatusCode(),
           ex);
     } catch (IllegalStateException ex) {
-      logger.warn(
+      LOGGER.warn(
           "Node command failed preflight. action={} message={}", action, ex.getMessage(), ex);
       throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
     }
@@ -377,7 +306,7 @@ public class InstanceService {
       InstanceEventType eventType,
       OffsetDateTime timestamp) {
     try {
-      logger.info(
+      LOGGER.info(
           "Transitioning instance {} to state {} with event {} at {}",
           instance.getId(),
           targetState,
@@ -385,7 +314,7 @@ public class InstanceService {
           timestamp);
       instanceStateMachine.transition(instance, targetState, eventType, timestamp);
     } catch (InvalidInstanceStateTransitionException ex) {
-      logger.warn(
+      LOGGER.warn(
           "Invalid instance transition. instanceId={} currentState={} targetState={} eventType={}",
           instance.getId(),
           instance.getState(),
@@ -394,12 +323,5 @@ public class InstanceService {
           ex);
       throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
     }
-  }
-
-  private void refreshInstanceState(Instance instance) {
-    if (instance == null) {
-      return;
-    }
-    entityManager.refresh(instance);
   }
 }

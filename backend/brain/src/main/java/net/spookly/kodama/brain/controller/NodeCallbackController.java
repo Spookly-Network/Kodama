@@ -3,6 +3,8 @@ package net.spookly.kodama.brain.controller;
 import java.util.UUID;
 import net.spookly.kodama.brain.dto.node.InstancePreparedCallbackRequest;
 import net.spookly.kodama.brain.service.InstanceService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class NodeCallbackController {
 
   private final InstanceService instanceService;
+  private final Logger logger = LoggerFactory.getLogger(NodeCallbackController.class);
 
   public NodeCallbackController(InstanceService instanceService) {
     this.instanceService = instanceService;
@@ -29,6 +32,7 @@ public class NodeCallbackController {
       @PathVariable UUID nodeId,
       @PathVariable UUID instanceId,
       @RequestBody(required = false) InstancePreparedCallbackRequest request) {
+    logger.info("Node {} reported instance {} as prepared", nodeId, instanceId);
     instanceService.reportInstancePrepared(
         nodeId, instanceId, request == null ? null : request.getPortsJson());
   }
@@ -37,6 +41,7 @@ public class NodeCallbackController {
   @ResponseStatus(HttpStatus.OK)
   @PreAuthorize("hasAuthority('ROLE_NODE')")
   public void running(@PathVariable UUID nodeId, @PathVariable UUID instanceId) {
+    logger.info("Node {} reported instance {} as running", nodeId, instanceId);
     instanceService.reportInstanceRunning(nodeId, instanceId);
   }
 
@@ -44,6 +49,7 @@ public class NodeCallbackController {
   @ResponseStatus(HttpStatus.OK)
   @PreAuthorize("hasAuthority('ROLE_NODE')")
   public void stopped(@PathVariable UUID nodeId, @PathVariable UUID instanceId) {
+    logger.info("Node {} reported instance {} as stopped", nodeId, instanceId);
     instanceService.reportInstanceStopped(nodeId, instanceId);
   }
 
@@ -51,6 +57,7 @@ public class NodeCallbackController {
   @ResponseStatus(HttpStatus.OK)
   @PreAuthorize("hasAuthority('ROLE_NODE')")
   public void destroyed(@PathVariable UUID nodeId, @PathVariable UUID instanceId) {
+    logger.info("Node {} reported instance {} as destroyed", nodeId, instanceId);
     instanceService.reportInstanceDestroyed(nodeId, instanceId);
   }
 
@@ -58,6 +65,7 @@ public class NodeCallbackController {
   @ResponseStatus(HttpStatus.OK)
   @PreAuthorize("hasAuthority('ROLE_NODE')")
   public void failed(@PathVariable UUID nodeId, @PathVariable UUID instanceId) {
+    logger.info("Node {} reported instance {} as failed", nodeId, instanceId);
     instanceService.reportInstanceFailed(nodeId, instanceId);
   }
 }

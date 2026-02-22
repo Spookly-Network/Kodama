@@ -9,6 +9,7 @@ Base path: `/api/nodes/{nodeId}/instances/{instanceId}`
 - `POST /prepared`
   - Optional body: `{ "portsJson": "..." }`.
   - When `portsJson` is provided, Brain persists it on the instance.
+  - Brain commits `PREPARING` before dispatching `prepare`, so this callback normally arrives while the instance is already `PREPARING`.
   - Updates instance state to `STARTING`.
   - If the instance is still `REQUESTED`, the Brain records `PREPARE_DISPATCHED` then transitions `REQUESTED` → `PREPARING` → `STARTING`.
   - Logs `PREPARE_COMPLETED` event.
