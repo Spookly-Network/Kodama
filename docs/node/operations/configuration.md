@@ -113,6 +113,8 @@ Describe the configuration inputs for the node agent and how they map to environ
   exit codes and reasons for stopped containers in the local registry.
 - S3 configuration is required for template storage. When `node-agent.s3.endpoint` is set, the client
   uses path-style requests for local or custom S3 endpoints.
+- Template archive downloads use a 120-second HTTP read timeout and a 300-second request timeout
+  to reduce cache population failures on slower links.
 
 ## Edge cases / risks
 - Missing required values stops the node agent at startup with a detailed error.

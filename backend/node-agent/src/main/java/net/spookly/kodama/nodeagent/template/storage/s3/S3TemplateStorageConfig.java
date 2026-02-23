@@ -16,8 +16,8 @@ import org.springframework.context.annotation.Configuration;
 public class S3TemplateStorageConfig {
 
   private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
-  private static final Duration READ_TIMEOUT = Duration.ofSeconds(30);
-  private static final Duration API_CALL_TIMEOUT = Duration.ofSeconds(60);
+  private static final Duration READ_TIMEOUT = Duration.ofSeconds(120);
+  private static final Duration API_CALL_TIMEOUT = Duration.ofSeconds(300);
 
   @Bean
   public TemplateStorageClient templateStorageClient(NodeConfig config) {
@@ -32,7 +32,8 @@ public class S3TemplateStorageConfig {
         new OkHttpClient.Builder()
             .connectTimeout(CONNECT_TIMEOUT.toSeconds(), TimeUnit.SECONDS)
             .readTimeout(READ_TIMEOUT.toSeconds(), TimeUnit.SECONDS)
-            .writeTimeout(API_CALL_TIMEOUT.toSeconds(), TimeUnit.SECONDS)
+            .writeTimeout(READ_TIMEOUT.toSeconds(), TimeUnit.SECONDS)
+            .callTimeout(API_CALL_TIMEOUT.toSeconds(), TimeUnit.SECONDS)
             .build();
 
     MinioClient.Builder builder =
