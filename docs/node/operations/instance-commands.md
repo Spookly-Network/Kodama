@@ -13,6 +13,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
 - If start fails after the registry was marked `starting`, cleanup now removes the container and clears the registry
   container reference back to a non-slot-consuming `stopped` state.
 - Start now executes `installScript` once with `/bin/sh -c` before first container start when `installCompleted` is `false`.
+- Start now auto-pulls the configured `containerImage` when Docker reports `No such image`, then retries container creation once.
 - Stop now resolves the container id from the local registry, marks `stopping`, stops the container, and records the
   final `stopped` state.
 - Added a container monitor that records exit codes and reasons when containers stop outside of stop/destroy commands.
@@ -46,6 +47,7 @@ Describe the node agent endpoints that handle instance lifecycle commands from t
   - reads `instance.json` from the workspace,
   - requires `containerImage` and `startCommand` from the instance registry runtime fields,
   - creates a Docker container with the merged workspace mounted,
+  - when Docker create fails with `No such image`, pulls `containerImage` and retries create once,
   - maps ports from `portsJson` array entries (`containerPort` + `hostPort`),
   - treats `portsJson` arrays as authoritative and only falls back to `PORT`/`PORT_<NAME>` variables when `portsJson` is absent,
   - injects env vars (including `INSTANCE_ID` and `NODE_NAME`),
@@ -123,6 +125,7 @@ Example prepared callback body (`POST /api/nodes/{nodeId}/instances/{instanceId}
 - Cache download/merge failures result in HTTP 500 and a `/failed` callback attempt.
 - Missing node auth token or invalid Brain base URL prevents callbacks; lifecycle commands still complete locally but the Brain will not receive updates.
 - Start fails when `containerImage` is missing in the registry runtime fields.
+- If image pull fails after a `No such image` create error, start fails and a `/failed` callback attempt is made.
 - Start fails when `startCommand` is missing or contains empty command parts.
 - If the install script exits non-zero, start fails, `/failed` is attempted, and `installCompleted` remains `false`.
 - If the install script exceeds the configured install timeout, the node agent terminates it, start fails, `/failed` is attempted, and `installCompleted` remains `false`.

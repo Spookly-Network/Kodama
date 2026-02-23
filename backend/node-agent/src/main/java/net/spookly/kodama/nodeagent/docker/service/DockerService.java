@@ -4,6 +4,7 @@ import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerCmd;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.InspectContainerResponse;
+import com.github.dockerjava.api.command.PullImageCmd;
 import com.github.dockerjava.api.command.StopContainerCmd;
 import com.github.dockerjava.api.exception.ConflictException;
 import com.github.dockerjava.api.exception.DockerException;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import net.spookly.kodama.nodeagent.docker.dto.DockerContainerCreateRequest;
 import net.spookly.kodama.nodeagent.docker.dto.DockerContainerCreateResult;
@@ -29,10 +31,15 @@ import net.spookly.kodama.nodeagent.docker.dto.DockerContainerSummary;
 import net.spookly.kodama.nodeagent.docker.dto.DockerImageSummary;
 import net.spookly.kodama.nodeagent.docker.dto.DockerPortBinding;
 import net.spookly.kodama.nodeagent.docker.dto.DockerVolumeMount;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 public class DockerService {
+
+  private static final Logger logger = LoggerFactory.getLogger(DockerService.class);
+  private static final String MISSING_IMAGE_MESSAGE = "no such image";
 
   private final DockerClient dockerClient;
 
@@ -48,39 +55,95 @@ public class DockerService {
       throw new DockerOperationException("Container image is required");
     }
     try {
-      CreateContainerCmd createCmd = dockerClient.createContainerCmd(request.image());
-      if (hasText(request.name())) {
-        createCmd.withName(request.name());
-      }
-      if (request.command() != null && !request.command().isEmpty()) {
-        createCmd.withCmd(request.command().toArray(String[]::new));
-      }
-      if (request.env() != null && !request.env().isEmpty()) {
-        createCmd.withEnv(request.env().toArray(String[]::new));
-      }
-      if (request.labels() != null && !request.labels().isEmpty()) {
-        createCmd.withLabels(request.labels());
-      }
-      if (hasText(request.workingDir())) {
-        createCmd.withWorkingDir(request.workingDir());
-      }
-      HostConfig hostConfig = buildHostConfig(request.volumeMounts(), request.portBindings());
-      if (hostConfig != null) {
-        createCmd.withHostConfig(hostConfig);
-      }
-      List<ExposedPort> exposedPorts = buildExposedPorts(request.portBindings());
-      if (!exposedPorts.isEmpty()) {
-        createCmd.withExposedPorts(exposedPorts);
-      }
-      CreateContainerResponse response = createCmd.exec();
-      List<String> warnings =
-          response.getWarnings() == null ? List.of() : Arrays.asList(response.getWarnings());
-      return new DockerContainerCreateResult(response.getId(), warnings);
+      return createContainerOnce(request);
     } catch (ConflictException ex) {
       throw new DockerOperationException("Docker container name conflict", ex);
     } catch (DockerException ex) {
-      throw new DockerOperationException("Docker create container failed", ex);
+      return handleCreateContainerFailure(request, ex);
     }
+  }
+
+  private DockerContainerCreateResult createContainerAfterPull(
+      DockerContainerCreateRequest request) {
+    String image = request.image().trim();
+    pullImage(image);
+    return createContainerWithMappedErrors(
+        request, "Docker create container failed after pulling image: " + image);
+  }
+
+  private DockerContainerCreateResult handleCreateContainerFailure(
+      DockerContainerCreateRequest request, DockerException exception) {
+    if (isMissingImageFailure(exception)) {
+      return createContainerAfterPull(request);
+    }
+    throw new DockerOperationException("Docker create container failed", exception);
+  }
+
+  private DockerContainerCreateResult createContainerWithMappedErrors(
+      DockerContainerCreateRequest request, String dockerFailureMessage) {
+    try {
+      return createContainerOnce(request);
+    } catch (ConflictException ex) {
+      throw new DockerOperationException("Docker container name conflict", ex);
+    } catch (DockerException ex) {
+      throw new DockerOperationException(dockerFailureMessage, ex);
+    }
+  }
+
+  private DockerContainerCreateResult createContainerOnce(DockerContainerCreateRequest request) {
+    CreateContainerCmd createCmd = dockerClient.createContainerCmd(request.image());
+    if (hasText(request.name())) {
+      createCmd.withName(request.name());
+    }
+    if (request.command() != null && !request.command().isEmpty()) {
+      createCmd.withCmd(request.command().toArray(String[]::new));
+    }
+    if (request.env() != null && !request.env().isEmpty()) {
+      createCmd.withEnv(request.env().toArray(String[]::new));
+    }
+    if (request.labels() != null && !request.labels().isEmpty()) {
+      createCmd.withLabels(request.labels());
+    }
+    if (hasText(request.workingDir())) {
+      createCmd.withWorkingDir(request.workingDir());
+    }
+    HostConfig hostConfig = buildHostConfig(request.volumeMounts(), request.portBindings());
+    if (hostConfig != null) {
+      createCmd.withHostConfig(hostConfig);
+    }
+    List<ExposedPort> exposedPorts = buildExposedPorts(request.portBindings());
+    if (!exposedPorts.isEmpty()) {
+      createCmd.withExposedPorts(exposedPorts);
+    }
+    CreateContainerResponse response = createCmd.exec();
+    List<String> warnings =
+        response.getWarnings() == null ? List.of() : Arrays.asList(response.getWarnings());
+    return new DockerContainerCreateResult(response.getId(), warnings);
+  }
+
+  private void pullImage(String image) {
+    logger.info("Container image missing locally, pulling image. image={}", image);
+    try {
+      PullImageCmd pullImageCmd = dockerClient.pullImageCmd(image);
+      pullImageCmd.start().awaitCompletion();
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+      throw new DockerOperationException("Docker image pull interrupted: " + image, ex);
+    } catch (RuntimeException ex) {
+      throw new DockerOperationException("Docker image pull failed: " + image, ex);
+    }
+  }
+
+  private boolean isMissingImageFailure(Throwable throwable) {
+    Throwable current = throwable;
+    while (current != null) {
+      String message = current.getMessage();
+      if (message != null && message.toLowerCase(Locale.ROOT).contains(MISSING_IMAGE_MESSAGE)) {
+        return true;
+      }
+      current = current.getCause();
+    }
+    return false;
   }
 
   public void startContainer(String containerId) {
